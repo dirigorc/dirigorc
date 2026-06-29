@@ -553,6 +553,117 @@ details p {
   color: rgba(255, 255, 255, 0.82);
 }
 
+.form-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  color: var(--paper);
+  background: var(--ink);
+  border-left: 10px solid var(--dirigo-blue);
+}
+
+.form-intro h2 {
+  max-width: 520px;
+}
+
+.form-intro p:not(.eyebrow) {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.membership-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.membership-form label,
+.membership-form fieldset {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.membership-form span,
+.membership-form legend {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.84rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.membership-form input,
+.membership-form textarea {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.8rem 0.9rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font: inherit;
+}
+
+.membership-form textarea {
+  resize: vertical;
+}
+
+.membership-form input:focus,
+.membership-form textarea:focus {
+  outline: 0;
+  border-color: #9fccff;
+  box-shadow: 0 0 0 3px rgba(159, 204, 255, 0.25);
+}
+
+.membership-form fieldset {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius);
+}
+
+.membership-form legend {
+  padding: 0 0.25rem;
+}
+
+.check-option {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.check-option input {
+  width: 1.1rem;
+  min-height: 1.1rem;
+  margin: 0;
+  accent-color: var(--dirigo-blue);
+}
+
+.check-option span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.form-actions p {
+  max-width: 440px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.92rem;
+}
+
 .timeline {
   display: grid;
   gap: 1rem;
@@ -718,6 +829,7 @@ tr:last-child td {
 
   .split,
   .feature-band,
+  .form-shell,
   .page-hero {
     grid-template-columns: 1fr;
   }
@@ -743,6 +855,7 @@ tr:last-child td {
 
   .card-grid.three,
   .steps,
+  .form-grid,
   .detail-grid {
     grid-template-columns: 1fr;
   }

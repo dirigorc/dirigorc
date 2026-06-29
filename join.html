@@ -37,9 +37,8 @@
     <section class="page-hero page-hero-landscape pattern-page-hero">
       <div>
         <p class="eyebrow">Join Dirigo</p>
-        <h1>A clear path for runners who want to train, race, and contribute.</h1>
-        <p>This prototype keeps membership details editable and avoids inventing current rules. Replace TODO areas with
-          board-approved standards, dues, incentives, and process.</p>
+        <h1>Join the blue crew.</h1>
+        <p>Dirigo membership is open to runners who want to be part of the team. Annual dues are $40.</p>
       </div>
       <img src="assets/images/dirigo-join-instagram.jpg"
         alt="Dirigo runners in blue team singlets gathered before a race. Instagram source image pending final approval.">
@@ -52,10 +51,9 @@
           <h2>Who should consider Dirigo?</h2>
         </div>
         <div class="stack">
-          <p>Use this block for a plain-language answer before standards and policy details. The goal is to help a
-            prospective member self-select quickly.</p>
-          <p class="todo">TODO: Confirm current eligibility language, competitive expectations, and whether
-            social/non-racing membership exists.</p>
+          <p>Membership is open to runners who want to be part of the team. Older versions of Dirigo materials referenced
+            qualifying guidelines, but the current public-facing posture should be welcoming first, then clear about
+            racing, team scoring, and volunteer expectations where they apply.</p>
         </div>
       </div>
     </section>
@@ -70,18 +68,21 @@
       <div class="steps">
         <article>
           <span>1</span>
-          <h3>Review fit and standards</h3>
-          <p>Link to verified membership criteria and racing standards.</p>
+          <h3>Reach out</h3>
+          <p>Send the membership form so the club has your name, email, running background, and what you are looking for.
+          </p>
         </article>
         <article>
           <span>2</span>
-          <h3>Contact the club</h3>
-          <p>Route inquiries to the right board member or shared inbox.</p>
+          <h3>Get a follow-up</h3>
+          <p>A club representative can confirm next steps, answer questions, and explain how dues and team communications
+            work.</p>
         </article>
         <article>
           <span>3</span>
-          <h3>Complete membership steps</h3>
-          <p>Explain dues, USATF requirements, forms, and timing once confirmed.</p>
+          <h3>Pay dues and get set up</h3>
+          <p>Annual dues are $40. After the club follows up, members can complete payment and get added to team
+            communications.</p>
         </article>
       </div>
     </section>
@@ -89,26 +90,29 @@
     <section class="section pattern-details" id="standards">
       <div class="section-header">
         <div>
-          <p class="eyebrow">Details To Confirm</p>
-          <h2>Membership information should be structured, not buried.</h2>
+          <p class="eyebrow">Membership Details</p>
+          <h2>The essentials, stated plainly.</h2>
         </div>
       </div>
       <div class="detail-grid">
         <article class="detail-card">
           <h3>Standards</h3>
-          <p class="todo">TODO: Add current standards and categories exactly as approved.</p>
+          <p>Qualifying standards are no longer presented as a gate for joining. Racing expectations may still apply for
+            team scoring or specific events.</p>
         </article>
         <article class="detail-card">
           <h3>Dues</h3>
-          <p class="todo">TODO: Add current dues, renewal timing, and payment method.</p>
+          <p>Annual membership dues are $40.</p>
         </article>
         <article class="detail-card">
-          <h3>Incentives</h3>
-          <p class="todo">TODO: Add current race reimbursement, gear, or performance incentives if active.</p>
+          <h3>Benefits</h3>
+          <p>Membership connects runners to the Dirigo team, club communications, racing opportunities, and the broader
+            Maine running community.</p>
         </article>
         <article class="detail-card">
           <h3>USATF</h3>
-          <p class="todo">TODO: Confirm whether USATF membership is required, optional, or race-specific.</p>
+          <p>USATF membership may be needed for team scoring or championship events. The club can confirm what applies
+            after a member joins.</p>
         </article>
       </div>
     </section>
@@ -123,29 +127,88 @@
       <div class="faq-list">
         <details>
           <summary>Do I need to meet a time standard?</summary>
-          <p class="todo">TODO: Add current board-approved answer.</p>
+          <p>No. Membership is open to runners who want to be part of the team. Specific races or team scoring
+            opportunities may have their own requirements.</p>
         </details>
         <details>
           <summary>Can I come to a group run before joining?</summary>
-          <p class="todo">TODO: Add current board-approved answer.</p>
+          <p>Yes, when a run is listed as public. Check current details first, since some team activity may be informal,
+            seasonal, or race-specific.</p>
         </details>
         <details>
           <summary>What does membership include?</summary>
-          <p class="todo">TODO: Add current board-approved answer.</p>
+          <p>Team membership, club communications, racing coordination, and connection to other Maine runners. Dues are
+            $40 per year.</p>
         </details>
         <details>
           <summary>Who do I contact?</summary>
-          <p class="todo">TODO: Add shared inbox or contact form routing.</p>
+          <p>Use the membership inquiry form below. In WordPress, this should route to the board-approved membership
+            inbox.</p>
         </details>
       </div>
     </section>
 
-    <section class="section pattern-cta">
-      <div class="cta-panel">
-        <p class="eyebrow">Ready to ask?</p>
-        <h2>Send a membership inquiry.</h2>
-        <p>Connect this button to the approved contact form or membership email during implementation.</p>
-        <a class="button button-primary" href="#">Contact TODO</a>
+    <section class="section pattern-membership-form" id="membership-form">
+      <div class="form-shell">
+        <div class="form-intro">
+          <p class="eyebrow">Membership Form</p>
+          <h2>Tell us how to reach you.</h2>
+          <p>This static prototype form should become a WordPress form block at launch, routed to the club's membership
+            inbox.</p>
+        </div>
+        <form class="membership-form" action="#" method="post">
+          <div class="form-grid">
+            <label>
+              <span>First name</span>
+              <input type="text" name="first-name" autocomplete="given-name" required>
+            </label>
+            <label>
+              <span>Last name</span>
+              <input type="text" name="last-name" autocomplete="family-name" required>
+            </label>
+          </div>
+          <div class="form-grid">
+            <label>
+              <span>Email</span>
+              <input type="email" name="email" autocomplete="email" required>
+            </label>
+            <label>
+              <span>Town / city</span>
+              <input type="text" name="location" autocomplete="address-level2">
+            </label>
+          </div>
+          <fieldset>
+            <legend>What are you interested in?</legend>
+            <label class="check-option">
+              <input type="checkbox" name="interest" value="training">
+              <span>Training with other Dirigo runners</span>
+            </label>
+            <label class="check-option">
+              <input type="checkbox" name="interest" value="racing">
+              <span>Racing for Dirigo</span>
+            </label>
+            <label class="check-option">
+              <input type="checkbox" name="interest" value="usatf">
+              <span>USATF team events</span>
+            </label>
+            <label class="check-option">
+              <input type="checkbox" name="interest" value="community">
+              <span>Community, volunteering, and club updates</span>
+            </label>
+          </fieldset>
+          <label>
+            <span>Recent races or running background</span>
+            <textarea name="running-background" rows="4"></textarea>
+          </label>
+          <label>
+            <span>Anything else we should know?</span>
+            <textarea name="message" rows="4"></textarea>
+          </label>
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Submit inquiry</button>
+            <p>This prototype does not submit yet. Connect it to a WordPress form handler before launch.</p>
+          </div>
+        </form>
       </div>
     </section>
   </main>
