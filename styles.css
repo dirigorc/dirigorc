@@ -420,6 +420,37 @@ a {
   text-transform: uppercase;
 }
 
+.partner-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.partner-band h2 {
+  max-width: 760px;
+}
+
+.partner-band p:not(.eyebrow) {
+  max-width: 620px;
+}
+
+.partner-logo {
+  display: grid;
+  min-height: 13rem;
+  place-items: center;
+  padding: 1.25rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.partner-logo img {
+  width: min(100%, 280px);
+  max-height: 10rem;
+  object-fit: contain;
+}
+
 .section-header {
   display: flex;
   align-items: end;
@@ -517,7 +548,7 @@ a {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -836,6 +867,7 @@ tr:last-child td {
   .split,
   .feature-band,
   .form-shell,
+  .partner-band,
   .page-hero {
     grid-template-columns: 1fr;
   }
