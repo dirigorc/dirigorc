@@ -34,6 +34,10 @@ html {
   scroll-behavior: smooth;
 }
 
+:target {
+  scroll-margin-top: 6rem;
+}
+
 body {
   margin: 0;
   color: var(--ink);
@@ -513,7 +517,7 @@ a {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -599,6 +603,7 @@ details p {
 }
 
 .membership-form input,
+.membership-form select,
 .membership-form textarea {
   width: 100%;
   min-height: 3rem;
@@ -615,6 +620,7 @@ details p {
 }
 
 .membership-form input:focus,
+.membership-form select:focus,
 .membership-form textarea:focus {
   outline: 0;
   border-color: #9fccff;
