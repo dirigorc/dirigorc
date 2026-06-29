@@ -606,6 +606,48 @@ tr:last-child td {
   text-decoration: none;
 }
 
+.footer-links .social-link {
+  display: inline-grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+}
+
+.footer-links .social-link:hover,
+.footer-links .social-link:focus-visible {
+  color: var(--paper);
+  background: var(--dirigo-blue);
+  border-color: var(--dirigo-blue);
+}
+
+.footer-links .social-link-instagram:hover,
+.footer-links .social-link-instagram:focus-visible {
+  background: linear-gradient(135deg, #833ab4, #fd1d1d 50%, #fcb045);
+  border-color: #fd1d1d;
+}
+
+.footer-links .social-link-facebook:hover,
+.footer-links .social-link-facebook:focus-visible {
+  background: #1877f2;
+  border-color: #1877f2;
+}
+
+.footer-links .social-link-strava:hover,
+.footer-links .social-link-strava:focus-visible {
+  background: #fc4c02;
+  border-color: #fc4c02;
+}
+
+.social-link svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
+}
+
 .footer-note {
   grid-column: 1 / -1;
   margin: 0;
