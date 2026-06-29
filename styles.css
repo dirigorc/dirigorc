@@ -62,10 +62,10 @@ a {
   justify-content: space-between;
   gap: 1.5rem;
   padding: 0.85rem clamp(1rem, 4vw, 3rem);
-  color: var(--paper);
-  background: rgba(5, 7, 10, 0.94);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: 1px solid var(--line);
 }
 
 .brand {
@@ -89,22 +89,15 @@ a {
 }
 
 .brand small {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
   font-size: 0.76rem;
 }
 
-.brand-mark {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  color: var(--paper);
-  background: var(--dirigo-blue);
-  border: 2px solid var(--paper);
-  border-radius: 50%;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0;
+.brand-logo {
+  width: 3.35rem;
+  height: 3.35rem;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .site-nav {
@@ -119,13 +112,20 @@ a {
 }
 
 .site-nav a {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--muted);
   text-decoration: none;
 }
 
 .site-nav a:hover,
 .site-nav a[aria-current="page"] {
-  color: var(--paper);
+  color: var(--ink);
+}
+
+.site-nav a[aria-current="page"] {
+  text-decoration: underline;
+  text-decoration-color: var(--dirigo-blue);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.45rem;
 }
 
 .hero {
@@ -701,9 +701,9 @@ tr:last-child td {
     font-size: 16px;
   }
 
-  .brand-mark {
-    width: 2.35rem;
-    height: 2.35rem;
+  .brand-logo {
+    width: 2.8rem;
+    height: 2.8rem;
   }
 
   .site-nav {

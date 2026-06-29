@@ -1,181 +1,190 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dirigo RC | Maine Running Club</title>
-    <meta name="description" content="Static homepage prototype for Dirigo RC, a Maine-based running club founded in 2002.">
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
-    <a class="skip-link" href="#main">Skip to content</a>
 
-    <header class="site-header">
-      <a class="brand" href="index.html" aria-label="Dirigo RC home">
-        <span class="brand-mark">DRC</span>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dirigo RC | Maine Running Club</title>
+  <meta name="description"
+    content="Static homepage prototype for Dirigo RC, a Maine-based running club founded in 2002.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Dirigo RC home">
+      <img class="brand-logo" src="assets/images/dirigo.png" alt="">
+      <span>
+        <strong>Dirigo RC</strong>
+        <small>Founded 2002</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="join.html">Join Dirigo</a>
+      <a href="history.html">History</a>
+      <a href="#training">Training</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero hero-home pattern-hero">
+      <img src="assets/images/dirigo-hero-instagram.jpg"
+        alt="Dirigo runners in blue team singlets standing near the water. Instagram source image pending final approval.">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <p class="eyebrow">Maine running club | Competitive since 2002</p>
+        <h1>Race hard. Train together. Carry Maine forward.</h1>
+        <p class="hero-lede">Dirigo RC is a Maine-based running club with a competitive history and a practical path for
+          runners who want to train, race, and contribute.</p>
+        <div class="button-row">
+          <a class="button button-primary" href="join.html">Join Dirigo</a>
+          <a class="button button-secondary" href="#next">See what is next</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section pattern-intro">
+      <div class="section-kicker">Club Snapshot</div>
+      <div class="split">
+        <div>
+          <h2>Built for Maine runners who want more from racing.</h2>
+        </div>
+        <div class="stack">
+          <p>Use this space for the board-approved version of the club mission and audience. Keep it direct: who the
+            club serves, how competitive racing fits, and how new members can get involved.</p>
+          <p class="todo">TODO: Replace with current mission language from the membership guide and board review.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-blue pattern-entry-cards">
+      <div class="section-kicker">Find Your Path</div>
+      <div class="card-grid three">
+        <article class="card">
+          <p class="card-label">01</p>
+          <h3>Join the club</h3>
+          <p>Explain membership fit, standards, dues, and the next step without burying people in policy.</p>
+          <a href="join.html">Membership overview</a>
+        </article>
+        <article class="card">
+          <p class="card-label">02</p>
+          <h3>Race with Dirigo</h3>
+          <p>Point competitive runners toward standards, USATF participation, team goals, and race calendars.</p>
+          <a href="join.html#standards">Standards TODO</a>
+        </article>
+        <article class="card">
+          <p class="card-label">03</p>
+          <h3>Train together</h3>
+          <p>Show where recurring runs, workouts, and seasonal training notes will live once confirmed.</p>
+          <a href="#training">Training TODO</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section pattern-feature" id="next">
+      <div class="feature-band">
+        <div>
+          <p class="eyebrow">Current Activity</p>
+          <h2>Make the club feel alive from the first scroll.</h2>
+          <p>The homepage should always show one current item: a group run, race focus, meeting, volunteer need, or
+            recent result.</p>
+        </div>
+        <div class="status-panel">
+          <p class="status-label">Next update</p>
+          <h3>TODO: Add upcoming run, race, or club announcement</h3>
+          <p>Designed as a simple WordPress pattern that editors can update without touching layout.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section pattern-history-preview">
+      <div class="split align-center">
+        <div>
+          <p class="eyebrow">Competitive History</p>
+          <h2>Born from Maine road racing.</h2>
+          <p>Dirigo RC began in 2002 when Andy Spaulding, Todd Coffin, and Barry Logan set out to give Maine runners a
+            team presence in the USATF New England Grand Prix.</p>
+          <a class="text-link" href="history.html">Explore the history page</a>
+        </div>
+        <div class="stat-stack" aria-label="Dirigo RC history highlights">
+          <div>
+            <strong>2002</strong>
+            <span>Founded after a Freeport workout</span>
+          </div>
+          <div>
+            <strong>5th</strong>
+            <span>New Bedford team debut</span>
+          </div>
+          <div>
+            <strong>Blue</strong>
+            <span>Singlets, black shorts, conifer mark</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-light pattern-news">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">News and Results</p>
+          <h2>Recent from the club</h2>
+        </div>
+        <a class="text-link" href="#">All posts TODO</a>
+      </div>
+      <div class="card-grid three">
+        <article class="post-card">
+          <p class="card-label">Race Report</p>
+          <h3>TODO: Latest race recap</h3>
+          <p>Use short race reports to show momentum and preserve results over time.</p>
+        </article>
+        <article class="post-card">
+          <p class="card-label">Member Story</p>
+          <h3>TODO: Member spotlight</h3>
+          <p>Feature members with permission, especially when a story helps explain club culture.</p>
+        </article>
+        <article class="post-card">
+          <p class="card-label">Club Update</p>
+          <h3>TODO: Board-approved announcement</h3>
+          <p>Keep evergreen pages stable and use posts for timely updates.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section pattern-training" id="training">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Training</p>
+          <h2>Simple, current, and honest about who should show up.</h2>
+        </div>
+        <div class="stack">
+          <p>Use this page area to preview confirmed group runs, workouts, seasonal training expectations, or contact
+            instructions.</p>
+          <p class="todo">TODO: Confirm whether group runs are public, members-only, seasonal, or informal.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact">
+    <div>
+      <a class="brand footer-brand" href="index.html">
+        <img class="brand-logo" src="assets/images/dirigo.png" alt="">
         <span>
           <strong>Dirigo RC</strong>
-          <small>Founded 2002</small>
+          <small>Maine running club</small>
         </span>
       </a>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="join.html">Join Dirigo</a>
-        <a href="history.html">History</a>
-        <a href="#training">Training</a>
-        <a href="#contact">Contact</a>
-      </nav>
-    </header>
+    </div>
+    <div class="footer-links">
+      <a href="join.html">Join</a>
+      <a href="history.html">History</a>
+      <a href="#">Contact TODO</a>
+      <a href="#">Social links TODO</a>
+    </div>
+  </footer>
+</body>
 
-    <main id="main">
-      <section class="hero hero-home pattern-hero">
-        <img src="assets/images/dirigo-hero-instagram.jpg" alt="Dirigo runners in blue team singlets standing near the water. Instagram source image pending final approval.">
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-          <p class="eyebrow">Maine running club | Competitive since 2002</p>
-          <h1>Race hard. Train together. Carry Maine forward.</h1>
-          <p class="hero-lede">Dirigo RC is a Maine-based running club with a competitive history and a practical path for runners who want to train, race, and contribute.</p>
-          <div class="button-row">
-            <a class="button button-primary" href="join.html">Join Dirigo</a>
-            <a class="button button-secondary" href="#next">See what is next</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="section pattern-intro">
-        <div class="section-kicker">Club Snapshot</div>
-        <div class="split">
-          <div>
-            <h2>Built for Maine runners who want more from racing.</h2>
-          </div>
-          <div class="stack">
-            <p>Use this space for the board-approved version of the club mission and audience. Keep it direct: who the club serves, how competitive racing fits, and how new members can get involved.</p>
-            <p class="todo">TODO: Replace with current mission language from the membership guide and board review.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-blue pattern-entry-cards">
-        <div class="section-kicker">Find Your Path</div>
-        <div class="card-grid three">
-          <article class="card">
-            <p class="card-label">01</p>
-            <h3>Join the club</h3>
-            <p>Explain membership fit, standards, dues, and the next step without burying people in policy.</p>
-            <a href="join.html">Membership overview</a>
-          </article>
-          <article class="card">
-            <p class="card-label">02</p>
-            <h3>Race with Dirigo</h3>
-            <p>Point competitive runners toward standards, USATF participation, team goals, and race calendars.</p>
-            <a href="join.html#standards">Standards TODO</a>
-          </article>
-          <article class="card">
-            <p class="card-label">03</p>
-            <h3>Train together</h3>
-            <p>Show where recurring runs, workouts, and seasonal training notes will live once confirmed.</p>
-            <a href="#training">Training TODO</a>
-          </article>
-        </div>
-      </section>
-
-      <section class="section pattern-feature" id="next">
-        <div class="feature-band">
-          <div>
-            <p class="eyebrow">Current Activity</p>
-            <h2>Make the club feel alive from the first scroll.</h2>
-            <p>The homepage should always show one current item: a group run, race focus, meeting, volunteer need, or recent result.</p>
-          </div>
-          <div class="status-panel">
-            <p class="status-label">Next update</p>
-            <h3>TODO: Add upcoming run, race, or club announcement</h3>
-            <p>Designed as a simple WordPress pattern that editors can update without touching layout.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section pattern-history-preview">
-        <div class="split align-center">
-          <div>
-            <p class="eyebrow">Competitive History</p>
-            <h2>Born from Maine road racing.</h2>
-            <p>Dirigo RC began in 2002 when Andy Spaulding, Todd Coffin, and Barry Logan set out to give Maine runners a team presence in the USATF New England Grand Prix.</p>
-            <a class="text-link" href="history.html">Explore the history page</a>
-          </div>
-          <div class="stat-stack" aria-label="Dirigo RC history highlights">
-            <div>
-              <strong>2002</strong>
-              <span>Founded after a Freeport workout</span>
-            </div>
-            <div>
-              <strong>5th</strong>
-              <span>New Bedford team debut</span>
-            </div>
-            <div>
-              <strong>Blue</strong>
-              <span>Singlets, black shorts, conifer mark</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-light pattern-news">
-        <div class="section-header">
-          <div>
-            <p class="eyebrow">News and Results</p>
-            <h2>Recent from the club</h2>
-          </div>
-          <a class="text-link" href="#">All posts TODO</a>
-        </div>
-        <div class="card-grid three">
-          <article class="post-card">
-            <p class="card-label">Race Report</p>
-            <h3>TODO: Latest race recap</h3>
-            <p>Use short race reports to show momentum and preserve results over time.</p>
-          </article>
-          <article class="post-card">
-            <p class="card-label">Member Story</p>
-            <h3>TODO: Member spotlight</h3>
-            <p>Feature members with permission, especially when a story helps explain club culture.</p>
-          </article>
-          <article class="post-card">
-            <p class="card-label">Club Update</p>
-            <h3>TODO: Board-approved announcement</h3>
-            <p>Keep evergreen pages stable and use posts for timely updates.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section pattern-training" id="training">
-        <div class="split">
-          <div>
-            <p class="eyebrow">Training</p>
-            <h2>Simple, current, and honest about who should show up.</h2>
-          </div>
-          <div class="stack">
-            <p>Use this page area to preview confirmed group runs, workouts, seasonal training expectations, or contact instructions.</p>
-            <p class="todo">TODO: Confirm whether group runs are public, members-only, seasonal, or informal.</p>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer" id="contact">
-      <div>
-        <a class="brand footer-brand" href="index.html">
-          <span class="brand-mark">DRC</span>
-          <span>
-            <strong>Dirigo RC</strong>
-            <small>Maine running club</small>
-          </span>
-        </a>
-      </div>
-      <div class="footer-links">
-        <a href="join.html">Join</a>
-        <a href="history.html">History</a>
-        <a href="#">Contact TODO</a>
-        <a href="#">Social links TODO</a>
-      </div>
-      <p class="footer-note">Prototype imagery pulled from the public Dirigo RC Instagram account. Confirm photo permissions before launch.</p>
-    </footer>
-  </body>
 </html>
