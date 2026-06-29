@@ -1,3 +1,14 @@
+@font-face {
+  font-family: "Mandrel Ext";
+  src:
+    url("assets/Mandrel-ExtBlaIt.woff2") format("woff2"),
+    url("assets/Mandrel-ExtBlaIt.woff") format("woff"),
+    url("assets/Mandrel-Ext-Black.otf") format("opentype");
+  font-display: swap;
+  font-style: italic;
+  font-weight: 900;
+}
+
 :root {
   --dirigo-blue: #0057b8;
   --dirigo-blue-dark: #002f6c;
@@ -11,6 +22,8 @@
   --max: 1180px;
   --radius: 8px;
   --shadow: 0 24px 80px rgba(0, 37, 82, 0.18);
+  --font-display: "Mandrel Ext", Impact, Haettenschweiler, "Arial Black", sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
@@ -25,7 +38,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--paper);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   font-size: 17px;
   line-height: 1.6;
 }
@@ -82,6 +95,8 @@ a {
 }
 
 .brand strong {
+  font-family: var(--font-display);
+  font-style: italic;
   font-size: 0.95rem;
   line-height: 1.1;
   letter-spacing: 0;
@@ -162,18 +177,22 @@ a {
 }
 
 .hero h1 {
+  font-family: var(--font-display);
+  font-style: italic;
   max-width: 980px;
   margin: 0;
-  font-size: 6.6rem;
+  font-size: 5.9rem;
   line-height: 0.93;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .page-hero h1 {
+  font-family: var(--font-display);
+  font-style: italic;
   max-width: 900px;
   margin: 0;
-  font-size: 4.15rem;
+  font-size: 3.75rem;
   line-height: 0.98;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -250,8 +269,10 @@ a {
 }
 
 .section h2 {
+  font-family: var(--font-display);
+  font-style: italic;
   margin: 0;
-  font-size: 4rem;
+  font-size: 3.6rem;
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -382,6 +403,8 @@ a {
 }
 
 .stat-stack strong {
+  font-family: var(--font-display);
+  font-style: italic;
   font-size: 4rem;
   line-height: 0.95;
 }
@@ -674,11 +697,11 @@ tr:last-child td {
   }
 
   .hero h1 {
-    font-size: 4.2rem;
+    font-size: 3.8rem;
   }
 
   .page-hero h1 {
-    font-size: 3.35rem;
+    font-size: 3rem;
   }
 
   .hero-lede {
@@ -686,7 +709,7 @@ tr:last-child td {
   }
 
   .section h2 {
-    font-size: 3rem;
+    font-size: 2.7rem;
   }
 
   .stat-stack strong {
@@ -758,11 +781,11 @@ tr:last-child td {
 
   .hero h1,
   .page-hero h1 {
-    font-size: 3.15rem;
+    font-size: 2.65rem;
   }
 
   .section h2 {
-    font-size: 2.35rem;
+    font-size: 2.1rem;
   }
 
   .section h3 {
