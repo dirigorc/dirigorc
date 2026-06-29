@@ -288,6 +288,21 @@ a {
   font-weight: 700;
 }
 
+.source-note,
+.table-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.source-note {
+  margin-top: 1.25rem;
+}
+
+.table-note {
+  margin-top: 0.8rem;
+}
+
 .section-blue {
   color: var(--paper);
   background: var(--dirigo-blue-dark);
