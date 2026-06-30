@@ -175,6 +175,26 @@ a {
     linear-gradient(0deg, rgba(5, 7, 10, 0.82), rgba(5, 7, 10, 0.06) 54%);
 }
 
+.photo-credit {
+  margin: -0.35rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.photo-credit a {
+  text-underline-offset: 0.18em;
+}
+
+.hero-credit {
+  position: absolute;
+  right: clamp(1rem, 4vw, 3rem);
+  bottom: 1rem;
+  z-index: 2;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .hero-content {
   position: relative;
   width: min(var(--max), 100%);
@@ -1119,6 +1139,15 @@ details p {
 
   .hero-overlay {
     display: none;
+  }
+
+  .hero-credit {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    padding: 0.45rem 1rem 0;
+    color: rgba(255, 255, 255, 0.68);
+    background: var(--ink);
   }
 
   .hero-content {
