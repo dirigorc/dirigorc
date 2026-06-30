@@ -392,6 +392,61 @@ a {
   background: var(--off-white);
 }
 
+.pattern-archive {
+  padding-top: clamp(3rem, 6vw, 5rem);
+  padding-bottom: clamp(3rem, 6vw, 5rem);
+}
+
+.archive-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.46fr) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: start;
+}
+
+.archive-shell>div:first-child {
+  position: sticky;
+  top: 7rem;
+}
+
+.archive-shell p {
+  max-width: 560px;
+  color: var(--muted);
+}
+
+.archive-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.archive-grid figure {
+  margin: 0;
+}
+
+.archive-grid img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center;
+  border-radius: var(--radius);
+}
+
+.archive-grid .archive-wide {
+  grid-column: 1 / -1;
+}
+
+.archive-grid .archive-wide img {
+  aspect-ratio: 16 / 7;
+}
+
+.archive-grid figcaption {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .pattern-debut {
   padding-top: clamp(3.5rem, 6vw, 5rem);
   padding-bottom: clamp(3.5rem, 6vw, 5rem);
@@ -1048,9 +1103,14 @@ details p {
   .feature-band,
   .form-shell,
   .partner-band,
+  .archive-shell,
   .legacy-shell,
   .page-hero {
     grid-template-columns: 1fr;
+  }
+
+  .archive-shell>div:first-child {
+    position: static;
   }
 
   .page-hero {
@@ -1087,6 +1147,7 @@ details p {
   .card-grid.three,
   .steps,
   .form-grid,
+  .archive-grid,
   .activity-item,
   .activity-image-row,
   .activity-feature,
