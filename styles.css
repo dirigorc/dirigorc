@@ -1295,45 +1295,92 @@ details p {
   }
 
   .hero {
-    display: block;
-    min-height: 0;
+    display: grid;
+    min-height: min(760px, calc(100svh - 126px));
+    align-items: start;
   }
 
   .hero>img {
-    position: relative;
-    aspect-ratio: 4 / 5;
-    height: auto;
-    min-height: 0;
-    object-position: 72% center;
+    position: absolute;
+    height: 100%;
+    min-height: 100%;
+    object-position: 70% 42%;
   }
 
   .hero-overlay {
-    display: none;
+    display: block;
+    background:
+      linear-gradient(0deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.68) 42%, rgba(5, 7, 10, 0.1) 72%),
+      linear-gradient(90deg, rgba(0, 34, 80, 0.72), rgba(0, 34, 80, 0.18) 62%);
   }
 
   .hero-credit {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    padding: 0.45rem 1rem 0;
+    position: absolute;
+    right: 1rem;
+    bottom: 0.75rem;
+    padding: 0;
     color: rgba(255, 255, 255, 0.68);
-    background: var(--ink);
+    background: transparent;
   }
 
   .hero-content {
-    display: block;
-    padding: 1.5rem 1rem 2rem;
-    background: var(--ink);
+    display: grid;
+    grid-template-columns: 4.15rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0.2rem;
+    align-items: end;
+    align-content: start;
+    width: 100%;
+    min-height: min(760px, calc(100svh - 126px));
+    padding: clamp(1.75rem, 5svh, 3rem) 1rem 5.25rem;
+    background: transparent;
   }
 
   .hero-mark {
-    width: 4.75rem;
-    margin-bottom: 1rem;
+    grid-row: 2;
+    width: 4.15rem;
+    align-self: end;
+    margin: 0 0 0.25rem;
+  }
+
+  .hero-content .eyebrow,
+  .hero-content h1 {
+    grid-column: 2;
+  }
+
+  .hero-content .hero-lede {
+    grid-column: 1 / -1;
+  }
+
+  .hero-content .button-row {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 4rem;
+    grid-column: 1 / -1;
+  }
+
+  .hero .eyebrow {
+    margin-bottom: 0;
+    white-space: nowrap;
+    font-size: clamp(0.58rem, 2.65vw, 0.72rem);
+    transform: translateY(0.8rem);
   }
 
   .hero h1,
   .page-hero h1 {
-    font-size: 2.65rem;
+    font-size: clamp(1.85rem, 7.7vw, 2.25rem);
+  }
+
+  .hero h1 {
+    white-space: nowrap;
+  }
+
+  .hero-lede {
+    max-width: 22rem;
+    margin-top: 1rem;
+    margin-bottom: 8.5rem;
+    font-size: 1rem;
   }
 
   .section h2 {
