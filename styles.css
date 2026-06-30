@@ -78,8 +78,9 @@ a {
   z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1.5rem;
+  min-height: 5rem;
   padding: 0.85rem clamp(1rem, 4vw, 3rem);
   color: var(--paper);
   background: var(--dirigo-blue);
@@ -109,6 +110,12 @@ a {
   background-position: right center;
   background-size: auto 100%;
   filter: brightness(0) invert(1);
+}
+
+.site-header>.brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .brand strong,
@@ -1142,20 +1149,32 @@ details p {
 @media (max-width: 900px) {
   .site-header {
     position: static;
-    align-items: flex-start;
+    align-items: center;
     flex-direction: column;
-    overflow: visible;
+    gap: 0.75rem;
+    min-height: 0;
+    padding: 0.9rem 1rem 0.95rem;
+    overflow: hidden;
+  }
+
+  .site-header>.brand {
+    position: relative;
+    left: auto;
+    transform: none;
   }
 
   .site-header .brand::before {
-    display: none;
+    display: block;
+    width: min(34vw, 10rem);
   }
 
   .site-nav {
     width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem clamp(0.85rem, 4vw, 1.5rem);
+    padding-top: 0.72rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.28);
   }
 
   .hero {
@@ -1268,11 +1287,11 @@ details p {
   }
 
   .brand-wordmark {
-    width: 9rem;
+    width: clamp(10rem, 58vw, 12rem);
   }
 
   .site-nav {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
   }
 
   .hero {
