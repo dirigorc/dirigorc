@@ -212,9 +212,7 @@ a {
 }
 
 .eyebrow,
-.section-kicker,
-.card-label,
-.status-label {
+.card-label {
   margin: 0 0 0.8rem;
   color: var(--dirigo-blue);
   font-size: 0.78rem;
@@ -225,9 +223,7 @@ a {
 
 .hero .eyebrow,
 .section-blue .eyebrow,
-.section-blue .section-kicker,
-.section-blue .card-label,
-.section-blue .status-label {
+.section-blue .card-label {
   color: #9fccff;
 }
 
@@ -357,15 +353,7 @@ a {
   line-height: 1.08;
 }
 
-.todo {
-  padding-left: 1rem;
-  color: #26313f;
-  border-left: 4px solid var(--dirigo-blue);
-  font-weight: 700;
-}
-
-.source-note,
-.table-note {
+.source-note {
   color: var(--muted);
   font-size: 0.92rem;
   font-weight: 700;
@@ -373,10 +361,6 @@ a {
 
 .source-note {
   margin-top: 1.25rem;
-}
-
-.table-note {
-  margin-top: 0.8rem;
 }
 
 .section-blue {
