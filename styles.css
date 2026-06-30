@@ -259,6 +259,11 @@ a {
   border-color: var(--dirigo-blue);
 }
 
+.button-on-light {
+  width: fit-content;
+  margin-top: 0.35rem;
+}
+
 .button-secondary {
   color: var(--paper);
   background: rgba(255, 255, 255, 0.08);
@@ -424,6 +429,10 @@ a {
   grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
   gap: clamp(1.5rem, 4vw, 3rem);
   align-items: center;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 10px solid var(--dirigo-blue);
 }
 
 .partner-band h2 {
@@ -439,7 +448,7 @@ a {
   min-height: 13rem;
   place-items: center;
   padding: 1.25rem;
-  background: var(--paper);
+  background: var(--off-white);
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
@@ -456,6 +465,38 @@ a {
   justify-content: space-between;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.activity-list {
+  display: grid;
+  gap: 0;
+  border-top: 2px solid var(--ink);
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 0.72fr);
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: 1.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.activity-item h3 {
+  margin-bottom: 0.35rem;
+}
+
+.activity-item p:last-child {
+  max-width: 780px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.activity-meta {
+  margin: 0;
+  color: var(--dirigo-blue);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .post-card,
@@ -889,6 +930,7 @@ tr:last-child td {
   .card-grid.three,
   .steps,
   .form-grid,
+  .activity-item,
   .detail-grid {
     grid-template-columns: 1fr;
   }
