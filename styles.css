@@ -81,10 +81,9 @@ a {
   justify-content: space-between;
   gap: 1.5rem;
   padding: 0.85rem clamp(1rem, 4vw, 3rem);
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  color: var(--paper);
+  background: var(--dirigo-blue);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .brand {
@@ -121,6 +120,13 @@ a {
   flex: 0 0 auto;
 }
 
+.brand-wordmark {
+  display: block;
+  width: clamp(8.25rem, 16vw, 11.5rem);
+  height: auto;
+  filter: brightness(0) invert(1);
+}
+
 .site-nav {
   display: flex;
   align-items: center;
@@ -133,18 +139,18 @@ a {
 }
 
 .site-nav a {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.72);
   text-decoration: none;
 }
 
 .site-nav a:hover,
 .site-nav a[aria-current="page"] {
-  color: var(--ink);
+  color: var(--paper);
 }
 
 .site-nav a[aria-current="page"] {
   text-decoration: underline;
-  text-decoration-color: var(--dirigo-blue);
+  text-decoration-color: var(--paper);
   text-decoration-thickness: 3px;
   text-underline-offset: 0.45rem;
 }
@@ -159,7 +165,7 @@ a {
   background: var(--ink);
 }
 
-.hero img {
+.hero>img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -200,6 +206,13 @@ a {
   width: min(var(--max), 100%);
   margin: 0 auto;
   padding: clamp(4rem, 9vw, 8rem) clamp(1rem, 4vw, 3rem);
+}
+
+.hero-mark {
+  width: clamp(5.25rem, 10vw, 8.5rem);
+  height: auto;
+  margin: 0 0 1.25rem;
+  /* box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22); */
 }
 
 .hero h1 {
@@ -1181,6 +1194,10 @@ details p {
     height: 2.8rem;
   }
 
+  .brand-wordmark {
+    width: 8rem;
+  }
+
   .site-nav {
     font-size: 0.78rem;
   }
@@ -1190,7 +1207,7 @@ details p {
     min-height: 0;
   }
 
-  .hero img {
+  .hero>img {
     position: relative;
     aspect-ratio: 4 / 5;
     height: auto;
@@ -1214,6 +1231,11 @@ details p {
   .hero-content {
     padding: 1.5rem 1rem 2rem;
     background: var(--ink);
+  }
+
+  .hero-mark {
+    width: 5rem;
+    margin-bottom: 1rem;
   }
 
   .hero h1,
