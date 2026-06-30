@@ -391,48 +391,32 @@ a {
   font-size: 1.6rem;
 }
 
-.origin-rail {
-  display: grid;
-  gap: 0;
-  border-top: 2px solid var(--ink);
+.history-teaser {
+  padding-top: clamp(2.75rem, 5vw, 4rem);
+  padding-bottom: clamp(2.75rem, 5vw, 4rem);
+  color: var(--paper);
+  background: var(--ink);
 }
 
-.origin-rail article {
-  position: relative;
-  display: grid;
-  grid-template-columns: 10rem minmax(0, 1fr);
-  gap: 1.25rem;
-  padding: 1.35rem 0 1.35rem 2rem;
-  border-bottom: 1px solid var(--line);
+.history-teaser .eyebrow {
+  color: #94c7ff;
 }
 
-.origin-rail article::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 1.65rem;
-  width: 0.75rem;
-  height: 0.75rem;
-  background: var(--dirigo-blue);
-  border-radius: 50%;
+.history-teaser-band {
+  max-width: 900px;
+  border-top: 4px solid var(--dirigo-blue);
+  padding-top: clamp(1rem, 2vw, 1.35rem);
 }
 
-.origin-rail time {
-  color: var(--dirigo-blue);
-  font-size: 0.82rem;
-  font-weight: 900;
-  text-transform: uppercase;
+.history-teaser-band h2 {
+  max-width: 780px;
+  font-size: clamp(2.2rem, 4.5vw, 3rem);
 }
 
-.origin-rail h3 {
-  margin: 0;
-  font-size: 1.35rem;
-  line-height: 1.1;
-}
-
-.origin-rail p {
-  margin: 0.45rem 0 0;
-  color: var(--muted);
+.history-teaser-band p:not(.eyebrow) {
+  max-width: 640px;
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.74);
 }
 
 .partner-band {
@@ -900,11 +884,6 @@ tr:last-child td {
 
   .page-hero-landscape>div {
     min-height: 0;
-  }
-
-  .origin-rail article {
-    grid-template-columns: 1fr;
-    gap: 0.45rem;
   }
 
   .card-grid.three,
