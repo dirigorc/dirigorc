@@ -557,6 +557,28 @@ a {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.entry-cards-shell {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.entry-cards-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: end;
+}
+
+.entry-cards-intro h2 {
+  max-width: 720px;
+}
+
+.entry-cards-intro p {
+  max-width: 700px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .card,
 .post-card,
 .detail-card,
@@ -1136,6 +1158,7 @@ details p {
   .feature-band,
   .form-shell,
   .partner-band,
+  .entry-cards-intro,
   .archive-shell,
   .legacy-shell,
   .page-hero {
