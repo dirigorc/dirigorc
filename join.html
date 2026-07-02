@@ -51,8 +51,8 @@
         <div class="stack">
           <p>Dirigo is for runners with a Maine connection who are committed to training, competition, teamwork, and
             good sportsmanship. There are no time or age requirements for joining.</p>
-          <p>The first step is simple: send the <a href="#membership-form">membership form</a> with your contact
-            information, running background, and what you are hoping to find with the team.</p>
+          <p>The first step is simple: send Dirigo a message on Instagram with your contact information, running
+            background, and what you are hoping to find with the team.</p>
         </div>
       </div>
     </section>
@@ -66,9 +66,8 @@
       <div class="steps">
         <article>
           <span>1</span>
-          <h3>Submit the form</h3>
-          <p>Send the <a href="#membership-form">membership form</a> so the club has your name, email, running
-            background, and what you are looking for.
+          <h3>Send a message</h3>
+          <p>DM Dirigo on Instagram so the club has your name, email, running background, and what you are looking for.
           </p>
         </article>
         <article>
@@ -157,92 +156,29 @@
         </details>
         <details>
           <summary>Who do I contact?</summary>
-          <p>Use the <a href="#membership-form">membership inquiry form</a>. It opens a prefilled email so you can
-            review your information before sending it to the team.</p>
+          <p>Send Dirigo a DM on Instagram with your name, email, running background, and what you are looking for.</p>
         </details>
       </div>
     </section>
 
-    <section class="section pattern-membership-form" id="membership-form">
+    <section class="section pattern-membership-form" id="membership-contact">
       <div class="form-shell">
         <div class="form-intro">
-          <h2>Tell us how to reach you.</h2>
-          <p>Send your basics and the club can follow up with dues, singlet sizing, team communications, and any racing
-            setup you need.</p>
+          <h2>DM Dirigo to get started.</h2>
+          <p>For now, membership inquiries are handled through Instagram. Send a quick note with your name, email,
+            running background, and what you are hoping to find with the team.</p>
         </div>
-        <form class="membership-form" action="mailto:membership@dirigorc.com" method="post" enctype="text/plain"
-          data-recipient="membership@dirigorc.com" data-endpoint="">
-          <div class="form-grid">
-            <label>
-              <span>First name</span>
-              <input type="text" name="first-name" autocomplete="given-name" required>
-            </label>
-            <label>
-              <span>Last name</span>
-              <input type="text" name="last-name" autocomplete="family-name" required>
-            </label>
-          </div>
-          <div class="form-grid">
-            <label>
-              <span>Email</span>
-              <input type="email" name="email" autocomplete="email" required>
-            </label>
-            <label>
-              <span>Town / city</span>
-              <input type="text" name="location" autocomplete="address-level2">
-            </label>
-          </div>
-          <div class="form-grid">
-            <label>
-              <span>Current member referral</span>
-              <input type="text" name="member-referral">
-            </label>
-            <label>
-              <span>Preferred singlet size</span>
-              <select name="singlet-size">
-                <option value="">Select a size</option>
-                <option>XS</option>
-                <option>S</option>
-                <option>M</option>
-                <option>L</option>
-                <option>XL</option>
-                <option>Other / not sure</option>
-              </select>
-            </label>
-          </div>
-          <fieldset>
-            <legend>What are you interested in?</legend>
-            <label class="check-option">
-              <input type="checkbox" name="interest" value="training">
-              <span>Training with other Dirigo runners</span>
-            </label>
-            <label class="check-option">
-              <input type="checkbox" name="interest" value="racing">
-              <span>Racing for Dirigo</span>
-            </label>
-            <label class="check-option">
-              <input type="checkbox" name="interest" value="usatf">
-              <span>USATF team events</span>
-            </label>
-            <label class="check-option">
-              <input type="checkbox" name="interest" value="community">
-              <span>Community, volunteering, and club updates</span>
-            </label>
-          </fieldset>
-          <label>
-            <span>Recent races or running background</span>
-            <textarea name="running-background" rows="4"></textarea>
-          </label>
-          <label>
-            <span>Anything else we should know?</span>
-            <textarea name="message" rows="4"></textarea>
-          </label>
-          <div class="form-actions">
-            <button class="button button-primary" type="submit">Submit inquiry</button>
-            <p>This opens a prefilled email to the team so you can review your information before sending.</p>
-          </div>
-          <p class="form-status" role="status" aria-live="polite"></p>
-        </form>
+        <div class="contact-panel">
+          <h3>What to include</h3>
+          <ul>
+            <li>Your name and email</li>
+            <li>Where you are based in Maine</li>
+            <li>A little running or racing background</li>
+            <li>What you are hoping to do with Dirigo</li>
+          </ul>
+          <a class="button button-primary" href="https://www.instagram.com/dirigorc/" target="_blank"
+            rel="noopener noreferrer">Message on Instagram</a>
+        </div>
       </div>
     </section>
   </main>
@@ -262,7 +198,7 @@
         <a href="join.html">Join</a>
         <a href="index.html#racing">Racing</a>
         <a href="history.html">History</a>
-        <a href="#membership-form">Contact</a>
+      <a href="#membership-contact">Contact</a>
       </nav>
       <nav class="footer-social" aria-label="Social links">
         <a class="social-link social-link-instagram" href="https://www.instagram.com/dirigorc/" target="_blank"
@@ -289,69 +225,6 @@
       </nav>
     </div>
   </footer>
-  <script>
-    const membershipForm = document.querySelector(".membership-form");
-
-    if (membershipForm) {
-      membershipForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        const endpoint = membershipForm.dataset.endpoint.trim();
-        const recipient = membershipForm.dataset.recipient.trim();
-        const status = membershipForm.querySelector(".form-status");
-        const submitButton = membershipForm.querySelector("button[type='submit']");
-        const formData = new FormData(membershipForm);
-        const values = Object.fromEntries(formData.entries());
-        const interests = formData.getAll("interest");
-
-        const subject = `Dirigo membership inquiry: ${values["first-name"] || ""} ${values["last-name"] || ""}`.trim();
-        const body = [
-          "New Dirigo membership inquiry",
-          "",
-          `Name: ${values["first-name"] || ""} ${values["last-name"] || ""}`.trim(),
-          `Email: ${values.email || ""}`,
-          `Town / city: ${values.location || ""}`,
-          `Current member referral: ${values["member-referral"] || ""}`,
-          `Preferred singlet size: ${values["singlet-size"] || ""}`,
-          `Interests: ${interests.length ? interests.join(", ") : ""}`,
-          "",
-          "Recent races or running background:",
-          values["running-background"] || "",
-          "",
-          "Anything else we should know?",
-          values.message || ""
-        ].join("\n");
-
-        if (endpoint) {
-          submitButton.disabled = true;
-          status.textContent = "Sending...";
-
-          try {
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: { Accept: "application/json" },
-              body: formData
-            });
-
-            if (!response.ok) throw new Error("Form endpoint rejected the submission.");
-
-            membershipForm.reset();
-            status.textContent = "Thanks. Your inquiry has been sent.";
-          } catch (error) {
-            status.textContent = "Something went wrong. Opening an email draft instead.";
-            window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-          } finally {
-            submitButton.disabled = false;
-          }
-
-          return;
-        }
-
-        status.textContent = "Opening an email draft...";
-        window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      });
-    }
-  </script>
 </body>
 
 </html>

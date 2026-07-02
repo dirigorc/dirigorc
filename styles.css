@@ -972,6 +972,28 @@ details p {
   color: rgba(255, 255, 255, 0.76);
 }
 
+.contact-panel {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  color: var(--ink);
+  background: var(--paper);
+  border-radius: var(--radius);
+}
+
+.contact-panel h3 {
+  color: var(--ink);
+}
+
+.contact-panel ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 1.25rem;
+  padding-left: 1.2rem;
+}
+
+.contact-panel li {
+  color: var(--muted);
+}
+
 .membership-form {
   display: grid;
   gap: 1rem;
