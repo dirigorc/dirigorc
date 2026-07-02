@@ -157,9 +157,8 @@
         </details>
         <details>
           <summary>Who do I contact?</summary>
-          <p>Use the <a href="#membership-form">membership inquiry form</a>. In WordPress, this should route to the
-            board-approved membership
-            inbox.</p>
+          <p>Use the <a href="#membership-form">membership inquiry form</a>. It opens a prefilled email so you can
+            review your information before sending it to the team.</p>
         </details>
       </div>
     </section>
@@ -171,7 +170,8 @@
           <p>Send your basics and the club can follow up with dues, singlet sizing, team communications, and any racing
             setup you need.</p>
         </div>
-        <form class="membership-form" action="#" method="post">
+        <form class="membership-form" action="mailto:membership@dirigorc.com" method="post" enctype="text/plain"
+          data-recipient="membership@dirigorc.com" data-endpoint="">
           <div class="form-grid">
             <label>
               <span>First name</span>
@@ -239,8 +239,9 @@
           </label>
           <div class="form-actions">
             <button class="button button-primary" type="submit">Submit inquiry</button>
-            <p>TODO: connect this form to the board-approved membership inbox in WordPress.</p>
+            <p>This opens a prefilled email to the team so you can review your information before sending.</p>
           </div>
+          <p class="form-status" role="status" aria-live="polite"></p>
         </form>
       </div>
     </section>
@@ -288,6 +289,69 @@
       </nav>
     </div>
   </footer>
+  <script>
+    const membershipForm = document.querySelector(".membership-form");
+
+    if (membershipForm) {
+      membershipForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const endpoint = membershipForm.dataset.endpoint.trim();
+        const recipient = membershipForm.dataset.recipient.trim();
+        const status = membershipForm.querySelector(".form-status");
+        const submitButton = membershipForm.querySelector("button[type='submit']");
+        const formData = new FormData(membershipForm);
+        const values = Object.fromEntries(formData.entries());
+        const interests = formData.getAll("interest");
+
+        const subject = `Dirigo membership inquiry: ${values["first-name"] || ""} ${values["last-name"] || ""}`.trim();
+        const body = [
+          "New Dirigo membership inquiry",
+          "",
+          `Name: ${values["first-name"] || ""} ${values["last-name"] || ""}`.trim(),
+          `Email: ${values.email || ""}`,
+          `Town / city: ${values.location || ""}`,
+          `Current member referral: ${values["member-referral"] || ""}`,
+          `Preferred singlet size: ${values["singlet-size"] || ""}`,
+          `Interests: ${interests.length ? interests.join(", ") : ""}`,
+          "",
+          "Recent races or running background:",
+          values["running-background"] || "",
+          "",
+          "Anything else we should know?",
+          values.message || ""
+        ].join("\n");
+
+        if (endpoint) {
+          submitButton.disabled = true;
+          status.textContent = "Sending...";
+
+          try {
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: { Accept: "application/json" },
+              body: formData
+            });
+
+            if (!response.ok) throw new Error("Form endpoint rejected the submission.");
+
+            membershipForm.reset();
+            status.textContent = "Thanks. Your inquiry has been sent.";
+          } catch (error) {
+            status.textContent = "Something went wrong. Opening an email draft instead.";
+            window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          } finally {
+            submitButton.disabled = false;
+          }
+
+          return;
+        }
+
+        status.textContent = "Opening an email draft...";
+        window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      });
+    }
+  </script>
 </body>
 
 </html>
