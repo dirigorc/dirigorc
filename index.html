@@ -1,3 +1,5 @@
+---
+---
 <!doctype html>
 <html lang="en">
 
@@ -148,60 +150,17 @@
         <div>
           <h2>Recent from the blue crew.</h2>
         </div>
-        <a class="text-link" href="https://www.instagram.com/dirigorc/" target="_blank" rel="noopener noreferrer">Follow
-          on Instagram</a>
+        <div class="section-header-links">
+          <a class="text-link" href="updates.html">All updates</a>
+          <a class="text-link" href="https://www.instagram.com/dirigorc/" target="_blank"
+            rel="noopener noreferrer">Follow on Instagram</a>
+        </div>
       </div>
       <div class="activity-list">
-        <article class="activity-item">
-          <p class="activity-meta">Upcoming</p>
-          <div>
-            <img class="activity-image" src="assets/images/back%20cove%202026.jpg"
-              alt="Dirigo runners in blue singlets at Back Cove in 2026.">
-            <h3>Back Cove and Twilight meets keep the calendar moving.</h3>
-            <p>Dirigo has had a strong early-summer turnout at the Back Cove series. Members are also looking ahead to
-              the next Valor Twilight Series meets on June 30 and July 18, plus the L/A Triple Crown races later this
-              summer.</p>
-            <p class="activity-links"><a href="https://backcove.runtowin.com/PastResults.php?cid=21" target="_blank"
-                rel="noopener noreferrer">Back Cove results</a><a
-                href="https://www.facebook.com/profile.php?id=61557833653585" target="_blank"
-                rel="noopener noreferrer">Photo by Allyn Genest</a></p>
-          </div>
-        </article>
-        <article class="activity-item">
-          <p class="activity-meta">Results</p>
-          <div>
-            <div class="activity-image-row">
-              <img src="assets/images/valor-track-meet/731357138_18024404357837074_8742726230024339572_n.jpg"
-                alt="Dirigo athletes on the podium at the Valor Twilight Series USATF track meet.">
-              <img src="assets/images/valor-track-meet/730397795_18024404366837074_4639816495473519963_n.jpg"
-                alt="Dirigo runners racing the women's 5000 meters at the Valor Twilight Series.">
-            </div>
-            <h3>Dirigo women go 1-2 at Valor Twilight.</h3>
-            <p>At Valor Track Club's first Twilight Series USATF meet at Fitzpatrick Stadium, Clíodhna O'Malley and
-              Bethanie Brown finished 1-2 in the featured women's 5000m in 17:11 and 17:14. Veronica Graziano took 4th
-              in 17:27, Taylor Bagley was 7th in 17:49, and Josie Spaulding was 9th in 18:51.</p>
-            <p class="activity-links"><a href="https://www.instagram.com/valortc_portland/" target="_blank"
-                rel="noopener noreferrer">Valor Track Club</a><a href="https://www.instagram.com/keatesfilm/"
-                target="_blank" rel="noopener noreferrer">Photos by Keates Film</a></p>
-          </div>
-        </article>
-        <article class="activity-item">
-          <p class="activity-meta">Results</p>
-          <div>
-            <div class="activity-feature">
-              <img src="assets/images/ashby.jpg" alt="Robert Ashby after the Bay of Fundy International Marathon.">
-              <div>
-                <p class="result-pill">2:47:28 marathon | 3rd overall | 50-59 winner</p>
-                <h3>Robert Ashby keeps setting the standard.</h3>
-                <p>Maine Running Hall of Famer Robert Ashby continues to show what world-class longevity looks like.
-                  Ashby ran 2:47:28 at the Bay of Fundy International Marathon, winning the 50-59 age
-                  group and placing third overall.</p>
-                <p class="activity-links"><a href="https://www.instagram.com/fundy_marathon/" target="_blank"
-                    rel="noopener noreferrer">Fundy Marathon</a></p>
-              </div>
-            </div>
-          </div>
-        </article>
+        {% assign updates = site.updates | sort: "date" | reverse %}
+        {% for update in updates limit: 3 %}
+          {% include update-item.html update=update %}
+        {% endfor %}
       </div>
     </section>
 

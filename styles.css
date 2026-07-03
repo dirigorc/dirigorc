@@ -757,6 +757,28 @@ a {
   margin-bottom: 1.5rem;
 }
 
+.section-header-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.9rem;
+}
+
+.updates-archive .section-header h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.updates-archive .section-header p {
+  max-width: 640px;
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+}
+
 .activity-list {
   display: grid;
   gap: 0;
@@ -1328,6 +1350,10 @@ details p {
   .section-header {
     align-items: start;
     flex-direction: column;
+  }
+
+  .section-header-links {
+    justify-content: flex-start;
   }
 
   .site-footer {
