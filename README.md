@@ -4,8 +4,9 @@ Static website for Dirigo RC, served with GitHub Pages and lightly powered by Je
 
 Most pages are plain HTML/CSS. Jekyll is currently used for the updates feed:
 
-- Homepage shows the three newest files from `_updates/`.
-- `updates.html` shows the full update archive.
+- Homepage shows the newest update posts from `_posts/`.
+- `/updates/` shows the paginated update archive using `jekyll-paginate`.
+- `/updates/tags/.../` pages show updates for a single tag.
 - `_includes/update-item.html` controls how each update card renders.
 
 ## Run Locally
@@ -55,7 +56,7 @@ http://127.0.0.1:4000/
 
 ## Add A Club Update
 
-Create a new Markdown file in `_updates/` using this naming pattern:
+Create a new Markdown file in `_posts/` using this naming pattern:
 
 ```text
 YYYY-MM-DD-short-title.md
@@ -64,7 +65,7 @@ YYYY-MM-DD-short-title.md
 Example:
 
 ```text
-_updates/2026-07-03-beach-to-beacon-preview.md
+_posts/2026-07-03-beach-to-beacon-preview.md
 ```
 
 Use front matter like this:
@@ -79,13 +80,18 @@ image:
   src: assets/images/example.jpg
   alt: Dirigo runners warming up before a road race.
 summary: A short public-facing recap or preview goes here. Keep it punchy and factual.
+tags:
+  - Beach to Beacon
+  - Dirigo
 links:
   - label: Race details
     url: https://example.com/
 ---
 ```
 
-The homepage automatically shows the three newest updates by `date`. Older updates remain visible on `updates.html`.
+The homepage automatically shows recent updates by post date. The full archive is paginated at `/updates/`.
+
+When adding new tags, generate a matching page under `updates/tags/tag-slug/index.html` so inline tag links have somewhere to go.
 
 ## Update Layout Options
 
@@ -132,13 +138,18 @@ Always include image credit links when photos come from photographers, race orga
 ├── index.html
 ├── join.html
 ├── history.html
-├── updates.html
+├── updates/
+│   ├── index.html
+│   └── tags/
 ├── 404.html
 ├── styles.css
 ├── _config.yml
 ├── _includes/
 │   └── update-item.html
-├── _updates/
+├── _layouts/
+│   ├── tag.html
+│   └── updates-archive.html
+├── _posts/
 │   └── YYYY-MM-DD-title.md
 └── assets/
 ```

@@ -1,11 +1,18 @@
 title: Dirigo RC
 description: Maine running club founded in 2002.
 url: "https://dirigorc.com"
-collections:
-  updates:
-    output: false
+plugins:
+  - jekyll-paginate
+paginate: 6
+paginate_path: "/updates/page/:num/"
 defaults:
   - scope:
       path: ""
     values:
       layout: null
+  - scope:
+      path: "_posts"
+      type: "posts"
+    values:
+      layout: null
+      output: false
