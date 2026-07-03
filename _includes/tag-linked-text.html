@@ -1,9 +1,1 @@
-{% assign linked_text = include.text %}
-{% if include.update.tags %}
-  {% for tag in include.update.tags %}
-    {% assign tag_slug = tag | slugify: "latin" %}
-    {% capture tag_link %}<a class="tag-inline" href="{{ '/updates/tags/' | append: tag_slug | append: '/' | relative_url }}">{{ tag }}</a>{% endcapture %}
-    {% assign linked_text = linked_text | replace: tag, tag_link %}
-  {% endfor %}
-{% endif %}
-{{ linked_text }}
+{{ include.text }}
