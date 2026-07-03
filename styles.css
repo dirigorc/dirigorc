@@ -831,6 +831,10 @@ a {
   margin-bottom: 1rem;
 }
 
+.activity-image-row:has(> img:nth-child(3):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .activity-image-row img {
   width: 100%;
   height: auto;
