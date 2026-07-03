@@ -145,6 +145,7 @@ Always include image credit links when photos come from photographers, race orga
 
 ## Deploy
 
-Push changes to GitHub. GitHub Pages will build the Jekyll site and publish it.
+Push changes to GitHub. The repository-owned GitHub Actions workflow at
+`.github/workflows/pages.yml` builds the Jekyll site and publishes it to GitHub Pages.
 
 Do not add a `.nojekyll` file; that would disable Jekyll processing and the updates feed would not render.
