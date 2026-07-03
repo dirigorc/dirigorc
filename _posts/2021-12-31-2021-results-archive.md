@@ -2,8 +2,13 @@
 title: Dirigo's 2021 archive.
 date: 2021-12-31
 category: Archive
-layout_style: single
-summary: "At Moxie 5K, Ryan Jara won the men's race in 15:09 and Erica Jesseman won the women's race in 18:36. Dirigo also returned to Franklin Park for the USATF New England Cross Country Championships, with 40+ and 50+ teams placing fifth and the 60+ team winning its division. The fall calendar widened again with Maine Marathon, Bangor Labor Day, Great Pumpkin, Falmouth, Millinocket, and Thanksgiving races."
+layout_style: image-row
+images:
+  - src: assets/images/updates/David-Colby-Young-photo-1-2021.jpeg
+    alt: Ryan Jara racing at the 2021 Moxie 5K.
+  - src: assets/images/updates/Moxie-2021-David-Colby-Young-photos-2-2021.jpeg
+    alt: Erica Jesseman racing at the 2021 Moxie 5K.
+summary: "Ryan Jara won the Moxie 5K men's race in 15:09 and Erica Jesseman won the women's race in 18:36. Dirigo also returned to Franklin Park for the USATF New England Cross Country Championships, with 40+ and 50+ teams placing fifth and the 60+ team winning its division. The fall calendar widened again with Maine Marathon, Bangor Labor Day, Great Pumpkin, Falmouth, Millinocket, and Thanksgiving races."
 tags:
   - "Erica Jesseman"
   - "Falmouth 4-Miler"
@@ -21,6 +26,6 @@ links:
     url: https://web.archive.org/web/20231206014412/https://newengland.usatf.org/USATF-New-England/media/USATF-New-England/2021%20results/2021-NE-XC-masters-men.pdf
   - label: Moxie 5K results
     url: https://web.archive.org/web/20231206014412/https://runsignup.com/Race/Results/32663#resultSetId-262453;perpage:100
-  - label: Maine Running Photos archive
+  - label: Moxie photos by David Colby Young
     url: https://web.archive.org/web/20231206014412/https://www.flickr.com/photos/mainerunningphotos/page1
 ---

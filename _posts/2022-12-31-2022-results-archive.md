@@ -2,7 +2,10 @@
 title: Dirigo's 2022 archive.
 date: 2022-12-31
 category: Archive
-layout_style: single
+layout_style: feature
+image:
+  src: assets/images/updates/rob-ashby-hyannis-2022.jpg
+  alt: Rob Ashby after winning the 2022 Hyannis Marathon.
 summary: "Rob Ashby won the Hyannis Marathon overall, Nicholas Denari and Chris Harmon went 1-2 at Jimmy the Greeks Frozen 4 Miler, Sherwin Parkhurst won the Hampton Half Marathon, and Joe Satterfield won the Eastern States 20 Miler. New Bedford lists Rob Gomez, Joseph Reynolds, Ryan Collins, Rob Ashby, Thomas Harvey, and Richard Fargo racing for Dirigo, while Loon Mountain includes James Boeding, Rob Gomez, Joe Reynolds, Jeff Walker, James Soldner, Rich Fargo, and Rick Chalmers. Summer results include Alexis Wilbert winning Pat's Pizza Clam Festival, Peter Rearick placing at Emily's Run and YMCA Fit Fest, and Weekly Back Cove entries from Nick Denari and Blaine Moore before the year closes with Beach to Beacon."
 tags:
   - "Beach to Beacon"
