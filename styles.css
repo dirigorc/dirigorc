@@ -681,7 +681,10 @@ a {
 }
 
 .history-teaser-band {
-  max-width: 900px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(280px, 0.58fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: center;
   border-top: 4px solid var(--dirigo-blue);
   padding-top: clamp(1rem, 2vw, 1.35rem);
 }
@@ -695,6 +698,20 @@ a {
   max-width: 640px;
   margin-top: 1rem;
   color: rgba(255, 255, 255, 0.74);
+}
+
+.history-teaser-image {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.history-teaser-image img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  object-position: center;
+  filter: grayscale(1) contrast(1.08);
 }
 
 .partner-band {
@@ -1253,6 +1270,7 @@ details p {
   .form-shell,
   .partner-band,
   .entry-cards-intro,
+  .history-teaser-band,
   .archive-shell,
   .legacy-shell,
   .page-hero {
