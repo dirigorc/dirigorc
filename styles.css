@@ -832,6 +832,14 @@ a {
   align-items: start;
 }
 
+.activity-item:nth-child(even) .activity-feature {
+  grid-template-columns: minmax(0, 0.66fr) minmax(180px, 0.34fr);
+}
+
+.activity-item:nth-child(even) .activity-feature img {
+  order: 2;
+}
+
 .activity-feature img {
   width: 100%;
   height: auto;
@@ -1342,6 +1350,14 @@ details p {
   .legacy-list article,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .activity-item:nth-child(even) .activity-feature {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-item:nth-child(even) .activity-feature img {
+    order: 0;
   }
 
   .section-header {

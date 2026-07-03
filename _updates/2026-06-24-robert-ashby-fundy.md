@@ -11,4 +11,6 @@ summary: Maine Running Hall of Famer Robert Ashby continues to show what world-c
 links:
   - label: Fundy Marathon
     url: https://www.instagram.com/fundy_marathon/
+  - label: Dirigo Instagram recap
+    url: https://www.instagram.com/p/DZu9foQkSa3/
 ---
