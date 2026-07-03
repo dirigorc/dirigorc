@@ -805,10 +805,9 @@ a {
 
 .activity-image {
   width: 100%;
-  /* aspect-ratio: 16 / 9; */
+  height: auto;
   margin-bottom: 1rem;
-  object-fit: cover;
-  object-position: center;
+  object-fit: contain;
   border-radius: var(--radius);
 }
 
@@ -821,9 +820,8 @@ a {
 
 .activity-image-row img {
   width: 100%;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  object-position: center;
+  height: auto;
+  object-fit: contain;
   border-radius: var(--radius);
 }
 
@@ -836,9 +834,8 @@ a {
 
 .activity-feature img {
   width: 100%;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  object-position: center;
+  height: auto;
+  object-fit: contain;
   border-radius: var(--radius);
 }
 

@@ -158,8 +158,27 @@
       </div>
       <div class="activity-list">
         {% assign updates = site.updates | sort: "date" | reverse %}
-        {% for update in updates limit: 3 %}
-          {% include update-item.html update=update %}
+        {% assign has_upcoming = false %}
+        {% assign shown_results = 0 %}
+        {% for update in updates %}
+          {% if update.category == "Upcoming" %}
+            {% include update-item.html update=update %}
+            {% assign has_upcoming = true %}
+            {% break %}
+          {% endif %}
+        {% endfor %}
+        {% if has_upcoming %}
+          {% assign result_limit = 2 %}
+        {% else %}
+          {% assign result_limit = 3 %}
+        {% endif %}
+        {% for update in updates %}
+          {% unless update.category == "Upcoming" %}
+            {% if shown_results < result_limit %}
+              {% include update-item.html update=update %}
+              {% assign shown_results = shown_results | plus: 1 %}
+            {% endif %}
+          {% endunless %}
         {% endfor %}
       </div>
     </section>
