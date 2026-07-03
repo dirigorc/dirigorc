@@ -8,12 +8,19 @@ tags:
   - "Gretchen Speed"
   - "Maine Marathon"
   - "Michael Gordon"
-  - "Midwinter 10 Mile Classic"
+  - "Mid-Winter 10-Mile Classic"
   - "Nick Denari"
   - "Rob Ashby"
   - "Ryan Collins"
   - "Ryan Jara"
   - "Sam Seekins"
+  - "Joe Satterfield"
+  - "James Boeding"
+  - "Chris Harmon"
+  - "Mary Pardi"
+  - "Sarah Baker"
+  - "Kalie Dunn"
+  - "Peter Burke"
 links:
   - label: Maine Running Hall of Fame Results Project
     url: https://web.archive.org/web/20231206002153/https://digitalmaine.com/maine_running_hall_of_fame/

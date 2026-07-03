@@ -7,6 +7,8 @@ summary: "The recovered 2021 archive captures Dirigo's return to a fuller racing
 tags:
   - "Erica Jesseman"
   - "Falmouth 4-Miler"
+  - "Great Pumpkin"
+  - "Bangor Labor Day"
   - "Maine Marathon"
   - "Millinocket Marathon"
   - "Moxie 5K"
