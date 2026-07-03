@@ -650,6 +650,15 @@ a {
   border-left: 10px solid var(--dirigo-blue);
 }
 
+.feature-band h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .status-panel {
   padding: 1.25rem;
   color: var(--ink);
