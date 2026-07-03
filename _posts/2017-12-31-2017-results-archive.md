@@ -1,23 +1,32 @@
 ---
-title: Dirigo's 2017 archive keeps the team visible all year.
+title: Dirigo's 2017 archive.
 date: 2017-12-31
 category: Archive
 layout_style: single
-summary: "The recovered 2017 archive captures a year of road, marathon, and cross country racing. Rob Ashby won Millinocket, Ben Decker and Erica Jesseman led the Portland Thanksgiving Day 4-Miler results, and the club fielded teams at USATF New England Cross Country and USATF Masters Cross Country. The year also includes Tracey Guerrette and Christine Hein at Maine Marathon, Sheri Piers and Erica Jesseman leading half-marathon results, Tracy Guerrette setting a course record at Bangor Labor Day, and strong Beach to Beacon finishes from Michelle Lilienthal, Tracy Guerrette, Sheri Piers, Rob Gomez, Spencer McElwain, Chris Harmon, and others."
+summary: "The recovered 2017 archive includes Rob Ashby winning the Millinocket Marathon, Ben Decker winning the Portland Thanksgiving Day 4-Miler, and Erica Jesseman leading the women's results there with Christina Berkow second. Tracey Guerrette won the Maine Marathon, Christine Hein was second, and Sheri Piers and Erica Jesseman went 1-2 in the half; Guerrette also set a Bangor Labor Day course record and won the Brewer Turkey Trot. Dirigo fielded teams at USATF New England Cross Country and USATF Masters Cross Country, with Joe Satterfield, Jeff Jones, Andy Spaulding, Pete Bottomley, Rob Ashby, Todd Coffin, Scott Brown, and others carrying the masters groups, while Rob Gomez, Spencer McElwain, Ryan Collins, Sam Seekins, Denise Curry, Jesse Orach, and Judson Cake appear throughout the road and marathon results."
 tags:
   - "Beach to Beacon"
   - "Ben Decker"
   - "Chris Harmon"
+  - "Christina Berkow"
   - "Christine Hein"
+  - "Denise Curry"
   - "Erica Jesseman"
+  - "Jeff Jones"
+  - "Joe Satterfield"
+  - "Judson Cake"
   - "Maine Marathon"
   - "Michelle Lilienthal"
   - "Millinocket Marathon"
+  - "Pete Bottomley"
   - "Portland Thanksgiving Day 4-Miler"
   - "Rob Ashby"
   - "Rob Gomez"
+  - "Ryan Collins"
+  - "Sam Seekins"
   - "Sheri Piers"
   - "Spencer McElwain"
+  - "Todd Coffin"
   - "Tracy Guerrette"
   - "USATF Masters Cross Country"
   - "USATF New England Cross Country Championships"

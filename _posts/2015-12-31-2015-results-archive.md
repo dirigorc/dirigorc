@@ -1,27 +1,34 @@
 ---
-title: Dirigo's 2015 archive is packed with blue at the front.
+title: Dirigo's 2015 archive.
 date: 2015-12-31
 category: Archive
 layout_style: single
-summary: "The recovered 2015 archive is full of wins, team results, and age-group depth. Rob Ashby won the Ghost Train 100 Mile in a new course record, Erica Jesseman led Dirigo women throughout the year, and the club placed open and masters teams at USATF New England Cross Country. Beach to Beacon included top Maine and masters results from Ben Decker, Jeff Jones, Erica Jesseman, Sheri Piers, Kristin Barry, Mary Pardi, Rob Ashby, Bill Mariski, Todd Coffin, and many more. The year also includes Boston Marathon, Maine Marathon, Lone Gull, Trail to Ale, Pat's Pizza Clam Festival, Moxie Day, L.L.Bean 10K, New Bedford, and a long list of local wins."
+summary: "The recovered 2015 archive has Rob Ashby winning the Ghost Train 100 Mile in 15:49:04, a new course record, and finishing second overall at the Maine Marathon. Beach to Beacon was loaded with Dirigo results: Ben Decker was first Maine male, Erica Jesseman was first Maine female, Jeff Jones was Maine male master, Sheri Piers was female master and third Maine woman, and Mary Pardi, Bill Mariski, Todd Coffin, Rob Ashby, Kristin Barry, and Erin Chalat all landed notable Maine or age-group places. The year also includes USATF New England cross country teams, Sam Seekins and Mike Burleson near the front at the Cape Elizabeth Turkey Trot, Greg Tapley and Christine Hein winning Trail to Ale, and Chris Harmon, Spencer McElwain, Nate Priest, Ryan Jara, Andy Spaulding, and Erica Jesseman repeatedly showing up at the front of local races."
 tags:
   - "Beach to Beacon"
   - "Ben Decker"
   - "Bill Mariski"
   - "Boston Marathon"
   - "Erica Jesseman"
+  - "Erin Chalat"
   - "Ghost Train 100 Mile"
+  - "Greg Tapley"
   - "Jeff Jones"
   - "Kristin Barry"
   - "L.L.Bean 10K"
   - "Lone Gull 10K"
   - "Maine Marathon"
   - "Mary Pardi"
+  - "Mike Burleson"
   - "Moxie Day 5K"
+  - "Nate Priest"
   - "New Bedford Half Marathon"
   - "Pat's Pizza Clam Festival"
   - "Rob Ashby"
+  - "Ryan Jara"
+  - "Sam Seekins"
   - "Sheri Piers"
+  - "Spencer McElwain"
   - "Todd Coffin"
   - "Trail to Ale"
   - "USATF New England Cross Country Championships"

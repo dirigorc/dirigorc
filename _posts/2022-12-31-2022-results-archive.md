@@ -1,23 +1,33 @@
 ---
-title: Dirigo's 2022 archive shows range from roads to mountains.
+title: Dirigo's 2022 archive.
 date: 2022-12-31
 category: Archive
 layout_style: single
-summary: "The recovered 2022 results archive shows Dirigo racing across New England: Rob Ashby won the Hyannis Marathon overall, Nicholas Denari opened the year with a win at Jimmy the Greeks and later ran 2:36:24 at Providence, Joe Satterfield won the Eastern States 20 Miler, and Sherwin Parkhurst won the Hampton Half Marathon. Summer brought deep club activity at Beach to Beacon, Pat's Pizza Clam Festival, Emily's Run, Loon Mountain, Mt. Washington, the Weekly Back Cove Series, and Maine road races from Yarmouth to Cape Elizabeth."
+summary: "The recovered 2022 archive has Rob Ashby winning the Hyannis Marathon overall, Nicholas Denari and Chris Harmon going 1-2 at Jimmy the Greeks Frozen 4 Miler, Sherwin Parkhurst winning the Hampton Half Marathon, and Joe Satterfield winning the Eastern States 20 Miler. New Bedford lists Rob Gomez, Joseph Reynolds, Ryan Collins, Rob Ashby, Thomas Harvey, and Richard Fargo racing for Dirigo, while Loon Mountain includes James Boeding, Rob Gomez, Joe Reynolds, Jeff Walker, James Soldner, Rich Fargo, and Rick Chalmers. Summer results include Alexis Wilbert winning Pat's Pizza Clam Festival, Peter Rearick placing at Emily's Run and YMCA Fit Fest, and Weekly Back Cove entries from Nick Denari and Blaine Moore before the archive closes with Beach to Beacon."
 tags:
   - "Beach to Beacon"
   - "Emily's Run"
   - "Eastern States 20 Miler"
+  - "Blaine Moore"
+  - "Chris Harmon"
   - "Hyannis Marathon"
   - "Jimmy the Greeks Frozen 4 Miler"
   - "Joe Satterfield"
+  - "Joseph Reynolds"
+  - "James Boeding"
+  - "Jeff Walker"
   - "Loon Mountain Race"
   - "Mt. Washington"
   - "Nicholas Denari"
   - "Pat's Pizza Clam Festival"
   - "Pat's Pizza Clam Festival Classic"
+  - "Peter Rearick"
+  - "Richard Fargo"
   - "Rob Ashby"
+  - "Rob Gomez"
+  - "Ryan Collins"
   - "Sherwin Parkhurst"
+  - "Thomas Harvey"
   - "Weekly Back Cove Series"
 links:
   - label: Maine Running Hall of Fame Results Project
