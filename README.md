@@ -6,6 +6,7 @@ Most pages are plain HTML/CSS. Jekyll is currently used for the updates feed:
 
 - Homepage shows the newest update posts from `_posts/`.
 - `/updates/` shows the paginated update archive using `jekyll-paginate`.
+- `/updates/tags/.../` pages show updates for a single tag.
 - `_includes/update-item.html` controls how each update card renders.
 
 ## Run Locally
@@ -89,6 +90,8 @@ links:
 ```
 
 The homepage automatically shows recent updates by post date. The full archive is paginated at `/updates/`.
+
+When adding new tags, generate a matching page under `updates/tags/tag-slug/index.html` so inline tag links have somewhere to go.
 
 ## Update Layout Options
 

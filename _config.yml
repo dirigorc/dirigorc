@@ -9,7 +9,6 @@ exclude:
   - Gemfile.lock
   - gemfiles/
   - node_modules/
-  - updates/tags/
   - vendor/bundle/
   - vendor/cache/
   - vendor/gems/
