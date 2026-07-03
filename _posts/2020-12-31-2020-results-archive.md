@@ -3,7 +3,7 @@ title: Dirigo's 2020 archive.
 date: 2020-12-31
 category: Archive
 layout_style: single
-summary: "The recovered 2020 archive is short for obvious reasons, but it still catches two important Dirigo markers. At the Maine Marathon COVID-19 Edition, Ryan Collins, Joe Satterfield, and Rob Ashby ran 2:37:22, 2:37:25, and 2:39:45. At the Mid-Winter 10-Mile Classic, Gretchen Speed won the women's race in 1:04:02, while Sam Seekins was second overall, Michael Gordon third overall and first M40-44, Ryan Jara fourth overall, Nick Denari sixth, James Boeding ninth, and Chris Harmon, Ken Akiha, Joe Satterfield, Rob Gomez, Rob Spaulding, Judson Cake, Peter Burke, Mary Pardi, Sarah Baker, Kalie Dunn, and others filled the age-group results."
+summary: "At the Maine Marathon COVID-19 Edition, Ryan Collins, Joe Satterfield, and Rob Ashby ran 2:37:22, 2:37:25, and 2:39:45. At the Mid-Winter 10-Mile Classic, Gretchen Speed won the women's race in 1:04:02, while Sam Seekins was second overall, Michael Gordon third overall and first M40-44, Ryan Jara fourth overall, Nick Denari sixth, James Boeding ninth, and Chris Harmon, Ken Akiha, Joe Satterfield, Rob Gomez, Rob Spaulding, Judson Cake, Peter Burke, Mary Pardi, Sarah Baker, Kalie Dunn, and others filled the age-group results."
 tags:
   - "Gretchen Speed"
   - "Maine Marathon"

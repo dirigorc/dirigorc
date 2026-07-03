@@ -3,7 +3,7 @@ title: Dirigo's 2021 archive.
 date: 2021-12-31
 category: Archive
 layout_style: single
-summary: "The recovered 2021 archive is lighter on details than some years, but Moxie 5K gives it a sharp snapshot: Ryan Jara won the men's race in 15:09 and Erica Jesseman won the women's race in 18:36. Dirigo also returned to Franklin Park for the USATF New England Cross Country Championships, with 40+ and 50+ teams placing fifth and the 60+ team winning its division. The archive points to a fuller fall calendar again, including Maine Marathon, Bangor Labor Day, Great Pumpkin, Falmouth, Millinocket, and Thanksgiving races."
+summary: "At Moxie 5K, Ryan Jara won the men's race in 15:09 and Erica Jesseman won the women's race in 18:36. Dirigo also returned to Franklin Park for the USATF New England Cross Country Championships, with 40+ and 50+ teams placing fifth and the 60+ team winning its division. The fall calendar widened again with Maine Marathon, Bangor Labor Day, Great Pumpkin, Falmouth, Millinocket, and Thanksgiving races."
 tags:
   - "Erica Jesseman"
   - "Falmouth 4-Miler"
