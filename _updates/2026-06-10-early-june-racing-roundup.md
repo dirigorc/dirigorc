@@ -9,6 +9,19 @@ images:
   - src: assets/images/instagram/09-DZvBbB3kVjw.jpg
     alt: A Dirigo runner before a Pine Tree Race Services event.
 summary: "The June racing calendar came fast: Nick Denari ran 15:58 at Back Cove, Bethanie Brown debuted there in 17:29, and Clíodhna O'Malley, Crow Norlander, Adane Bewset, Marah Borgman, Dave Ouellette, and Nevin Duffey kept the weekly turnout strong. Heather Gallant won the YMCA Fit Fest 5K overall in 17:15, Laurel Manville placed sixth overall, Maddie Sheehan won the women's race at the Bradbury Scuffle, Dave Ouellette was seventh overall, Taylor Bechtel ran 1:20:16 at the Old Port Half, and Marah Borgman won the Maine Running Hall of Fame 5K in 19:26."
+tags:
+  - "Back Cove Series"
+  - "Bethanie Brown"
+  - "Bradbury Scuffle"
+  - "Clíodhna O'Malley"
+  - "Heather Gallant"
+  - "Maddie Sheehan"
+  - "Maine Running Hall of Fame 5K"
+  - "Marah Borgman"
+  - "Nick Denari"
+  - "Old Port Half Marathon"
+  - "Taylor Bechtel"
+  - "YMCA Fit Fest 5K"
 links:
   - label: Back Cove 6/10 results
     url: https://backcove.runtowin.com/PastResults.php?cid=21

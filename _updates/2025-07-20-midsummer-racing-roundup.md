@@ -4,6 +4,19 @@ date: 2025-07-20
 category: Results
 layout_style: single
 summary: "Dirigo's midsummer stretch brought wins and podiums across Maine and New Hampshire. Sammy Mills won the Moxie 5K in 15:23, with Harrison Osborne five seconds back. Justin Freeman won the Bill Luti 5 Miler, Heather Gallant won Emily's Run, and Westbrook Strong saw wins from Romayn Richards and Karley Piers with Daniel Bannon, Chris Harmon, Kristin Barry, Thomas Harvey, Harvey Crider, and Harrison Crider adding to a big team day. Back Cove, MECTA, Yarmouth Clam Fest, and Tri for a Cure gave the club even more July results."
+tags:
+  - "Back Cove Series"
+  - "Bill Luti 5 Miler"
+  - "Emily's Run 5K"
+  - "Heather Gallant"
+  - "Justin Freeman"
+  - "Karley Piers"
+  - "MECTA"
+  - "Moxie 5K"
+  - "Romayn Richards"
+  - "Sammy Mills"
+  - "Westbrook Strong 5K"
+  - "Yarmouth Clam Fest"
 links:
   - label: Dirigo Instagram
     url: https://www.instagram.com/dirigorc/

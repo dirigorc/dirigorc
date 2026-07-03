@@ -4,6 +4,15 @@ date: 2026-03-15
 category: Results
 layout_style: single
 summary: "Dirigo opened the road season with depth at the Midwinter 10 Mile Classic and Irish Road Rover 5K. Karley Piers won the women's race at Midwinter in 1:00:02, with Clíodhna O'Malley close behind in 1:00:16 and Veronica Graziano, Maria Remillard, Michelle Lilienthal, Maddie Sheehan, and Paula Rousseau helping put six Dirigo women in the top 80. At Irish Road Rover, Alexis Wilbert won the women's race in 17:27, with Nate Madeira, Jon Clement, and Pete Bottomley also turning in strong results."
+tags:
+  - "Alexis Wilbert"
+  - "Clíodhna O'Malley"
+  - "Irish Road Rover 5K"
+  - "Karley Piers"
+  - "Midwinter 10 Mile Classic"
+  - "Nate Madeira"
+  - "Pete Bottomley"
+  - "Veronica Graziano"
 links:
   - label: Midwinter results
     url: https://midwinterclassic10miler.com/results/2026-results/

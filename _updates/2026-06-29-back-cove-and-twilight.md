@@ -7,6 +7,10 @@ image:
   src: assets/images/back%20cove%202026.jpg
   alt: Dirigo runners in blue singlets at Back Cove in 2026.
 summary: Dirigo has had a strong early-summer turnout at the Back Cove series. Members are also looking ahead to the next Valor Twilight Series meets on June 30 and July 18, plus the L/A Triple Crown races later this summer.
+tags:
+  - "Back Cove Series"
+  - "L/A Triple Crown"
+  - "Valor Twilight Series"
 links:
   - label: Back Cove results
     url: https://backcove.runtowin.com/PastResults.php?cid=21
