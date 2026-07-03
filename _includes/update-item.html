@@ -1,6 +1,9 @@
 {% assign update = include.update %}
 <article class="activity-item">
-  <p class="activity-meta">{{ update.category }}</p>
+  <p class="activity-meta">
+    <span>{{ update.category }}</span>
+    <time datetime="{{ update.date | date: '%Y-%m-%d' }}">{{ update.date | date: "%b %-d, %Y" }}</time>
+  </p>
   <div>
     {% if update.layout_style == "feature" %}
       <div class="activity-feature">
@@ -10,7 +13,7 @@
             <p class="result-pill">{{ update.stat }}</p>
           {% endif %}
           <h3>{{ update.title }}</h3>
-          <p>{{ update.summary }}</p>
+          <p>{% include tag-linked-text.html update=update text=update.summary %}</p>
           {% if update.links %}
             <p class="activity-links">
               {% for link in update.links %}
@@ -31,7 +34,7 @@
         <img class="activity-image" src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}">
       {% endif %}
       <h3>{{ update.title }}</h3>
-      <p>{{ update.summary }}</p>
+      <p>{% include tag-linked-text.html update=update text=update.summary %}</p>
       {% if update.links %}
         <p class="activity-links">
           {% for link in update.links %}
