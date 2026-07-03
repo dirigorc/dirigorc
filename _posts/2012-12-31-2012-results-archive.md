@@ -2,7 +2,14 @@
 title: Dirigo's 2012 archive.
 date: 2012-12-31
 category: Archive
-layout_style: single
+layout_style: image-row
+images:
+  - src: assets/images/updates/Dirigo-Masters-at-X-C-Nationals-2012.jpg
+    alt: Dirigo masters runners at the 2012 USATF National Club Cross Country Championships.
+  - src: assets/images/updates/Dirigo-Men-NE-2012-falmouth.jpg
+    alt: Dirigo men at the 2012 USATF New England Cross Country Championships in Falmouth.
+  - src: assets/images/updates/Dirigo-Men-and-Women-NE-2012.jpg
+    alt: Dirigo men and women at the 2012 USATF New England Cross Country Championships.
 summary: "Sheri Piers, Kristin Barry, and Erica Jesseman represented Dirigo at the U.S. Olympic Trials. Boston brought another major marker, with Sheri Piers listed as first American woman and 10th overall female, while Rob Ashby ran 2:51:09. New Bedford had a Dirigo women's team win behind Erica Jesseman, Sheri Piers, Eliza Tibbits, and Meredith Anderson, and Beach to Beacon put Sheri Piers first Maine woman and female master, Erica Jesseman second Maine woman, Rob Gomez third Maine man, Josh Zolla fifth Maine man, Pete Bottomley first Maine master, Andy Spaulding second, and Byrne Decker third. Sheri Piers was also the female masters winner at Grandma's Half and second masters woman at Twin Cities in 2:36:59, Rob Gomez and Rob Ashby placed 2-4 at the Maine Marathon, Andrew Van Hoogenstyn was fourth at Cape Cod in 2:31:09, and Dirigo masters placed second at USATF New England XC and seventh at USATF National Club Cross Country."
 tags:
   - "Andrew Van Hoogenstyn"
