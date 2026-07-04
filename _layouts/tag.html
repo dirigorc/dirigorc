@@ -19,18 +19,7 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="site-header">
-    <a class="brand" href="{{ '/' | relative_url }}" aria-label="Dirigo home">
-      <img class="brand-wordmark" src="{{ '/assets/images/dirigo-wordmark.png' | relative_url }}" alt="Dirigo">
-    </a>
-    <nav class="site-nav" aria-label="Primary navigation">
-      <a href="{{ '/join.html' | relative_url }}">Join Dirigo</a>
-      <a href="{{ '/#racing' | relative_url }}">Racing</a>
-      <a href="{{ '/history.html' | relative_url }}">History</a>
-      <a aria-current="page" href="{{ '/updates/' | relative_url }}">Updates</a>
-      <a href="#contact">Contact</a>
-    </nav>
-  </header>
+  {% include site-header.html current='updates' %}
 
   <main id="main">
     <section class="section pattern-news updates-archive">
@@ -53,26 +42,7 @@
     </section>
   </main>
 
-  <footer class="site-footer" id="contact">
-    <div>
-      <a class="brand footer-brand" href="{{ '/' | relative_url }}">
-        <img class="brand-logo" src="{{ '/assets/images/dirigo-logo-white.png' | relative_url }}" alt="">
-        <span>
-          <strong>Dirigo</strong>
-          <small>Maine running club</small>
-        </span>
-      </a>
-    </div>
-    <div class="footer-links">
-      <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="{{ '/join.html' | relative_url }}">Join</a>
-        <a href="{{ '/#racing' | relative_url }}">Racing</a>
-        <a href="{{ '/history.html' | relative_url }}">History</a>
-        <a href="{{ '/updates/' | relative_url }}">Updates</a>
-        <a href="{{ '/join.html#membership-contact' | relative_url }}">Contact</a>
-      </nav>
-    </div>
-  </footer>
+  {% include site-footer.html show_social=false %}
   <script defer src="{{ '/assets/js/image-lightbox.js' | relative_url }}"></script>
   <!-- Cloudflare Web Analytics -->
   <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
