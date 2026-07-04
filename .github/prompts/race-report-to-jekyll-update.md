@@ -26,7 +26,7 @@ The site uses:
 3. Editorial voice.
    - Write like a teammate with good judgment, not a marketer.
    - Use plain verbs and concrete details.
-   - Prefer content-specific headlines and concise page titles over generic titles like "Draft race report update".
+   - Prefer content-specific headlines and concise page titles over generic titles like "Race report update".
   - For polished (`editorial_mode: agentic`) recaps, avoid dumping full result sheets. Lead with highlights and include representative top performances instead of every finisher line.
   - If many results are provided, summarize by race with concise bullets or short paragraphs and preserve links in front matter so readers can view full results.
    - Avoid polished-but-vague phrases like "calendar moving", "team-relevant events", "natural team target", or "steady weekly check-in for racing, fitness, and teammates".

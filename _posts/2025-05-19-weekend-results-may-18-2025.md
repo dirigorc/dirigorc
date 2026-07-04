@@ -2,7 +2,7 @@
 title: "Weekend results — Boots n Brews, Cape Challenge, and high-school invite"
 date: 2025-05-19
 category: "Results"
-layout_style: "single"
+layout_style: "feature"
 image:
   src: "assets/images/email/2026-07-04/weekend-results-may-18-2025-54518790031-245a36ddfa-o.jpg"
   alt: "Dirigo race photo from 54518790031 245a36ddfa o."

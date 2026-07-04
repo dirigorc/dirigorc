@@ -362,7 +362,7 @@ Discord Worker behavior:
 8. Triggers the existing `race-report-email` `repository_dispatch`.
 9. GitHub Actions creates a PR ready for review.
 
-Discord safe-draft notes:
+Discord safe-submission notes:
 
 - Discord can reject a slash command before the Worker receives it, especially when several large attachments are uploaded. If that happens, the Worker cannot recover the typed text.
 - Safest path for long recaps: run `/recap` with no inline body, paste the recap into the modal, and submit text/links first.
