@@ -10,13 +10,6 @@
         </a>
     </div>
     <div class="footer-links">
-        <nav class="footer-nav" aria-label="Footer navigation">
-            <a href="{{ '/join.html' | relative_url }}">Join</a>
-            <a href="{{ '/history.html' | relative_url }}">History</a>
-            <a href="{{ '/updates/' | relative_url }}">Updates</a>
-            <a
-                href="{% if contact_href | slice: 0, 1 == '#' %}{{ contact_href }}{% else %}{{ contact_href | relative_url }}{% endif %}">Contact</a>
-        </nav>
         {% if include.show_social != false %}
         <nav class="footer-social" aria-label="Social links">
             <a class="social-link social-link-instagram" href="https://www.instagram.com/dirigorc/" target="_blank"

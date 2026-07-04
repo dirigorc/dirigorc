@@ -1281,16 +1281,17 @@ details p {
 }
 
 .footer-links {
-  display: grid;
-  gap: 0.8rem;
-  justify-items: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
 }
 
 .footer-nav,
 .footer-social {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-wrap: nowrap;
+  justify-content: center;
   gap: 1rem;
 }
 
@@ -1490,13 +1491,20 @@ details p {
   }
 
   .footer-links {
+    display: grid;
+    gap: 0.8rem;
     justify-content: flex-start;
     justify-items: start;
   }
 
   .footer-nav,
   .footer-social {
+    flex-wrap: wrap;
     justify-content: flex-start;
+  }
+
+  .footer-social {
+    width: 100%;
   }
 }
 
