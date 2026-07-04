@@ -56,6 +56,13 @@ FRONT_MATTER_STRING_KEYS = {
     "results_url",
     "related_update",
 }
+FORBIDDEN_PUBLIC_BODY_PATTERNS = [
+    re.compile(r"rename\s+agentic\s+option", flags=re.IGNORECASE),
+    re.compile(r"backward\s+compatibility", flags=re.IGNORECASE),
+    re.compile(r"results were provided by.*source", flags=re.IGNORECASE),
+    re.compile(r"if you have race result links or additional photos to add", flags=re.IGNORECASE),
+    re.compile(r"please share.*we can update this post", flags=re.IGNORECASE),
+]
 
 
 def read_text(path: Path, limit: int | None = None) -> str:
@@ -536,6 +543,48 @@ def normalize_generated_files(files: list[dict[str, str]]) -> None:
             item["content"] = normalize_front_matter(item.get("content", ""))
 
 
+def sanitize_public_body_text(files: list[dict[str, str]], result: dict[str, Any]) -> None:
+    removed: list[str] = []
+    for item in files:
+        path = item.get("path", "")
+        if not path.startswith(("_posts/", "_events/")):
+            continue
+
+        content = item.get("content", "")
+        match = re.match(r"\A---\s*\n(.*?)\n---(\s*\n.*)?\Z", content, flags=re.DOTALL)
+        if not match:
+            continue
+
+        front_matter = match.group(1)
+        body = (match.group(2) or "\n").lstrip("\n")
+        lines = body.splitlines()
+        kept: list[str] = []
+        removed_count = 0
+        for line in lines:
+            stripped = line.strip()
+            if stripped and any(pattern.search(stripped) for pattern in FORBIDDEN_PUBLIC_BODY_PATTERNS):
+                removed_count += 1
+                continue
+            kept.append(line)
+
+        if removed_count == 0:
+            continue
+
+        cleaned = "\n".join(kept)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+        if cleaned:
+            item["content"] = f"---\n{front_matter}\n---\n\n{cleaned}\n"
+        else:
+            item["content"] = f"---\n{front_matter}\n---\n"
+        removed.append(f"{path} ({removed_count} line(s))")
+
+    if removed:
+        result.setdefault("assumptions", []).append(
+            "Removed internal/changelog or missing-link solicitation lines from generated public body copy: "
+            + ", ".join(removed)
+        )
+
+
 def image_front_matter_block(images: list[dict[str, str]]) -> list[str]:
     if len(images) == 1:
         item = images[0]
@@ -945,6 +994,8 @@ def main() -> int:
         prompt = f"""
 Current date: {today}
 
+    Editorial mode: {email.get('editorial_mode', 'agentic')}
+
 {skill_prompt}
 
 # Existing Repo Context
@@ -974,6 +1025,7 @@ Subject: {email['subject']}
         raise ValueError("Model returned invalid files list.")
     files.extend(ensure_tag_pages(files))
     ensure_attached_images_used(staged_attachments, files, result)
+    sanitize_public_body_text(files, result)
     normalize_generated_files(files)
     kept_attachments = prune_unused_attachments(staged_attachments, files)
     kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)
