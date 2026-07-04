@@ -306,6 +306,12 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
         "required": false
       },
       {
+        "name": "links",
+        "description": "Optional source URLs separated by spaces or new lines.",
+        "type": 3,
+        "required": false
+      },
+      {
         "name": "image1",
         "description": "Optional race image attachment.",
         "type": 11,
@@ -346,10 +352,11 @@ Discord Worker behavior:
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
 2. Responds immediately with an ephemeral acknowledgement.
 3. Defaults to `editorial_mode: "verbatim"`; if the optional `agentic` input is true, uses `editorial_mode: "agentic"`.
-4. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) and stages them with the ingest payload.
-5. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, and `body`.
-6. Triggers the existing `race-report-email` `repository_dispatch`.
-7. GitHub Actions creates a draft PR for review.
+4. Extracts URLs from `body` and optional `links` input so copied recap links survive Discord paste quirks.
+5. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) and stages them with the ingest payload.
+6. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
+7. Triggers the existing `race-report-email` `repository_dispatch`.
+8. GitHub Actions creates a draft PR for review.
 
 ## Discord Deployment Checklist
 

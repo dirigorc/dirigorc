@@ -93,6 +93,32 @@ function discordEditorialMode(interaction) {
   return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
 }
 
+function extractUrls(text) {
+  const matches = text.match(/https?:\/\/[^\s<>()"']+/gi) || [];
+  const unique = [];
+  const seen = new Set();
+  for (const value of matches) {
+    const cleaned = value.replace(/[),.;!?]+$/, "");
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    unique.push(cleaned);
+  }
+  return unique;
+}
+
+function discordLinks(interaction, body) {
+  const linksField = String(discordOption(interaction, "links") || "");
+  const urls = [...extractUrls(body), ...extractUrls(linksField)];
+  const unique = [];
+  const seen = new Set();
+  for (const url of urls) {
+    if (seen.has(url)) continue;
+    seen.add(url);
+    unique.push(url);
+  }
+  return unique;
+}
+
 function bytesToBase64(bytes) {
   let binary = "";
   for (let index = 0; index < bytes.length; index += 0x8000) {
@@ -183,6 +209,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
 
   const editorialMode = discordEditorialMode(interaction);
   const submittedBy = discordSubmittedBy(interaction);
+  const links = discordLinks(interaction, body);
   const attachments = await discordAttachments(interaction);
   const email = {
     source: "discord",
@@ -194,6 +221,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     body,
     raw: "",
     attachments,
+    links,
   };
 
   ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
@@ -212,6 +240,7 @@ async function dispatchToGitHub(env, email) {
     clientPayload.editorial_mode = email.editorial_mode || "verbatim";
     clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
     clientPayload.body = email.body || email.text || "";
+    clientPayload.links = email.links || [];
     clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
   }
 

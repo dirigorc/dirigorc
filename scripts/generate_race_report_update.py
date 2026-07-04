@@ -32,6 +32,7 @@ GENERATED_FILES_PATH = ROOT / "tmp/generated-files.txt"
 ALLOWED_PREFIXES = ("_posts/", "_events/", "updates/tags/")
 ATTACHMENT_PREFIX = "assets/images/email"
 IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"}
+URL_PATTERN = re.compile(r"https?://[^\s<>()\"']+", flags=re.IGNORECASE)
 
 
 def read_text(path: Path, limit: int | None = None) -> str:
@@ -120,6 +121,7 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
     text = str(email.get("text") or email.get("body") or payload.get("text") or payload.get("body") or "")
     raw = str(email.get("raw") or payload.get("raw") or "")
     attachments = email.get("attachments") or payload.get("attachments") or []
+    links = normalize_links(email.get("links") or payload.get("links") or [])
     source = str(email.get("source") or payload.get("source") or "")
     editorial_mode = str(email.get("editorial_mode") or payload.get("editorial_mode") or "")
     if source == "discord" and editorial_mode not in {"verbatim", "agentic"}:
@@ -127,6 +129,8 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
     submitted_by = str(email.get("submitted_by") or payload.get("submitted_by") or "")
     if not text and raw:
         text = raw
+    if not links:
+        links = extract_urls(text)
     if not text.strip():
         raise ValueError("No email text/body found in dispatch payload.")
     return {
@@ -139,7 +143,45 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "body": text,
         "raw": raw,
         "attachments": attachments,
+        "links": links,
     }
+
+
+def extract_urls(text: str) -> list[str]:
+    matches = URL_PATTERN.findall(text or "")
+    unique: list[str] = []
+    seen: set[str] = set()
+    for value in matches:
+        cleaned = value.rstrip(").,;!?")
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        unique.append(cleaned)
+    return unique
+
+
+def normalize_links(value: Any) -> list[str]:
+    if not value:
+        return []
+    candidates: list[str] = []
+    if isinstance(value, str):
+        candidates.extend(extract_urls(value))
+    elif isinstance(value, list):
+        for item in value:
+            if isinstance(item, str):
+                candidates.extend(extract_urls(item))
+            elif isinstance(item, dict):
+                raw_url = item.get("url") or item.get("href")
+                if isinstance(raw_url, str):
+                    candidates.extend(extract_urls(raw_url))
+    unique: list[str] = []
+    seen: set[str] = set()
+    for url in candidates:
+        if url in seen:
+            continue
+        seen.add(url)
+        unique.append(url)
+    return unique
 
 
 def image_dimensions(content_type: str, data: bytes) -> str:
@@ -268,6 +310,15 @@ def attachment_context(staged: list[dict[str, str]]) -> str:
         lines.append(
             f"- `{item['path']}` ({item['content_type']}, {item['size']} bytes{dimensions}; original filename: {item['filename']})"
         )
+    return "\n".join(lines)
+
+
+def source_links_context(links: list[str]) -> str:
+    if not links:
+        return "No explicit source URLs were provided."
+    lines = ["These URLs were provided explicitly in the source payload. Preserve relevant ones in front matter links."]
+    for url in links:
+        lines.append(f"- `{url}`")
     return "\n".join(lines)
 
 
@@ -491,11 +542,21 @@ def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]
         path = f"{base_path}-{counter}.md"
         counter += 1
     title = yaml_double_quoted(str(email.get("subject") or "Discord recap"))
+    links = email.get("links") or []
+    links_block = ""
+    if links:
+        links_lines = ["links:"]
+        for url in links:
+            links_lines.append("  - label: Source")
+            links_lines.append(f"    url: {url}")
+        links_block = "\n" + "\n".join(links_lines)
+
     content = (
         "---\n"
         f"title: {title}\n"
         f"date: {today}\n"
         "layout: post\n"
+        f"{links_block}\n"
         "---\n\n"
         f"{email['text']}"
     )
@@ -609,6 +670,10 @@ Current date: {today}
 # Email Image Attachments
 
 {attachment_context(staged_attachments)}
+
+# Explicit Source URLs
+
+{source_links_context(email.get('links', []))}
 
 # Forwarded Email
 

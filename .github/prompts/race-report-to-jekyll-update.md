@@ -42,6 +42,7 @@ The site uses:
   - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
   - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
   - Do not end a post with a sentence like "Full results were shared with the team via ..." if a real result or gallery link is available. Put the link in front matter and keep the body focused on the facts.
+  - If URLs are missing, record that in `missing` notes only. Do not add caveat sentences in the public-facing post body about missing links.
    - If an image is needed but unavailable, leave the generated update imageless and mention it in `missing`.
 
 ## Post Front Matter

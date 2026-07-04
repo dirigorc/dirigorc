@@ -51,6 +51,7 @@ interface EmailPayload {
 	body?: string;
 	editorial_mode?: string;
 	attachments?: EmailAttachment[];
+	links?: string[];
 }
 
 interface EmailMessage {
@@ -161,6 +162,32 @@ function discordEditorialMode(interaction: DiscordInteraction): string {
 	return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
 }
 
+function extractUrls(text: string): string[] {
+	const matches = text.match(/https?:\/\/[^\s<>()"']+/gi) || [];
+	const unique: string[] = [];
+	const seen = new Set<string>();
+	for (const value of matches) {
+		const cleaned = value.replace(/[),.;!?]+$/, "");
+		if (!cleaned || seen.has(cleaned)) continue;
+		seen.add(cleaned);
+		unique.push(cleaned);
+	}
+	return unique;
+}
+
+function discordLinks(interaction: DiscordInteraction, body: string): string[] {
+	const linksField = String(discordOption(interaction, "links") || "");
+	const urls = [...extractUrls(body), ...extractUrls(linksField)];
+	const unique: string[] = [];
+	const seen = new Set<string>();
+	for (const url of urls) {
+		if (seen.has(url)) continue;
+		seen.add(url);
+		unique.push(url);
+	}
+	return unique;
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
 	let binary = "";
 	for (let index = 0; index < bytes.length; index += 0x8000) {
@@ -257,6 +284,7 @@ async function handleDiscordInteraction(
 
 	const editorialMode = discordEditorialMode(interaction);
 	const submittedBy = discordSubmittedBy(interaction);
+	const links = discordLinks(interaction, body);
 	const attachments = await discordAttachments(interaction);
 	const email: EmailPayload = {
 		source: "discord",
@@ -268,6 +296,7 @@ async function handleDiscordInteraction(
 		body,
 		raw: "",
 		attachments,
+		links,
 	};
 
 	ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
@@ -286,6 +315,7 @@ async function dispatchToGitHub(env: WorkerEnv, email: EmailPayload): Promise<vo
 		clientPayload.editorial_mode = email.editorial_mode || "verbatim";
 		clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
 		clientPayload.body = email.body || email.text || "";
+		clientPayload.links = email.links || [];
 		clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
 	}
 	const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {

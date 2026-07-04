@@ -61,6 +61,12 @@ create_command() {
         "required": false
       },
       {
+        "name": "links",
+        "description": "Optional source URLs separated by spaces or new lines.",
+        "type": 3,
+        "required": false
+      },
+      {
         "name": "image1",
         "description": "Optional race image attachment.",
         "type": 11,
