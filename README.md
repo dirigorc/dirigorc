@@ -399,7 +399,9 @@ Run the `Draft race report update` workflow from the GitHub Actions tab and past
 
 ## Deploy
 
-Push changes to GitHub. The repository-owned GitHub Actions workflow at
-`.github/workflows/pages.yml` builds the Jekyll site and publishes it to GitHub Pages.
+Push changes to GitHub. GitHub Pages is already configured to publish the Jekyll
+site from `main`, so `.github/workflows/pages.yml` only runs the checked-in
+build on push and keeps the explicit deploy step for manual `workflow_dispatch`
+runs. This avoids overlapping Pages deployments for the same commit.
 
 Do not add a `.nojekyll` file; that would disable Jekyll processing and the updates feed would not render.
