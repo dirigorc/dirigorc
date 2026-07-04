@@ -3,6 +3,7 @@
  *
  * Supports two entry points:
  * - Email Routing Worker: attach this Worker to an address such as updates@dirigorc.com.
+ * - Discord interactions endpoint for the /recap slash command.
  * - HTTP POST webhook: send JSON or plain text to the Worker URL.
  *
  * Required Worker secrets/vars:
@@ -12,9 +13,15 @@
  *
  * Optional vars:
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
+ * - DISCORD_PUBLIC_KEY: Required only for the Discord /recap interaction endpoint.
  */
 
 const DISPATCH_EVENT_TYPE = "race-report-email";
+const DISCORD_INTERACTION_PING = 1;
+const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
+const DISCORD_RESPONSE_PONG = 1;
+const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
+const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 
 function allowedSender(sender, env) {
   if (!env.ALLOWED_FROM) return true;
@@ -26,9 +33,124 @@ function headerValue(headers, name) {
   return headers.get(name) || headers.get(name.toLowerCase()) || "";
 }
 
+function hexToBytes(hex) {
+  if (!hex || hex.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let index = 0; index < hex.length; index += 2) {
+    const value = Number.parseInt(hex.slice(index, index + 2), 16);
+    if (Number.isNaN(value)) return null;
+    bytes[index / 2] = value;
+  }
+  return bytes;
+}
+
+async function verifyDiscordRequest(request, rawBody, env) {
+  if (!env.DISCORD_PUBLIC_KEY) return false;
+  const signature = hexToBytes(request.headers.get("x-signature-ed25519") || "");
+  const timestamp = request.headers.get("x-signature-timestamp") || "";
+  const publicKey = hexToBytes(env.DISCORD_PUBLIC_KEY);
+  if (!signature || !timestamp || !publicKey) return false;
+
+  const timestampBytes = new TextEncoder().encode(timestamp);
+  const messageBytes = new Uint8Array(timestampBytes.length + rawBody.length);
+  messageBytes.set(timestampBytes, 0);
+  messageBytes.set(rawBody, timestampBytes.length);
+
+  let key;
+  try {
+    key = await crypto.subtle.importKey("raw", publicKey, { name: "Ed25519" }, false, ["verify"]);
+  } catch (error) {
+    key = await crypto.subtle.importKey(
+      "raw",
+      publicKey,
+      { name: "NODE-ED25519", namedCurve: "NODE-ED25519" },
+      false,
+      ["verify"],
+    );
+  }
+  return crypto.subtle.verify(key.algorithm, key, signature, messageBytes);
+}
+
+function discordUser(interaction) {
+  return interaction.member?.user || interaction.user || {};
+}
+
+function discordSubmittedBy(interaction) {
+  const user = discordUser(interaction);
+  const name = user.global_name || user.username || "Unknown Discord user";
+  return user.id ? `${name} (${user.id})` : name;
+}
+
+function discordOption(interaction, name) {
+  const options = interaction.data?.options || [];
+  return options.find((option) => option.name === name)?.value || "";
+}
+
+function discordAck(content) {
+  return new Response(
+    JSON.stringify({
+      type: DISCORD_RESPONSE_CHANNEL_MESSAGE,
+      data: {
+        content,
+        flags: DISCORD_MESSAGE_EPHEMERAL,
+      },
+    }),
+    { headers: { "content-type": "application/json" } },
+  );
+}
+
+async function handleDiscordInteraction(request, env, ctx, rawBody) {
+  const verified = await verifyDiscordRequest(request, rawBody, env);
+  if (!verified) {
+    return new Response("Invalid request signature\n", { status: 401 });
+  }
+
+  let interaction;
+  try {
+    interaction = JSON.parse(new TextDecoder().decode(rawBody));
+  } catch (error) {
+    return new Response("Invalid interaction payload\n", { status: 400 });
+  }
+  if (interaction.type === DISCORD_INTERACTION_PING) {
+    return new Response(JSON.stringify({ type: DISCORD_RESPONSE_PONG }), {
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || interaction.data?.name !== "recap") {
+    return discordAck("Unknown command.");
+  }
+
+  const body = String(discordOption(interaction, "body") || "").trim();
+  if (!body) {
+    return discordAck("Please include recap text in the body option.");
+  }
+
+  const submittedBy = discordSubmittedBy(interaction);
+  const email = {
+    source: "discord",
+    submitted_by: submittedBy,
+    from: submittedBy,
+    subject: "Discord /recap",
+    text: body,
+    body,
+    raw: "",
+  };
+
+  ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
+  return discordAck("Got it. I started a draft website update PR for review.");
+}
+
 async function dispatchToGitHub(env, email) {
   const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
   const ingest = await createIngestPayload(env, email);
+  const clientPayload = { ingest };
+  if (email.source === "discord") {
+    clientPayload.source = "discord";
+    clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
+    clientPayload.body = email.body || email.text || "";
+  }
+
   const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
     method: "POST",
     headers: {
@@ -40,7 +162,7 @@ async function dispatchToGitHub(env, email) {
     },
     body: JSON.stringify({
       event_type: DISPATCH_EVENT_TYPE,
-      client_payload: { ingest },
+      client_payload: clientPayload,
     }),
   });
 
@@ -141,9 +263,14 @@ async function emailPayloadFromRequest(request) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method !== "POST") {
       return new Response("Send POST requests to submit a race report digest.\n", { status: 405 });
+    }
+
+    if (request.headers.has("x-signature-ed25519") || request.headers.has("x-signature-timestamp")) {
+      const rawBody = new Uint8Array(await request.arrayBuffer());
+      return handleDiscordInteraction(request, env, ctx, rawBody);
     }
 
     const expected = `Bearer ${env.INGEST_TOKEN}`;

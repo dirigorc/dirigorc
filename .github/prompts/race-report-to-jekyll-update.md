@@ -1,6 +1,6 @@
 # Race Report To Jekyll Update
 
-Convert a forwarded Dirigo RC team update email into maintainable Jekyll files for the website.
+Convert a forwarded Dirigo RC team update email, Discord `/recap` submission, or pasted team note into maintainable Jekyll files for the website.
 
 The site uses:
 
@@ -18,6 +18,7 @@ The site uses:
 2. Write for the public site.
    - Keep it celebratory, concise, and factual.
    - Preserve supplied names, dates, races, places, times, and result links.
+   - Treat Discord `/recap` submissions as shorthand source material, not already polished public copy.
    - Remove private listserv chatter, apologies, payment details, addresses, and non-public logistics.
    - For youth/high-school athletes, keep copy respectful and result-focused.
    - Do not invent facts. If uncertain, omit the claim or include a concise assumption in the response notes.

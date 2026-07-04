@@ -188,12 +188,12 @@ Always include image credit links when photos come from photographers, race orga
 
 ## Email-To-Draft Automation
 
-The repo includes an optional automation for turning a forwarded race report email into a draft PR.
+The repo includes an optional automation for turning a forwarded race report email, Discord `/recap` command, or authenticated webhook into a draft PR.
 
 Flow:
 
 ```text
-forwarded email or webhook
+forwarded email, Discord /recap, or webhook
 → Cloudflare Worker
 → temporary GitHub ingest branch
 → GitHub repository_dispatch with an ingest pointer
@@ -237,7 +237,8 @@ Cloudflare setup:
 3. Add Worker variable `GITHUB_REPO=dirigorc/dirigorc`.
 4. Add Worker secret `INGEST_TOKEN` for HTTP webhook authentication.
 5. Optional: add Worker variable `ALLOWED_FROM` as a comma-separated sender allowlist.
-6. Attach the Worker to a Cloudflare Email Routing address, or call it with an authenticated HTTP POST.
+6. Optional for Discord: add Worker secret `DISCORD_PUBLIC_KEY`.
+7. Attach the Worker to a Cloudflare Email Routing address, configure it as a Discord interaction endpoint, or call it with an authenticated HTTP POST.
 
 HTTP test:
 
@@ -258,6 +259,55 @@ curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
     ]
   }'
 ```
+
+### Discord `/recap` MVP
+
+The Discord path uses the same Worker and the same draft PR workflow. The Worker only verifies Discord, acknowledges the command, stages the submitted text, and triggers `repository_dispatch`. It does not publish site changes directly.
+
+Create the Discord application:
+
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Create a new application for Dirigo site updates.
+3. On **General Information**, copy the application **Public Key**.
+4. Set that value as the Cloudflare Worker secret `DISCORD_PUBLIC_KEY`.
+
+Set the interaction endpoint:
+
+1. Deploy the Cloudflare Worker.
+2. Copy the Worker URL, for example `https://dirigo-race-report.YOUR-SUBDOMAIN.workers.dev`.
+3. In the Discord application, set **Interactions Endpoint URL** to the Worker URL.
+4. Save the application. Discord will send a signed `PING`; the Worker must verify it and respond before Discord accepts the URL.
+
+Create the `/recap` command:
+
+```sh
+curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/guilds/$DISCORD_GUILD_ID/commands" \
+  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "recap",
+    "description": "Draft a Dirigo website update from recap text.",
+    "type": 1,
+    "options": [
+      {
+        "name": "body",
+        "description": "Race recap or result notes to turn into a draft PR.",
+        "type": 3,
+        "required": true
+      }
+    ]
+  }'
+```
+
+Guild commands are usually available quickly while testing. A global command uses `/applications/$DISCORD_APPLICATION_ID/commands` instead, but it can take longer to appear.
+
+Discord Worker behavior:
+
+1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
+2. Responds immediately with an ephemeral acknowledgement.
+3. Stages a payload with `source: "discord"`, `submitted_by`, and `body`.
+4. Triggers the existing `race-report-email` `repository_dispatch`.
+5. GitHub Actions creates a draft PR for review.
 
 Manual fallback:
 

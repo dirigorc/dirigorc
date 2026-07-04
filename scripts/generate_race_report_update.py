@@ -114,11 +114,22 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
     text = str(email.get("text") or email.get("body") or payload.get("text") or payload.get("body") or "")
     raw = str(email.get("raw") or payload.get("raw") or "")
     attachments = email.get("attachments") or payload.get("attachments") or []
+    source = str(email.get("source") or payload.get("source") or "")
+    submitted_by = str(email.get("submitted_by") or payload.get("submitted_by") or "")
     if not text and raw:
         text = raw
     if not text.strip():
         raise ValueError("No email text/body found in dispatch payload.")
-    return {"subject": subject, "from": sender, "text": text, "raw": raw, "attachments": attachments}
+    return {
+        "source": source,
+        "submitted_by": submitted_by,
+        "subject": subject,
+        "from": sender,
+        "text": text,
+        "body": text,
+        "raw": raw,
+        "attachments": attachments,
+    }
 
 
 def image_dimensions(content_type: str, data: bytes) -> str:
@@ -412,6 +423,14 @@ def prune_unused_attachments(staged: list[dict[str, str]], files: list[dict[str,
     return kept
 
 
+def source_line(email: dict[str, Any]) -> str:
+    source = email.get("source")
+    if source == "discord":
+        submitted_by = email.get("submitted_by") or email.get("from") or "Unknown Discord user"
+        return f"Source: **Discord /recap** submitted by `{submitted_by}`"
+    return f"Source email: **{email['subject']}** from `{email['from']}`"
+
+
 def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str]) -> None:
     PR_BODY_PATH.parent.mkdir(parents=True, exist_ok=True)
     sections = [
@@ -419,7 +438,7 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, A
         "",
         result.get("summary", "Generated race report content from a forwarded email."),
         "",
-        f"Source email: **{email['subject']}** from `{email['from']}`",
+        source_line(email),
         "",
         "## Files Changed",
     ]
