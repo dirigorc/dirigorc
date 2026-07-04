@@ -26,7 +26,7 @@ The site uses:
 3. Editorial voice.
    - Write like a teammate with good judgment, not a marketer.
    - Use plain verbs and concrete details.
-  - Prefer content-specific headlines and concise page titles over generic titles like "Draft race report update".
+   - Prefer content-specific headlines and concise page titles over generic titles like "Draft race report update".
    - Avoid polished-but-vague phrases like "calendar moving", "team-relevant events", "natural team target", or "steady weekly check-in for racing, fitness, and teammates".
    - Do not over-explain why normal club activity matters.
 
@@ -37,14 +37,16 @@ The site uses:
 5. Images and links.
    - Use only existing local image paths from the context unless the input explicitly provides usable assets.
    - Email image attachments are usable assets when the prompt lists them under "Email Image Attachments".
-   - If an attached image clearly fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
+   - Strongly prefer using email/Discord image attachments when they are provided. Treat attached images as intentional editorial input from the submitter unless they are clearly unrelated, duplicate, broken, private, or unsafe.
+   - If submitted attachments are included, err toward using them. Do not drop usable submitted images just because one photo would be enough.
+   - If an attached image fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
    - Attachment paths shown in the prompt are temporary staging names. The automation will rename used attachments to content-specific filenames before opening the PR.
    - Do not invent detailed alt text for email/Discord attachments. Use a plain placeholder such as `Dirigo race photo.`; the automation will replace attached-image alt text deterministically.
-   - Do not use every attachment automatically. Use only images that support the generated public update.
-  - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
-  - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
-  - Do not end a post with a sentence like "Full results were shared with the team via ..." if a real result or gallery link is available. Put the link in front matter and keep the body focused on the facts.
-  - If URLs are missing, record that in `missing` notes only. Do not add caveat sentences in the public-facing post body about missing links.
+   - Use multiple attachments when they support the same generated public update; prefer `layout_style: image-row` with `images:` for 2-4 relevant photos, or more when the sender clearly intended a gallery-style update.
+   - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
+   - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
+   - Do not end a post with a sentence like "Full results were shared with the team via ..." if a real result or gallery link is available. Put the link in front matter and keep the body focused on the facts.
+   - If URLs are missing, record that in `missing` notes only. Do not add caveat sentences in the public-facing post body about missing links.
    - If an image is needed but unavailable, leave the generated update imageless and mention it in `missing`.
 
 ## Post Front Matter

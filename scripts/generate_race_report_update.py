@@ -536,6 +536,113 @@ def normalize_generated_files(files: list[dict[str, str]]) -> None:
             item["content"] = normalize_front_matter(item.get("content", ""))
 
 
+def image_front_matter_block(images: list[dict[str, str]]) -> list[str]:
+    if len(images) == 1:
+        item = images[0]
+        return [
+            "layout_style: single",
+            "image:",
+            f"  src: {item['path']}",
+            f"  alt: {yaml_double_quoted(item['alt'])}",
+        ]
+
+    lines = ["layout_style: image-row", "images:"]
+    for item in images:
+        lines.extend(
+            [
+                f"  - src: {item['path']}",
+                f"    alt: {yaml_double_quoted(item['alt'])}",
+            ]
+        )
+    return lines
+
+
+def front_matter_images(front_matter: str) -> list[dict[str, str]]:
+    lines = front_matter.splitlines()
+    images: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for index, line in enumerate(lines):
+        match = re.match(r"^\s*src:\s+(.+?)\s*$", line)
+        if not match:
+            continue
+        path = match.group(1).strip().strip("\"'")
+        if not path or path in seen:
+            continue
+
+        alt = "Dirigo race photo."
+        for candidate in lines[index + 1:index + 4]:
+            alt_match = re.match(r"^\s*alt:\s+(.+?)\s*$", candidate)
+            if alt_match:
+                alt = alt_match.group(1).strip().strip("\"'")
+                break
+        images.append({"path": path, "alt": alt})
+        seen.add(path)
+
+    return images
+
+
+def remove_front_matter_blocks(front_matter: str, keys: set[str]) -> str:
+    lines = front_matter.splitlines()
+    kept: list[str] = []
+    index = 0
+    while index < len(lines):
+        key_match = re.match(r"^([A-Za-z_][\w-]*):(?:\s+.*)?$", lines[index])
+        if key_match and key_match.group(1) in keys:
+            index += 1
+            while index < len(lines) and (lines[index].startswith((" ", "-")) or not lines[index].strip()):
+                index += 1
+            continue
+        kept.append(lines[index])
+        index += 1
+    return "\n".join(kept)
+
+
+def ensure_attached_images_used(staged: list[dict[str, str]], files: list[dict[str, str]], result: dict[str, Any]) -> None:
+    if not staged:
+        return
+
+    generated_text = "\n".join(item.get("content", "") for item in files)
+    missing = [item for item in staged if item["path"] not in generated_text]
+    if not missing:
+        return
+
+    target = next(
+        (
+            item
+            for item in files
+            if item.get("path", "").startswith(("_posts/", "_events/"))
+            and any(staged_item["path"] in item.get("content", "") for staged_item in staged)
+        ),
+        None,
+    )
+    if not target:
+        target = next((item for item in files if item.get("path", "").startswith(("_posts/", "_events/"))), None)
+    if not target:
+        result.setdefault("missing", []).append("Image attachments were provided, but no generated post or event was available to attach them to.")
+        return
+
+    match = re.match(r"\A---\s*\n(.*?)\n---(\s*\n.*)?\Z", target.get("content", ""), flags=re.DOTALL)
+    if not match:
+        result.setdefault("missing", []).append("Image attachments were provided, but the generated post had no editable front matter.")
+        return
+
+    front_matter = match.group(1)
+    body = match.group(2) or "\n"
+    images = front_matter_images(front_matter)
+    seen_paths = {item["path"] for item in images}
+    for item in missing:
+        if item["path"] in seen_paths:
+            continue
+        images.append({"path": item["path"], "alt": deterministic_attachment_alt(item)})
+        seen_paths.add(item["path"])
+
+    front_matter = remove_front_matter_blocks(front_matter, {"layout_style", "image", "images"})
+    front_matter = front_matter.rstrip() + "\n" + "\n".join(image_front_matter_block(images))
+    target["content"] = "---\n" + front_matter + "\n---" + body
+    result.setdefault("assumptions", []).append("Included submitted image attachments because the source provided them and the draft did not reference all of them.")
+
+
 def write_files(files: list[dict[str, str]]) -> list[str]:
     written: list[str] = []
     for item in files:
@@ -866,6 +973,7 @@ Subject: {email['subject']}
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")
     files.extend(ensure_tag_pages(files))
+    ensure_attached_images_used(staged_attachments, files, result)
     normalize_generated_files(files)
     kept_attachments = prune_unused_attachments(staged_attachments, files)
     kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)

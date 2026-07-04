@@ -216,6 +216,7 @@ Email image attachments:
 - The generator sees those candidate image paths and may reference them in generated front matter.
 - Used attachments are renamed before the PR opens so final filenames are based on the generated post/event and original attachment filename when useful, not generated alt copy.
 - Attached-image alt text is replaced with deterministic, conservative text before the PR opens rather than trusting generated alt copy.
+- If attachments are provided but the generated draft forgets to use some or all of them, the generator adds the missing submitted images to the first relevant generated post/event instead of silently dropping them.
 - Unused staged attachments are deleted before the PR is opened, so only images actually referenced by generated Markdown should appear in the PR.
 - Supported image attachment types are JPEG, PNG, GIF, WebP, and AVIF.
 
