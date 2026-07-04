@@ -17,6 +17,26 @@ npx wrangler deploy --name "$WORKER_NAME"
 
 cd ..
 
+api_get() {
+  endpoint="$1"
+  curl -sS -X GET "https://discord.com/api/v10${endpoint}" \
+    -H "Authorization: Bot ${DISCORD_BOT_TOKEN}"
+}
+
+api_delete() {
+  endpoint="$1"
+  curl -sS -X DELETE "https://discord.com/api/v10${endpoint}" \
+    -H "Authorization: Bot ${DISCORD_BOT_TOKEN}" >/dev/null
+}
+
+cleanup_recap_commands() {
+  endpoint="$1"
+  api_get "$endpoint" | jq -r '.[] | select(.name == "recap") | .id' | while IFS= read -r command_id; do
+    [ -n "$command_id" ] || continue
+    api_delete "${endpoint}/${command_id}"
+  done
+}
+
 create_command() {
   endpoint="$1"
   response_file="$(mktemp)"
@@ -93,8 +113,12 @@ create_command() {
 }
 
 if [ "$COMMAND_SCOPE" = "global" ]; then
+  cleanup_recap_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"
+  cleanup_recap_commands "/applications/${DISCORD_APPLICATION_ID}/commands"
   create_command "/applications/${DISCORD_APPLICATION_ID}/commands"
 else
+  cleanup_recap_commands "/applications/${DISCORD_APPLICATION_ID}/commands"
+  cleanup_recap_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"
   if create_command "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"; then
     exit 0
   fi
