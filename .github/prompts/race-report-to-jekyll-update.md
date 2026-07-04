@@ -26,6 +26,7 @@ The site uses:
 3. Editorial voice.
    - Write like a teammate with good judgment, not a marketer.
    - Use plain verbs and concrete details.
+  - Prefer content-specific headlines and concise page titles over generic titles like "Draft race report update".
    - Avoid polished-but-vague phrases like "calendar moving", "team-relevant events", "natural team target", or "steady weekly check-in for racing, fitness, and teammates".
    - Do not over-explain why normal club activity matters.
 

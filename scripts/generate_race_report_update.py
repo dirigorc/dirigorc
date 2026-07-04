@@ -27,6 +27,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 PROMPT_PATH = ROOT / ".github/prompts/race-report-to-jekyll-update.md"
 PR_BODY_PATH = ROOT / "tmp/race-report-pr-body.md"
+PR_TITLE_PATH = ROOT / "tmp/race-report-pr-title.txt"
 GENERATED_FILES_PATH = ROOT / "tmp/generated-files.txt"
 ALLOWED_PREFIXES = ("_posts/", "_events/", "updates/tags/")
 ATTACHMENT_PREFIX = "assets/images/email"
@@ -441,6 +442,46 @@ def source_line(email: dict[str, Any]) -> str:
     return f"Source email: **{email['subject']}** from `{email['from']}`"
 
 
+def headline_from_text(text: str, limit: int = 100) -> str:
+    for line in text.splitlines():
+        line = line.strip().strip("-–—")
+        if line:
+            headline = re.sub(r"\s+", " ", line)
+            headline = headline.rstrip(".?!")
+            return headline[:limit].rstrip()
+    return ""
+
+
+def front_matter_title(content: str) -> str:
+    match = re.search(r"^title:\s*(.+)$", content, flags=re.MULTILINE)
+    if match:
+        raw = match.group(1).strip()
+        if raw.startswith('"') and raw.endswith('"'):
+            raw = raw[1:-1]
+        return raw.strip()
+    return ""
+
+
+def derive_pr_title(result: dict[str, Any], files: list[dict[str, str]], email: dict[str, Any]) -> str:
+    for item in files:
+        if not item.get("path", "").startswith(("_posts/", "_events/")):
+            continue
+        title = front_matter_title(item.get("content", ""))
+        if title:
+            return title
+
+    if email.get("source") == "discord":
+        title = headline_from_text(email.get("text", ""))
+        if title:
+            return title
+
+    summary = str(result.get("summary") or "").strip()
+    if summary:
+        return summary.rstrip(".")
+
+    return str(email.get("subject") or "Draft race report update")
+
+
 def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]:
     slug = slugify(email.get("subject") or "discord-recap") or "discord-recap"
     base_path = f"_posts/{today}-{slug}"
@@ -517,6 +558,11 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, A
     PR_BODY_PATH.write_text("\n".join(sections) + "\n", encoding="utf-8")
 
 
+def write_pr_title(title: str) -> None:
+    PR_TITLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PR_TITLE_PATH.write_text(f"{title.strip()}\n", encoding="utf-8")
+
+
 def write_generated_files_manifest(written: list[str]) -> None:
     GENERATED_FILES_PATH.parent.mkdir(parents=True, exist_ok=True)
     unique = []
@@ -581,9 +627,12 @@ Subject: {email['subject']}
     kept_attachments = prune_unused_attachments(staged_attachments, files)
     written = write_files(files)
     written.extend(path for path in kept_attachments if path not in written)
+    pr_title = derive_pr_title(result, files, email)
+    write_pr_title(pr_title)
     write_generated_files_manifest(written)
     write_pr_body(result, written, email, staged_attachments, kept_attachments)
     print(f"Wrote {len(written)} file(s).")
+    print(f"PR title: {pr_title}")
     for path in written:
         print(path)
     return 0

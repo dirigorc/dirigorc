@@ -106,6 +106,9 @@ jobs:
             echo "paths<<EOF"
             cat tmp/generated-files.txt
             echo "EOF"
+            echo "title<<EOF"
+            cat tmp/race-report-pr-title.txt
+            echo "EOF"
           } >> "$GITHUB_OUTPUT"
         id: generated_guard
 
@@ -127,7 +130,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           commit-message: Draft race report update
-          title: Draft race report update
+          title: ${{ steps.generated_guard.outputs.title }}
           body-path: tmp/race-report-pr-body.md
           branch: automation/race-report-${{ github.run_id }}
           delete-branch: true
