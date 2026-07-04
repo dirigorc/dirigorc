@@ -268,7 +268,7 @@ curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
 
 ### Discord `/recap` MVP
 
-The Discord path uses the same Worker and the same draft PR workflow. By default, `/recap` uses submitted text verbatim. An optional command input can opt into agentic editorialization before opening a draft PR.
+The Discord path uses the same Worker and the same draft PR workflow. By default, `/recap` uses submitted text verbatim. An optional `polish` input can opt into Copilot-assisted editorialization before opening a draft PR.
 
 Create the Discord application:
 
@@ -303,8 +303,8 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
         "required": false
       },
       {
-        "name": "agentic",
-        "description": "Set true to let the editor AI rewrite and structure the recap.",
+        "name": "polish",
+        "description": "Set true to have Copilot polish and structure your recap.",
         "type": 5,
         "required": false
       },
@@ -353,8 +353,8 @@ Guild commands are usually available quickly while testing. A global command use
 Discord Worker behavior:
 
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
-2. If `body` is omitted, opens a modal for recap text, links, and agentic mode.
-3. Defaults to `editorial_mode: "verbatim"`; if `agentic` is set (inline or modal), uses `editorial_mode: "agentic"`.
+2. If `body` is omitted, opens a modal for recap text, links, and a polish toggle.
+3. Defaults to `editorial_mode: "verbatim"`; if `polish` is set (inline or modal), uses `editorial_mode: "agentic"`.
 4. Extracts URLs from recap text and optional `links` input so copied recap links survive Discord paste quirks.
 5. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload.
 6. For inline submissions with images, defers the Discord response immediately, processes image fetches in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.

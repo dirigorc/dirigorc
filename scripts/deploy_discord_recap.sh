@@ -55,8 +55,8 @@ create_command() {
         "required": false
       },
       {
-        "name": "agentic",
-        "description": "Set true to let the editor AI rewrite and structure the recap.",
+        "name": "polish",
+        "description": "Set true to have Copilot polish and structure your recap.",
         "type": 5,
         "required": false
       },

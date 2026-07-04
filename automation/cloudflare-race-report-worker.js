@@ -94,14 +94,18 @@ function discordOption(interaction, name) {
   return options.find((option) => option.name === name)?.value || "";
 }
 
-function discordEditorialMode(interaction) {
-  return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
+function discordPolishEnabled(interaction) {
+  return discordOption(interaction, "polish") === true || discordOption(interaction, "agentic") === true;
 }
 
-function parseAgentic(value, fallback = false) {
+function discordEditorialMode(interaction) {
+  return discordPolishEnabled(interaction) ? "agentic" : "verbatim";
+}
+
+function parsePolish(value, fallback = false) {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return fallback;
-  return ["1", "true", "yes", "y", "agentic", "on"].includes(normalized);
+  return ["1", "true", "yes", "y", "polish", "agentic", "on"].includes(normalized);
 }
 
 function extractUrls(text) {
@@ -295,7 +299,7 @@ async function processDiscordCommandSubmission(env, interaction, body) {
   await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary));
 }
 
-function discordOpenRecapModal(defaultAgentic) {
+function discordOpenRecapModal(defaultPolish) {
   return new Response(
     JSON.stringify({
       type: DISCORD_RESPONSE_MODAL,
@@ -335,12 +339,12 @@ function discordOpenRecapModal(defaultAgentic) {
             components: [
               {
                 type: 4,
-                custom_id: "agentic",
-                label: "Agentic edit? (yes/no)",
+                custom_id: "polish",
+                label: "Polish wording? (yes/no)",
                 style: 1,
                 required: false,
                 max_length: 8,
-                value: defaultAgentic ? "yes" : "no",
+                value: defaultPolish ? "yes" : "no",
               },
             ],
           },
@@ -374,11 +378,11 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     if (!body) return discordAck("Please include recap text.");
     const linksField = discordModalInput(interaction, "links");
     const links = [...extractUrls(body), ...extractUrls(linksField)];
-    const agentic = parseAgentic(discordModalInput(interaction, "agentic"), false);
+    const polish = parsePolish(discordModalInput(interaction, "polish"), parsePolish(discordModalInput(interaction, "agentic"), false));
     const submittedBy = discordSubmittedBy(interaction);
     const email = {
       source: "discord",
-      editorial_mode: agentic ? "agentic" : "verbatim",
+      editorial_mode: polish ? "agentic" : "verbatim",
       submitted_by: submittedBy,
       from: submittedBy,
       subject: "Discord /recap",
@@ -388,7 +392,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
       links,
     };
     ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
-    if (agentic) return discordAck("Got it. I started an AI-edited draft website update PR for review.");
+    if (polish) return discordAck("Got it. I started an AI-edited draft website update PR for review.");
     return discordAck("Got it. I started a verbatim draft website update PR for review.");
   }
 
