@@ -75,7 +75,7 @@ Use front matter like this:
 ---
 title: Beach to Beacon crew gets ready.
 date: 2026-07-03
-category: Upcoming
+category: Club Notes
 layout_style: single
 image:
   src: assets/images/example.jpg
@@ -93,6 +93,8 @@ links:
 The homepage automatically shows recent updates by post date. The full archive is paginated at `/updates/`.
 
 When adding new tags, generate a matching page under `updates/tags/tag-slug/index.html` so inline tag links have somewhere to go.
+
+Use `_events/` for future races, recurring series, and actionable calendar items. Updates should be the lasting record of results, recaps, club notes, and archives.
 
 ## Add A Calendar Event
 
@@ -118,11 +120,14 @@ time: 8:00 AM
 type: Race
 location: Cape Elizabeth, ME
 summary: Maine's marquee summer 10K and a recurring Dirigo measuring stick.
+team_note: One of the most visible annual chances to wear the blue in Maine road racing.
+event_url: https://example.com/
+registration_url: https://example.com/register
 recurrence: Optional recurrence note, such as Wednesdays through August
 tags:
   - Beach to Beacon
 links:
-  - label: Race details
+  - label: Extra context
     url: https://example.com/
 ---
 ```
@@ -136,6 +141,12 @@ recurrence: Wednesdays through August 26
 ```
 
 The calendar page automatically sorts events by `date`. Passed events move into the recent calendar history section.
+
+Useful optional fields:
+
+- `team_note`: Dirigo-specific context for why the event matters to the team.
+- `event_url`, `registration_url`, `results_url`: Structured links that the calendar renders consistently.
+- `image` and `image_credit`: Optional event image and public credit.
 
 ## Update Layout Options
 

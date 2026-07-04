@@ -815,6 +815,58 @@ a {
   border-top: 2px solid var(--ink);
 }
 
+.home-calendar {
+  background: var(--paper);
+}
+
+.home-calendar .section-header p {
+  max-width: 560px;
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
+.home-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.home-calendar-card {
+  display: grid;
+  grid-template-columns: 5.75rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding: 1rem;
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--dirigo-blue);
+  border-radius: var(--radius);
+}
+
+.home-calendar-card .calendar-date {
+  min-height: 5.25rem;
+}
+
+.home-calendar-card .calendar-date strong {
+  font-size: 2rem;
+}
+
+.home-calendar-card .calendar-event-meta {
+  margin-bottom: 0.25rem;
+}
+
+.home-calendar-card h3 {
+  margin-bottom: 0.35rem;
+  font-size: 1.25rem;
+}
+
+.home-calendar-card p:not(.calendar-event-meta) {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .activity-item {
   display: grid;
   grid-template-columns: minmax(120px, 0.28fr) minmax(0, 0.72fr);
@@ -1248,6 +1300,30 @@ body.has-lightbox {
   color: var(--muted);
 }
 
+.calendar-media {
+  max-width: 760px;
+  margin: 1rem 0 0;
+}
+
+.calendar-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+.calendar-media figcaption {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.calendar-media figcaption a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+}
+
 .calendar-details {
   display: grid;
   gap: 0.3rem;
@@ -1275,6 +1351,20 @@ body.has-lightbox {
 .calendar-details dd {
   color: var(--ink);
   font-weight: 800;
+}
+
+.calendar-team-note {
+  max-width: 760px;
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--off-white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.calendar-team-note p {
+  margin: 0;
+  color: var(--ink) !important;
 }
 
 .calendar-shell-past .calendar-sidebar {
@@ -1759,6 +1849,7 @@ details p {
   }
 
   .card-grid.three,
+  .home-calendar-grid,
   .steps,
   .form-grid,
   .archive-grid,
@@ -1774,6 +1865,10 @@ details p {
   .calendar-date {
     width: min(9rem, 100%);
     min-height: 4.8rem;
+  }
+
+  .home-calendar-card {
+    grid-template-columns: 5.75rem minmax(0, 1fr);
   }
 
   .activity-image-row {

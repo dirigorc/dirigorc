@@ -135,6 +135,48 @@
       </div>
     </section>
 
+    <section class="section home-calendar" id="calendar">
+      <div class="section-header">
+        <div>
+          <h2>On the calendar.</h2>
+          <p>Race dates, recurring series, and team-relevant events.</p>
+        </div>
+        <div class="section-header-links">
+          <a class="text-link" href="calendar/">Full calendar</a>
+        </div>
+      </div>
+      <div class="home-calendar-grid">
+        {% assign today_key = site.time | date: "%Y%m%d" | plus: 0 %}
+        {% assign events = site.events | sort: "date" %}
+        {% assign shown_events = 0 %}
+        {% for event in events %}
+          {% assign event_end_date = event.end_date | default: event.date %}
+          {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
+          {% if event_end_key >= today_key and shown_events < 3 %}
+            {% assign shown_events = shown_events | plus: 1 %}
+            {% capture event_anchor %}{{ event.date | date: "%Y-%m-%d" }}-{{ event.title | slugify }}{% endcapture %}
+            <article class="home-calendar-card">
+              <time class="calendar-date" datetime="{{ event.date | date: '%Y-%m-%d' }}">
+                <span>{{ event.date | date: "%b" }}</span>
+                <strong>{{ event.date | date: "%-d" }}</strong>
+                {% if event.end_date %}
+                  <em>to {{ event.end_date | date: "%b %-d" }}</em>
+                {% endif %}
+              </time>
+              <div>
+                <p class="calendar-event-meta">
+                  <span>{{ event.type }}</span>
+                </p>
+                <h3>{{ event.title }}</h3>
+                <p>{{ event.team_note | default: event.summary }}</p>
+                <a class="text-link" href="calendar/#{{ event_anchor }}">Details</a>
+              </div>
+            </article>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
     <section class="section pattern-news" id="current">
       <div class="section-header">
         <div>
@@ -148,24 +190,14 @@
       </div>
       <div class="activity-list">
         {% assign updates = site.posts | sort: "date" | reverse %}
-        {% assign has_upcoming = false %}
         {% assign shown_results = 0 %}
         {% for update in updates %}
-        {% if update.category == "Upcoming" %}
-        {% include update-item.html update=update %}
-        {% assign has_upcoming = true %}
-        {% break %}
-        {% endif %}
+          {% if shown_results < 3 %}
+            {% include update-item.html update=update %}
+            {% assign shown_results = shown_results | plus: 1 %}
+          {% endif %}
         {% endfor %}
-        {% if has_upcoming %}
-        {% assign result_limit = 2 %}
-        {% else %}
-        {% assign result_limit = 3 %}
-        {% endif %}
-        {% for update in updates %}
-        {% unless update.category == "Upcoming" %}
-        {% if shown_results < result_limit %} {% include update-item.html update=update %} {% assign
-          shown_results=shown_results | plus: 1 %} {% endif %} {% endunless %} {% endfor %} </div>
+      </div>
     </section>
 
   </main>
