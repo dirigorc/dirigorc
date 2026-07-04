@@ -2,7 +2,7 @@
   const gallerySelector = "[data-masonry-gallery]";
   const columnClass = "activity-masonry-column";
   const readyClass = "is-masonry-ready";
-  const minSavingsRatio = 0.18;
+  const minSavingsRatio = 0.12;
   const mixedRatioThreshold = 0.45;
 
   const debounce = (callback, delay = 160) => {
@@ -57,7 +57,7 @@
       return 3;
     }
 
-    return Math.min(3, imageCount);
+    return Math.min(2, imageCount);
   };
 
   const masonryColumnCount = (gallery, imageCount) => {
@@ -73,7 +73,7 @@
       return 2;
     }
 
-    return Math.min(3, imageCount);
+    return 2;
   };
 
   const imageRatio = (image) => {
@@ -126,13 +126,21 @@
   };
 
   const shouldUseMasonry = (ratios, baseColumns, masonryColumns) => {
-    if (masonryColumns <= 1 || masonryColumns >= baseColumns) {
+    if (masonryColumns <= 1) {
       return false;
     }
 
     const baseHeight = rowHeight(ratios, baseColumns);
     const masonryHeight = Math.max(...masonryHeights(ratios, masonryColumns));
-    return masonryHeight < baseHeight * (1 - minSavingsRatio);
+    if (masonryColumns < baseColumns) {
+      return masonryHeight < baseHeight * (1 - minSavingsRatio);
+    }
+
+    if (masonryColumns === baseColumns && ratios.length > baseColumns) {
+      return masonryHeight < baseHeight * (1 - minSavingsRatio);
+    }
+
+    return false;
   };
 
   const layoutGallery = async (gallery) => {
