@@ -46,6 +46,11 @@ def slugify(value: str) -> str:
     return value.strip("-")
 
 
+def yaml_double_quoted(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def safe_path(path_value: str, allowed_prefixes: tuple[str, ...] = ALLOWED_PREFIXES) -> Path:
     if path_value.startswith("/") or ".." in Path(path_value).parts:
         raise ValueError(f"Unsafe generated path: {path_value}")
@@ -115,6 +120,9 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
     raw = str(email.get("raw") or payload.get("raw") or "")
     attachments = email.get("attachments") or payload.get("attachments") or []
     source = str(email.get("source") or payload.get("source") or "")
+    editorial_mode = str(email.get("editorial_mode") or payload.get("editorial_mode") or "")
+    if source == "discord" and editorial_mode not in {"verbatim", "agentic"}:
+        editorial_mode = "verbatim"
     submitted_by = str(email.get("submitted_by") or payload.get("submitted_by") or "")
     if not text and raw:
         text = raw
@@ -122,6 +130,7 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("No email text/body found in dispatch payload.")
     return {
         "source": source,
+        "editorial_mode": editorial_mode,
         "submitted_by": submitted_by,
         "subject": subject,
         "from": sender,
@@ -427,8 +436,42 @@ def source_line(email: dict[str, Any]) -> str:
     source = email.get("source")
     if source == "discord":
         submitted_by = email.get("submitted_by") or email.get("from") or "Unknown Discord user"
-        return f"Source: **Discord /recap** submitted by `{submitted_by}`"
+        mode = email.get("editorial_mode") or "verbatim"
+        return f"Source: **Discord /recap** submitted by `{submitted_by}` ({mode} mode)"
     return f"Source email: **{email['subject']}** from `{email['from']}`"
+
+
+def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]:
+    slug = slugify(email.get("subject") or "discord-recap") or "discord-recap"
+    base_path = f"_posts/{today}-{slug}"
+    path = f"{base_path}.md"
+    counter = 2
+    while (ROOT / path).exists():
+        path = f"{base_path}-{counter}.md"
+        counter += 1
+    title = yaml_double_quoted(str(email.get("subject") or "Discord recap"))
+    content = (
+        "---\n"
+        f"title: {title}\n"
+        f"date: {today}\n"
+        "layout: post\n"
+        "---\n\n"
+        f"{email['text']}"
+    )
+    if not content.endswith("\n"):
+        content += "\n"
+    return {
+        "files": [
+            {
+                "path": path,
+                "content": content,
+            }
+        ],
+        "summary": "Created a verbatim Discord /recap draft without AI editorialization.",
+        "assumptions": [],
+        "skipped_duplicates": [],
+        "missing": [],
+    }
 
 
 def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str]) -> None:
@@ -501,12 +544,14 @@ def main() -> int:
         raise RuntimeError("--event-path or GITHUB_EVENT_PATH is required.")
 
     email = normalize_email_payload(payload)
-    skill_prompt = read_text(PROMPT_PATH)
-    context = collect_recent_context()
     today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
     staged_attachments = stage_email_attachments(email, today)
 
-    prompt = f"""
+    use_agentic = email.get("source") != "discord" or email.get("editorial_mode") == "agentic"
+    if use_agentic:
+        skill_prompt = read_text(PROMPT_PATH)
+        context = collect_recent_context()
+        prompt = f"""
 Current date: {today}
 
 {skill_prompt}
@@ -526,8 +571,9 @@ Subject: {email['subject']}
 
 {email['text']}
 """
-
-    result = call_openai(prompt, args.model)
+        result = call_openai(prompt, args.model)
+    else:
+        result = discord_verbatim_result(email, today)
     files = result.get("files", [])
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")

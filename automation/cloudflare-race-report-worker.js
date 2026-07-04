@@ -86,6 +86,10 @@ function discordOption(interaction, name) {
   return options.find((option) => option.name === name)?.value || "";
 }
 
+function discordEditorialMode(interaction) {
+  return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
+}
+
 function discordAck(content) {
   return new Response(
     JSON.stringify({
@@ -126,9 +130,11 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     return discordAck("Please include recap text in the body option.");
   }
 
+  const editorialMode = discordEditorialMode(interaction);
   const submittedBy = discordSubmittedBy(interaction);
   const email = {
     source: "discord",
+    editorial_mode: editorialMode,
     submitted_by: submittedBy,
     from: submittedBy,
     subject: "Discord /recap",
@@ -138,7 +144,10 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
   };
 
   ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
-  return discordAck("Got it. I started a draft website update PR for review.");
+  if (editorialMode === "agentic") {
+    return discordAck("Got it. I started an AI-edited draft website update PR for review.");
+  }
+  return discordAck("Got it. I started a verbatim draft website update PR for review.");
 }
 
 async function dispatchToGitHub(env, email) {
@@ -147,6 +156,7 @@ async function dispatchToGitHub(env, email) {
   const clientPayload = { ingest };
   if (email.source === "discord") {
     clientPayload.source = "discord";
+    clientPayload.editorial_mode = email.editorial_mode || "verbatim";
     clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
     clientPayload.body = email.body || email.text || "";
   }

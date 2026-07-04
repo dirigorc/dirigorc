@@ -132,6 +132,7 @@ jobs:
           branch: automation/race-report-${{ github.run_id }}
           delete-branch: true
           draft: true
+          assignees: ${{ vars.RACE_REPORT_PR_ASSIGNEE || 'crowjonah' }}
           add-paths: ${{ steps.generated_guard.outputs.paths }}
           labels: |
             automated draft

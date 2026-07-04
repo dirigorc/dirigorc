@@ -227,7 +227,9 @@ GitHub setup:
 
 1. Add repository secret `OPENAI_API_KEY`.
 2. Optionally add repository variable `OPENAI_MODEL`; default is `gpt-5-mini`.
-3. Make sure Actions can create pull requests under repository settings.
+3. Optionally add repository variable `RACE_REPORT_PR_ASSIGNEE`; default is `crowjonah`.
+4. Optional direct email notifications: add repository secret `RESEND_API_KEY`, and variables `RACE_REPORT_NOTIFY_FROM` and `RACE_REPORT_NOTIFY_EMAIL`.
+5. Make sure Actions can create pull requests under repository settings.
 
 Cloudflare setup:
 
@@ -262,7 +264,7 @@ curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
 
 ### Discord `/recap` MVP
 
-The Discord path uses the same Worker and the same draft PR workflow. The Worker only verifies Discord, acknowledges the command, stages the submitted text, and triggers `repository_dispatch`. It does not publish site changes directly.
+The Discord path uses the same Worker and the same draft PR workflow. By default, `/recap` uses submitted text verbatim. An optional command input can opt into agentic editorialization before opening a draft PR.
 
 Create the Discord application:
 
@@ -294,6 +296,12 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
         "description": "Race recap or result notes to turn into a draft PR.",
         "type": 3,
         "required": true
+      },
+      {
+        "name": "agentic",
+        "description": "Set true to let the editor AI rewrite and structure the recap.",
+        "type": 5,
+        "required": false
       }
     ]
   }'
@@ -305,9 +313,10 @@ Discord Worker behavior:
 
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
 2. Responds immediately with an ephemeral acknowledgement.
-3. Stages a payload with `source: "discord"`, `submitted_by`, and `body`.
-4. Triggers the existing `race-report-email` `repository_dispatch`.
-5. GitHub Actions creates a draft PR for review.
+3. Defaults to `editorial_mode: "verbatim"`; if the optional `agentic` input is true, uses `editorial_mode: "agentic"`.
+4. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, and `body`.
+5. Triggers the existing `race-report-email` `repository_dispatch`.
+6. GitHub Actions creates a draft PR for review.
 
 Manual fallback:
 
