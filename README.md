@@ -186,6 +186,61 @@ Put update images in `assets/images/` or a subfolder inside it. Use descriptive 
 
 Always include image credit links when photos come from photographers, race organizers, Instagram galleries, or partner clubs.
 
+## Email-To-Draft Automation
+
+The repo includes an optional automation for turning a forwarded race report email into a draft PR.
+
+Flow:
+
+```text
+forwarded email or webhook
+→ Cloudflare Worker
+→ GitHub repository_dispatch
+→ GitHub Actions
+→ OpenAI draft generator
+→ draft pull request
+```
+
+Files:
+
+- `automation/cloudflare-race-report-worker.js`: Cloudflare Worker endpoint.
+- `.github/workflows/race-report-digest.yml`: GitHub Action that generates and opens the PR.
+- `.github/prompts/race-report-to-jekyll-update.md`: Editorial and content rules for the generator.
+- `scripts/generate_race_report_update.py`: Script that writes `_posts/`, `_events/`, and tag pages.
+
+GitHub setup:
+
+1. Add repository secret `OPENAI_API_KEY`.
+2. Optionally add repository variable `OPENAI_MODEL`; default is `gpt-5-mini`.
+3. Make sure Actions can create pull requests under repository settings.
+
+Cloudflare setup:
+
+1. Create a Worker from `automation/cloudflare-race-report-worker.js`.
+2. Add Worker secret `GITHUB_TOKEN`.
+   Use a fine-grained GitHub token for `dirigorc/dirigorc` with Contents write access.
+3. Add Worker variable `GITHUB_REPO=dirigorc/dirigorc`.
+4. Add Worker secret `INGEST_TOKEN` for HTTP webhook authentication.
+5. Optional: add Worker variable `ALLOWED_FROM` as a comma-separated sender allowlist.
+6. Attach the Worker to a Cloudflare Email Routing address, or call it with an authenticated HTTP POST.
+
+HTTP test:
+
+```sh
+curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
+  -H "Authorization: Bearer $INGEST_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "seth@example.com",
+    "subject": "Race results",
+    "text": "Paste the race report email body here."
+  }'
+```
+
+Manual fallback:
+
+Run the `Draft race report update` workflow from the GitHub Actions tab and paste the email body into `digest_text`.
+
 ## Site Structure
 
 ```text
