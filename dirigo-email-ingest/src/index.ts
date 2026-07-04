@@ -19,12 +19,15 @@
 const DISPATCH_EVENT_TYPE = "race-report-email";
 const DISCORD_INTERACTION_PING = 1;
 const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
+const DISCORD_INTERACTION_MODAL_SUBMIT = 5;
 const DISCORD_RESPONSE_PONG = 1;
 const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
+const DISCORD_RESPONSE_MODAL = 9;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
+const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
 
 interface EmailAttachment {
 	filename: string;
@@ -132,7 +135,16 @@ interface DiscordInteraction {
 	type?: number;
 	data?: {
 		name?: string;
+		custom_id?: string;
 		options?: DiscordOption[];
+		components?: Array<{
+			type?: number;
+			components?: Array<{
+				type?: number;
+				custom_id?: string;
+				value?: string;
+			}>;
+		}>;
 		resolved?: {
 			attachments?: Record<string, DiscordResolvedAttachment>;
 		};
@@ -162,6 +174,12 @@ function discordEditorialMode(interaction: DiscordInteraction): string {
 	return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
 }
 
+function parseAgentic(value: string, fallback = false): boolean {
+	const normalized = value.trim().toLowerCase();
+	if (!normalized) return fallback;
+	return ["1", "true", "yes", "y", "agentic", "on"].includes(normalized);
+}
+
 function extractUrls(text: string): string[] {
 	const matches = text.match(/https?:\/\/[^\s<>()"']+/gi) || [];
 	const unique: string[] = [];
@@ -186,6 +204,18 @@ function discordLinks(interaction: DiscordInteraction, body: string): string[] {
 		unique.push(url);
 	}
 	return unique;
+}
+
+function discordModalInput(interaction: DiscordInteraction, customId: string): string {
+	const rows = interaction.data?.components || [];
+	for (const row of rows) {
+		for (const component of row.components || []) {
+			if (component.custom_id === customId) {
+				return String(component.value || "").trim();
+			}
+		}
+	}
+	return "";
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -249,6 +279,62 @@ function discordAck(content: string): Response {
 	);
 }
 
+function discordOpenRecapModal(defaultAgentic: boolean): Response {
+	return new Response(
+		JSON.stringify({
+			type: DISCORD_RESPONSE_MODAL,
+			data: {
+				custom_id: DISCORD_RECAP_MODAL_ID,
+				title: "Create Dirigo recap",
+				components: [
+					{
+						type: 1,
+						components: [
+							{
+								type: 4,
+								custom_id: "body",
+								label: "Recap text",
+								style: 2,
+								required: true,
+								max_length: 4000,
+							},
+						],
+					},
+					{
+						type: 1,
+						components: [
+							{
+								type: 4,
+								custom_id: "links",
+								label: "Source URLs (optional)",
+								style: 2,
+								required: false,
+								max_length: 1000,
+								placeholder: "Paste result links, one per line or spaced.",
+							},
+						],
+					},
+					{
+						type: 1,
+						components: [
+							{
+								type: 4,
+								custom_id: "agentic",
+								label: "Agentic edit? (yes/no)",
+								style: 1,
+								required: false,
+								max_length: 8,
+								value: defaultAgentic ? "yes" : "no",
+							},
+						],
+					},
+				],
+			},
+		}),
+		{ headers: { "content-type": "application/json" } },
+	);
+}
+
 async function handleDiscordInteraction(
 	request: Request,
 	env: WorkerEnv,
@@ -273,19 +359,45 @@ async function handleDiscordInteraction(
 		});
 	}
 
+	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && interaction.data?.custom_id === DISCORD_RECAP_MODAL_ID) {
+		const body = discordModalInput(interaction, "body");
+		if (!body) return discordAck("Please include recap text.");
+		const linksField = discordModalInput(interaction, "links");
+		const links = [...extractUrls(body), ...extractUrls(linksField)];
+		const agentic = parseAgentic(discordModalInput(interaction, "agentic"), false);
+		const submittedBy = discordSubmittedBy(interaction);
+		const email: EmailPayload = {
+			source: "discord",
+			editorial_mode: agentic ? "agentic" : "verbatim",
+			submitted_by: submittedBy,
+			from: submittedBy,
+			subject: "Discord /recap",
+			text: body,
+			body,
+			raw: "",
+			links,
+		};
+		ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
+		if (agentic) return discordAck("Got it. I started an AI-edited draft website update PR for review.");
+		return discordAck("Got it. I started a verbatim draft website update PR for review.");
+	}
+
 	if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || interaction.data?.name !== "recap") {
 		return discordAck("Unknown command.");
 	}
 
 	const body = String(discordOption(interaction, "body") || "").trim();
+	const attachments = await discordAttachments(interaction);
 	if (!body) {
-		return discordAck("Please include recap text in the body option.");
+		if (attachments.length > 0) {
+			return discordAck("Please include recap text in body when submitting image attachments.");
+		}
+		return discordOpenRecapModal(discordEditorialMode(interaction) === "agentic");
 	}
 
 	const editorialMode = discordEditorialMode(interaction);
 	const submittedBy = discordSubmittedBy(interaction);
 	const links = discordLinks(interaction, body);
-	const attachments = await discordAttachments(interaction);
 	const email: EmailPayload = {
 		source: "discord",
 		editorial_mode: editorialMode,

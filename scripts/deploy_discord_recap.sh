@@ -50,9 +50,9 @@ create_command() {
     "options": [
       {
         "name": "body",
-        "description": "Race recap or result notes to turn into a draft PR.",
+        "description": "Optional inline recap text (leave empty to use modal).",
         "type": 3,
-        "required": true
+        "required": false
       },
       {
         "name": "agentic",

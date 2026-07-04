@@ -295,9 +295,9 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
     "options": [
       {
         "name": "body",
-        "description": "Race recap or result notes to turn into a draft PR.",
+        "description": "Optional inline recap text (leave empty to use modal).",
         "type": 3,
-        "required": true
+        "required": false
       },
       {
         "name": "agentic",
@@ -350,10 +350,10 @@ Guild commands are usually available quickly while testing. A global command use
 Discord Worker behavior:
 
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
-2. Responds immediately with an ephemeral acknowledgement.
-3. Defaults to `editorial_mode: "verbatim"`; if the optional `agentic` input is true, uses `editorial_mode: "agentic"`.
-4. Extracts URLs from `body` and optional `links` input so copied recap links survive Discord paste quirks.
-5. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) and stages them with the ingest payload.
+2. If `body` is omitted, opens a modal for recap text, links, and agentic mode.
+3. Defaults to `editorial_mode: "verbatim"`; if `agentic` is set (inline or modal), uses `editorial_mode: "agentic"`.
+4. Extracts URLs from recap text and optional `links` input so copied recap links survive Discord paste quirks.
+5. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload.
 6. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
 7. Triggers the existing `race-report-email` `repository_dispatch`.
 8. GitHub Actions creates a draft PR for review.
