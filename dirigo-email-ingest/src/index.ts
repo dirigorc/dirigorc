@@ -22,10 +22,19 @@ const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
 const DISCORD_RESPONSE_PONG = 1;
 const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
+const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
+const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+
+interface EmailAttachment {
+	filename: string;
+	content_type: string;
+	data: string;
+}
 
 interface WorkerEnv {
 	GITHUB_TOKEN?: string;
 	GITHUB_REPO?: string;
+	GITHUB_REF?: string;
 	INGEST_TOKEN?: string;
 	ALLOWED_FROM?: string;
 	DISCORD_PUBLIC_KEY?: string;
@@ -40,7 +49,7 @@ interface EmailPayload {
 	submitted_by?: string;
 	body?: string;
 	editorial_mode?: string;
-	attachments?: unknown[];
+	attachments?: EmailAttachment[];
 }
 
 interface EmailMessage {
@@ -106,7 +115,15 @@ interface DiscordUser {
 
 interface DiscordOption {
 	name?: string;
-	value?: string | boolean;
+	value?: string | number | boolean;
+}
+
+interface DiscordResolvedAttachment {
+	id?: string;
+	filename?: string;
+	content_type?: string;
+	size?: number;
+	url?: string;
 }
 
 interface DiscordInteraction {
@@ -114,6 +131,9 @@ interface DiscordInteraction {
 	data?: {
 		name?: string;
 		options?: DiscordOption[];
+		resolved?: {
+			attachments?: Record<string, DiscordResolvedAttachment>;
+		};
 	};
 	member?: {
 		user?: DiscordUser;
@@ -131,13 +151,64 @@ function discordSubmittedBy(interaction: DiscordInteraction): string {
 	return user.id ? `${name} (${user.id})` : name;
 }
 
-function discordOption(interaction: DiscordInteraction, name: string): string | boolean | "" {
+function discordOption(interaction: DiscordInteraction, name: string): string | number | boolean | "" {
 	const options = interaction.data?.options || [];
 	return options.find((option) => option.name === name)?.value || "";
 }
 
 function discordEditorialMode(interaction: DiscordInteraction): string {
 	return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+	let binary = "";
+	for (let index = 0; index < bytes.length; index += 0x8000) {
+		binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+	}
+	return btoa(binary);
+}
+
+function discordAttachmentFromOption(interaction: DiscordInteraction, optionName: string): DiscordResolvedAttachment | null {
+	const rawId = discordOption(interaction, optionName);
+	if (rawId === "" || rawId === false) return null;
+	const id = String(rawId);
+	return interaction.data?.resolved?.attachments?.[id] || null;
+}
+
+async function discordAttachments(interaction: DiscordInteraction): Promise<EmailAttachment[]> {
+	const selected = [
+		discordAttachmentFromOption(interaction, "image1"),
+		discordAttachmentFromOption(interaction, "image2"),
+	].filter((item): item is DiscordResolvedAttachment => Boolean(item));
+
+	const attachments: EmailAttachment[] = [];
+	for (const item of selected) {
+		const contentType = item.content_type || "";
+		const filename = item.filename || "attachment";
+		const size = Number(item.size || 0);
+		const url = item.url || "";
+		if (!url || !DISCORD_IMAGE_CONTENT_TYPES.has(contentType)) continue;
+		if (size <= 0 || size > MAX_DISCORD_ATTACHMENT_BYTES) continue;
+
+		let response: Response;
+		try {
+			response = await fetch(url);
+		} catch {
+			continue;
+		}
+		if (!response.ok) continue;
+
+		const bytes = new Uint8Array(await response.arrayBuffer());
+		if (bytes.length === 0 || bytes.length > MAX_DISCORD_ATTACHMENT_BYTES) continue;
+
+		attachments.push({
+			filename,
+			content_type: contentType,
+			data: bytesToBase64(bytes),
+		});
+	}
+
+	return attachments;
 }
 
 function discordAck(content: string): Response {
@@ -188,6 +259,7 @@ async function handleDiscordInteraction(
 
 	const editorialMode = discordEditorialMode(interaction);
 	const submittedBy = discordSubmittedBy(interaction);
+	const attachments = await discordAttachments(interaction);
 	const email: EmailPayload = {
 		source: "discord",
 		editorial_mode: editorialMode,
@@ -197,6 +269,7 @@ async function handleDiscordInteraction(
 		text: body,
 		body,
 		raw: "",
+		attachments,
 	};
 
 	ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
@@ -208,12 +281,14 @@ async function handleDiscordInteraction(
 
 async function dispatchToGitHub(env: WorkerEnv, email: EmailPayload): Promise<void> {
 	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-	const clientPayload: Record<string, unknown> = { email };
+	const ingest = await createIngestPayload(env, email);
+	const clientPayload: Record<string, unknown> = { ingest };
 	if (email.source === "discord") {
 		clientPayload.source = "discord";
 		clientPayload.editorial_mode = email.editorial_mode || "verbatim";
 		clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
 		clientPayload.body = email.body || email.text || "";
+		clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
 	}
 	const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
 		method: "POST",
@@ -236,16 +311,85 @@ async function dispatchToGitHub(env: WorkerEnv, email: EmailPayload): Promise<vo
 	}
 }
 
+async function githubRequest(env: WorkerEnv, path: string, options: RequestInit = {}): Promise<unknown> {
+	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
+	const response = await fetch(`https://api.github.com/repos/${repo}${path}`, {
+		...options,
+		headers: {
+			"Accept": "application/vnd.github+json",
+			"Authorization": `Bearer ${env.GITHUB_TOKEN}`,
+			"Content-Type": "application/json",
+			"User-Agent": "dirigorc-race-report-worker",
+			"X-GitHub-Api-Version": "2022-11-28",
+			...(options.headers || {}),
+		},
+	});
+
+	if (!response.ok) {
+		const detail = await response.text();
+		throw new Error(`GitHub API failed: ${response.status} ${detail}`);
+	}
+
+	if (response.status === 204) return null;
+	return response.json();
+}
+
+function textToBase64(value: string): string {
+	const bytes = new TextEncoder().encode(value);
+	let binary = "";
+	for (let index = 0; index < bytes.length; index += 0x8000) {
+		binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+	}
+	return btoa(binary);
+}
+
+function safeId(value: string): string {
+	return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "race-report";
+}
+
+async function createIngestPayload(env: WorkerEnv, email: EmailPayload): Promise<Record<string, string>> {
+	const baseBranch = env.GITHUB_REF || "main";
+	const id = `${Date.now()}-${safeId(email.subject || "race-report")}`;
+	const branch = `automation/email-ingest-${id}`;
+	const path = `tmp/email-ingest/${id}/payload.json`;
+
+	const baseRef = (await githubRequest(env, `/git/ref/heads/${baseBranch}`)) as { object: { sha: string } };
+	await githubRequest(env, "/git/refs", {
+		method: "POST",
+		body: JSON.stringify({
+			ref: `refs/heads/${branch}`,
+			sha: baseRef.object.sha,
+		}),
+	});
+
+	await githubRequest(env, `/contents/${path}`, {
+		method: "PUT",
+		body: JSON.stringify({
+			message: `Stage race report email payload: ${email.subject || "Race report"}`,
+			branch,
+			content: textToBase64(JSON.stringify({ email }, null, 2)),
+		}),
+	});
+
+	return {
+		branch,
+		path,
+		subject: email.subject || "Race report digest",
+		from: email.from || "Unknown sender",
+	};
+}
+
 async function emailPayloadFromRequest(request: Request): Promise<EmailPayload> {
 	const contentType = request.headers.get("content-type") || "";
 	if (contentType.includes("application/json")) {
-		const body = (await request.json()) as Record<string, string | undefined>;
+		const body = (await request.json()) as Record<string, unknown>;
+		const attachments = Array.isArray(body.attachments) ? (body.attachments as EmailAttachment[]) : [];
 		return {
-			from: body.from || body.sender || "HTTP webhook",
-			subject: body.subject || "Race report digest",
-			text: body.text || body.body || body.plain || "",
-			raw: body.raw || "",
-			attachments: Array.isArray(body.attachments) ? body.attachments : [],
+			from: String(body.from || body.sender || "HTTP webhook"),
+			subject: String(body.subject || "Race report digest"),
+			text: String(body.text || body.body || body.plain || ""),
+			raw: String(body.raw || ""),
+			attachments,
 		};
 	}
 

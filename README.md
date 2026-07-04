@@ -302,6 +302,18 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
         "description": "Set true to let the editor AI rewrite and structure the recap.",
         "type": 5,
         "required": false
+      },
+      {
+        "name": "image1",
+        "description": "Optional race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image2",
+        "description": "Optional second race image attachment.",
+        "type": 11,
+        "required": false
       }
     ]
   }'
@@ -314,9 +326,10 @@ Discord Worker behavior:
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
 2. Responds immediately with an ephemeral acknowledgement.
 3. Defaults to `editorial_mode: "verbatim"`; if the optional `agentic` input is true, uses `editorial_mode: "agentic"`.
-4. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, and `body`.
-5. Triggers the existing `race-report-email` `repository_dispatch`.
-6. GitHub Actions creates a draft PR for review.
+4. Optionally accepts image attachments from `image1` and `image2` (JPEG, PNG, GIF, WebP, AVIF) and stages them with the ingest payload.
+5. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, and `body`.
+6. Triggers the existing `race-report-email` `repository_dispatch`.
+7. GitHub Actions creates a draft PR for review.
 
 Manual fallback:
 

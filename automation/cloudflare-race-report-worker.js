@@ -22,6 +22,8 @@ const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
 const DISCORD_RESPONSE_PONG = 1;
 const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
+const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
+const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
 function allowedSender(sender, env) {
   if (!env.ALLOWED_FROM) return true;
@@ -90,6 +92,57 @@ function discordEditorialMode(interaction) {
   return discordOption(interaction, "agentic") === true ? "agentic" : "verbatim";
 }
 
+function bytesToBase64(bytes) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function discordAttachmentFromOption(interaction, optionName) {
+  const rawId = discordOption(interaction, optionName);
+  if (rawId === "" || rawId === false) return null;
+  const id = String(rawId);
+  return interaction.data?.resolved?.attachments?.[id] || null;
+}
+
+async function discordAttachments(interaction) {
+  const selected = [
+    discordAttachmentFromOption(interaction, "image1"),
+    discordAttachmentFromOption(interaction, "image2"),
+  ].filter(Boolean);
+
+  const attachments = [];
+  for (const item of selected) {
+    const contentType = item.content_type || "";
+    const filename = item.filename || "attachment";
+    const size = Number(item.size || 0);
+    const url = item.url || "";
+    if (!url || !DISCORD_IMAGE_CONTENT_TYPES.has(contentType)) continue;
+    if (size <= 0 || size > MAX_DISCORD_ATTACHMENT_BYTES) continue;
+
+    let response;
+    try {
+      response = await fetch(url);
+    } catch (error) {
+      continue;
+    }
+    if (!response.ok) continue;
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > MAX_DISCORD_ATTACHMENT_BYTES) continue;
+
+    attachments.push({
+      filename,
+      content_type: contentType,
+      data: bytesToBase64(bytes),
+    });
+  }
+
+  return attachments;
+}
+
 function discordAck(content) {
   return new Response(
     JSON.stringify({
@@ -132,6 +185,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
 
   const editorialMode = discordEditorialMode(interaction);
   const submittedBy = discordSubmittedBy(interaction);
+  const attachments = await discordAttachments(interaction);
   const email = {
     source: "discord",
     editorial_mode: editorialMode,
@@ -141,6 +195,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     text: body,
     body,
     raw: "",
+    attachments,
   };
 
   ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
@@ -159,6 +214,7 @@ async function dispatchToGitHub(env, email) {
     clientPayload.editorial_mode = email.editorial_mode || "verbatim";
     clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
     clientPayload.body = email.body || email.text || "";
+    clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
   }
 
   const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
