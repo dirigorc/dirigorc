@@ -14,6 +14,7 @@ tags:
   - "Christie Barnes"
   - "Clíodhna O'Malley"
   - "Crow Norlander"
+  - "Dave Ouellette"
   - "Denise Curry"
   - "Karley Piers"
   - "Katie Mauro"
@@ -21,6 +22,8 @@ tags:
   - "Maine Senior Games"
   - "Marah Borgman"
   - "MECTA"
+  - "Nevin Duffey"
+  - "Seth Crockett"
 links:
   - label: Back Cove results
     url: https://backcove.runtowin.com/PastResults.php?cid=21
