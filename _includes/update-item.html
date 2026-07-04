@@ -25,7 +25,7 @@
       </div>
     {% else %}
       {% if update.layout_style == "image-row" and update.images %}
-        <div class="activity-image-row">
+        <div class="activity-image-row" data-masonry-gallery>
           {% for image in update.images %}
             <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}">
           {% endfor %}
