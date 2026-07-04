@@ -28,34 +28,63 @@
           <h1>Recent from the blue crew.</h1>
           <p>Race results, upcoming events, and club notes from Dirigo.</p>
         </div>
-        <a class="text-link" href="https://www.instagram.com/dirigorc/" target="_blank" rel="noopener noreferrer">Follow
-          on Instagram</a>
+        <div class="section-header-links">
+          <button class="icon-button search-toggle" type="button" aria-expanded="false" aria-controls="updates-search-panel">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+              <path d="M10.75 4a6.75 6.75 0 0 1 5.32 10.9l3.76 3.77a.82.82 0 0 1-1.16 1.16l-3.77-3.76A6.75 6.75 0 1 1 10.75 4Zm0 1.65a5.1 5.1 0 1 0 0 10.2 5.1 5.1 0 0 0 0-10.2Z" />
+            </svg>
+            <span>Search</span>
+          </button>
+          <a class="text-link" href="https://www.instagram.com/dirigorc/" target="_blank"
+            rel="noopener noreferrer">Follow on Instagram</a>
+        </div>
       </div>
-      <div class="activity-list">
+
+      <div id="updates-search-panel" class="updates-search-panel" hidden>
+        <form class="search-shell" role="search" action="{{ '/updates/' | relative_url }}" method="get">
+          <label for="updates-search">Search updates</label>
+          <div class="search-control">
+            <input id="updates-search" name="q" type="search" autocomplete="off"
+              placeholder="Try Beach to Beacon, Ashby, Back Cove, 2018..." aria-describedby="search-count">
+            <button class="button button-primary" type="submit">Search</button>
+          </div>
+        </form>
+        <div class="search-tools" aria-live="polite">
+          <p id="search-count">Type at least two characters to search all updates.</p>
+          <button class="text-link search-clear" type="button" hidden>Clear search</button>
+        </div>
+      </div>
+
+      <div class="updates-default-view">
+        <div class="activity-list">
         {% for update in paginator.posts %}
         {% include update-item.html update=update %}
         {% endfor %}
+        </div>
+        {% if paginator.total_pages > 1 %}
+        <nav class="pagination-nav" aria-label="Updates pagination">
+          {% if paginator.previous_page %}
+          <a class="text-link" href="{{ paginator.previous_page_path | relative_url }}">Newer updates</a>
+          {% else %}
+          <span></span>
+          {% endif %}
+          <span class="pagination-count">Page {{ paginator.page }} of {{ paginator.total_pages }}</span>
+          {% if paginator.next_page %}
+          <a class="text-link" href="{{ paginator.next_page_path | relative_url }}">Older updates</a>
+          {% else %}
+          <span></span>
+          {% endif %}
+        </nav>
+        {% endif %}
       </div>
-      {% if paginator.total_pages > 1 %}
-      <nav class="pagination-nav" aria-label="Updates pagination">
-        {% if paginator.previous_page %}
-        <a class="text-link" href="{{ paginator.previous_page_path | relative_url }}">Newer updates</a>
-        {% else %}
-        <span></span>
-        {% endif %}
-        <span class="pagination-count">Page {{ paginator.page }} of {{ paginator.total_pages }}</span>
-        {% if paginator.next_page %}
-        <a class="text-link" href="{{ paginator.next_page_path | relative_url }}">Older updates</a>
-        {% else %}
-        <span></span>
-        {% endif %}
-      </nav>
-      {% endif %}
+
+      <div id="search-results" class="activity-list search-results" hidden></div>
     </section>
   </main>
 
   {% include site-footer.html %}
   <script defer src="{{ '/assets/js/image-lightbox.js' | relative_url }}"></script>
+  <script defer src="{{ '/assets/js/update-search.js' | relative_url }}"></script>
 </body>
 
 </html>

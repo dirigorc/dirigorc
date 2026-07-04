@@ -1,0 +1,24 @@
+---
+---
+[
+{% assign updates = site.posts | sort: "date" | reverse %}
+{% for update in updates %}
+  {
+    "title": {{ update.title | jsonify }},
+    "date": {{ update.date | date: "%Y-%m-%d" | jsonify }},
+    "displayDate": {{ update.date | date: "%b %-d, %Y" | jsonify }},
+    "category": {{ update.category | default: "Update" | jsonify }},
+    "summary": {{ update.summary | strip_html | normalize_whitespace | jsonify }},
+    "tags": {{ update.tags | default: empty | jsonify }},
+    "stat": {{ update.stat | default: "" | jsonify }},
+    "links": [
+      {% for link in update.links %}
+      {
+        "label": {{ link.label | jsonify }},
+        "url": {{ link.url | jsonify }}
+      }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    ]
+  }{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]
