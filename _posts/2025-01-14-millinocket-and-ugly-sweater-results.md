@@ -7,7 +7,7 @@ images:
   - src: assets/images/email/2026-07-04/03-marah-borgman-millinocket-half-2024.jpg
     alt: Marah Borgman after the Millinocket Half Marathon.
   - src: assets/images/email/2026-07-04/01-cait-ugly-sweater-2024.jpg
-    alt: Cait Bourgault after the Ugly Sweater 5K.
+    alt: Cait Bourgault at the Ugly Sweater 5K.
   - src: assets/images/email/2026-07-04/02-romayn-ugly-sweater-2024.jpg
     alt: Romayn Richards at the Ugly Sweater 5K.
 summary: Marah Borgman won the Millinocket Half in 1:27:47 while Sam Chick placed fifth; in the Ugly Sweater 5K Cait Bourgault and Romayn Richards won the women's and men's races respectively.

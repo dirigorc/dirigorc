@@ -576,27 +576,34 @@ def content_slug(path_value: str) -> str:
     return slugify(stem) or "dirigo-update"
 
 
-def clean_alt_slug(value: str) -> str:
-    slug = slugify(value)
-    if not slug or re.fullmatch(r"(image|photo|picture|attachment|race-photo)(-\d+)?", slug):
-        return ""
-    return slug[:72].strip("-")
-
-
-def image_alt_for_path(content: str, image_path: str) -> str:
+def replace_image_alt_for_path(content: str, image_path: str, alt_text: str) -> str:
     lines = content.splitlines()
+    changed = False
     for index, line in enumerate(lines):
         if image_path not in line:
             continue
-        for candidate in lines[index:index + 5] + lines[max(0, index - 4):index]:
-            match = re.match(r"^\s*alt:\s*(.+?)\s*$", candidate)
+
+        search_indexes = list(range(index, min(len(lines), index + 6))) + list(range(max(0, index - 4), index))
+        for candidate_index in search_indexes:
+            match = re.match(r"^(\s*alt:\s*).*$", lines[candidate_index])
             if not match:
                 continue
-            raw = match.group(1).strip()
-            if raw.startswith(("'", '"')) and raw.endswith(("'", '"')):
-                raw = raw[1:-1]
-            return raw.strip()
-    return ""
+            lines[candidate_index] = f"{match.group(1)}{yaml_double_quoted(alt_text)}"
+            changed = True
+            break
+
+    return "\n".join(lines) + ("\n" if content.endswith("\n") else "") if changed else content
+
+
+def deterministic_attachment_alt(item: dict[str, str], fallback: str = "Dirigo race photo.") -> str:
+    filename = Path(str(item.get("filename") or "")).stem
+    filename_slug = slugify(filename)
+    if filename_slug and not re.fullmatch(r"(img|image|photo|attachment|screenshot|pxl|dsc|img-\d+|image-\d+|attachment-\d+)", filename_slug):
+        readable = re.sub(r"[-_]+", " ", filename).strip()
+        readable = re.sub(r"\s+", " ", readable)
+        if readable:
+            return f"Dirigo race photo from {readable}."
+    return fallback
 
 
 def renamed_attachment_path(old_path: str, files: list[dict[str, str]], used_names: set[str]) -> str:
@@ -607,12 +614,9 @@ def renamed_attachment_path(old_path: str, files: list[dict[str, str]], used_nam
 
     referencing_file = next((item for item in files if old_path in item.get("content", "")), {})
     ref_slug = content_slug(referencing_file.get("path", "dirigo-update"))
-    alt_slug = clean_alt_slug(image_alt_for_path(referencing_file.get("content", ""), old_path))
 
     parts = [ref_slug]
-    if alt_slug and alt_slug not in ref_slug:
-        parts.append(alt_slug)
-    elif original_slug and not re.fullmatch(r"(img|image|photo|attachment|screenshot|pxl|dsc)[-\w]*", original_slug):
+    if original_slug and not re.fullmatch(r"(img|image|photo|attachment|screenshot|pxl|dsc)[-\w]*", original_slug):
         parts.append(original_slug)
 
     base = slugify("-".join(parts))[:110].strip("-") or ref_slug
@@ -645,6 +649,9 @@ def rename_kept_attachments(staged: list[dict[str, str]], files: list[dict[str, 
             for generated in files:
                 generated["content"] = generated.get("content", "").replace(old_path, new_path)
             item["renamed_path"] = new_path
+        safe_alt = deterministic_attachment_alt(item)
+        for generated in files:
+            generated["content"] = replace_image_alt_for_path(generated.get("content", ""), new_path, safe_alt)
         renamed.append(new_path)
 
     return renamed
