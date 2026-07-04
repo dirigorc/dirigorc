@@ -11,7 +11,8 @@
   <link rel="icon" href="{{ '/favicon.ico' | relative_url }}">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ '/assets/images/apple-touch-icon.png' | relative_url }}">
   <link rel="manifest" href="{{ '/assets/images/site.webmanifest' | relative_url }}">
-  <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2"
+    crossorigin>
   <link rel="stylesheet" href="{{ '/styles.css' | relative_url }}">
 </head>
 
@@ -44,9 +45,9 @@
       <div class="activity-list">
         {% assign updates = site.posts | sort: "date" | reverse %}
         {% for update in updates %}
-          {% if update.tags contains page.tag %}
-            {% include update-item.html update=update %}
-          {% endif %}
+        {% if update.tags contains page.tag %}
+        {% include update-item.html update=update %}
+        {% endif %}
         {% endfor %}
       </div>
     </section>
@@ -72,6 +73,7 @@
       </nav>
     </div>
   </footer>
+  <script defer src="{{ '/assets/js/image-lightbox.js' | relative_url }}"></script>
   <!-- Cloudflare Web Analytics -->
   <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
     data-cf-beacon='{"token": "310d35b6fd8c404bb33a48b65677aab2"}'></script>

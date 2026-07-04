@@ -11,7 +11,8 @@
   <link rel="icon" href="{{ '/favicon.ico' | relative_url }}">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ '/assets/images/apple-touch-icon.png' | relative_url }}">
   <link rel="manifest" href="{{ '/assets/images/site.webmanifest' | relative_url }}">
-  <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2"
+    crossorigin>
   <link rel="stylesheet" href="{{ '/styles.css' | relative_url }}">
 </head>
 
@@ -43,23 +44,23 @@
       </div>
       <div class="activity-list">
         {% for update in paginator.posts %}
-          {% include update-item.html update=update %}
+        {% include update-item.html update=update %}
         {% endfor %}
       </div>
       {% if paginator.total_pages > 1 %}
-        <nav class="pagination-nav" aria-label="Updates pagination">
-          {% if paginator.previous_page %}
-            <a class="text-link" href="{{ paginator.previous_page_path | relative_url }}">Newer updates</a>
-          {% else %}
-            <span></span>
-          {% endif %}
-          <span class="pagination-count">Page {{ paginator.page }} of {{ paginator.total_pages }}</span>
-          {% if paginator.next_page %}
-            <a class="text-link" href="{{ paginator.next_page_path | relative_url }}">Older updates</a>
-          {% else %}
-            <span></span>
-          {% endif %}
-        </nav>
+      <nav class="pagination-nav" aria-label="Updates pagination">
+        {% if paginator.previous_page %}
+        <a class="text-link" href="{{ paginator.previous_page_path | relative_url }}">Newer updates</a>
+        {% else %}
+        <span></span>
+        {% endif %}
+        <span class="pagination-count">Page {{ paginator.page }} of {{ paginator.total_pages }}</span>
+        {% if paginator.next_page %}
+        <a class="text-link" href="{{ paginator.next_page_path | relative_url }}">Older updates</a>
+        {% else %}
+        <span></span>
+        {% endif %}
+      </nav>
       {% endif %}
     </section>
   </main>
@@ -107,6 +108,7 @@
       </nav>
     </div>
   </footer>
+  <script defer src="{{ '/assets/js/image-lightbox.js' | relative_url }}"></script>
   <!-- Cloudflare Web Analytics -->
   <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
     data-cf-beacon='{"token": "310d35b6fd8c404bb33a48b65677aab2"}'></script>

@@ -162,26 +162,21 @@
         {% assign has_upcoming = false %}
         {% assign shown_results = 0 %}
         {% for update in updates %}
-          {% if update.category == "Upcoming" %}
-            {% include update-item.html update=update %}
-            {% assign has_upcoming = true %}
-            {% break %}
-          {% endif %}
+        {% if update.category == "Upcoming" %}
+        {% include update-item.html update=update %}
+        {% assign has_upcoming = true %}
+        {% break %}
+        {% endif %}
         {% endfor %}
         {% if has_upcoming %}
-          {% assign result_limit = 2 %}
+        {% assign result_limit = 2 %}
         {% else %}
-          {% assign result_limit = 3 %}
+        {% assign result_limit = 3 %}
         {% endif %}
         {% for update in updates %}
-          {% unless update.category == "Upcoming" %}
-            {% if shown_results < result_limit %}
-              {% include update-item.html update=update %}
-              {% assign shown_results = shown_results | plus: 1 %}
-            {% endif %}
-          {% endunless %}
-        {% endfor %}
-      </div>
+        {% unless update.category == "Upcoming" %}
+        {% if shown_results < result_limit %} {% include update-item.html update=update %} {% assign
+          shown_results=shown_results | plus: 1 %} {% endif %} {% endunless %} {% endfor %} </div>
     </section>
 
   </main>
@@ -229,6 +224,7 @@
       </nav>
     </div>
   </footer>
+  <script defer src="assets/js/image-lightbox.js"></script>
   <!-- Cloudflare Web Analytics -->
   <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
     data-cf-beacon='{"token": "310d35b6fd8c404bb33a48b65677aab2"}'></script>

@@ -842,6 +842,80 @@ a {
   border-radius: var(--radius);
 }
 
+.activity-image,
+.activity-image-row img,
+.activity-feature img {
+  cursor: zoom-in;
+}
+
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: none;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  background: rgba(5, 7, 10, 0.9);
+}
+
+.image-lightbox.is-open {
+  display: grid;
+}
+
+.image-lightbox img {
+  width: auto;
+  max-width: min(1200px, 92vw);
+  max-height: 84vh;
+  border-radius: var(--radius);
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: clamp(0.8rem, 2vw, 1.2rem);
+  right: clamp(0.8rem, 2vw, 1.2rem);
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--paper);
+  background: rgba(5, 7, 10, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.image-lightbox-close:hover,
+.image-lightbox-close:focus-visible {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.65);
+  transform: scale(1.03);
+}
+
+.image-lightbox-close:focus-visible {
+  outline: 2px solid rgba(159, 204, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.image-lightbox-close svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
+}
+
+.image-lightbox p {
+  margin: 0.7rem 0 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+body.has-lightbox {
+  overflow: hidden;
+}
+
 .activity-feature {
   display: grid;
   grid-template-columns: minmax(180px, 0.34fr) minmax(0, 0.66fr);
@@ -1379,12 +1453,19 @@ details p {
   .form-grid,
   .archive-grid,
   .activity-item,
-  .activity-image-row,
   .activity-feature,
   .result-line,
   .legacy-list article,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .activity-image-row {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-image-row:has(> img:nth-child(2):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .activity-item:nth-child(even) .activity-feature {
