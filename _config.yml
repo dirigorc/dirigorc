@@ -15,6 +15,9 @@ exclude:
   - vendor/ruby/
 plugins:
   - jekyll-paginate
+collections:
+  events:
+    output: false
 paginate: 6
 paginate_path: "/updates/page/:num/"
 defaults:
@@ -25,6 +28,12 @@ defaults:
   - scope:
       path: "_posts"
       type: "posts"
+    values:
+      layout: null
+      output: false
+  - scope:
+      path: "_events"
+      type: "events"
     values:
       layout: null
       output: false

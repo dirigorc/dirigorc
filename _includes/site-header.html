@@ -9,6 +9,8 @@
                 href="{{ '/history.html' | relative_url }}">History</a>
                 <a{% if include.current=='updates' %} aria-current="page" {% endif %}
                     href="{{ '/updates/' | relative_url }}">Updates</a>
+                    <a{% if include.current=='calendar' %} aria-current="page" {% endif %}
+                        href="{{ '/calendar/' | relative_url }}">Calendar</a>
                     <a href="{{ '/join.html#membership-contact' | relative_url }}">Contact</a>
     </nav>
 </header>

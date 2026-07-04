@@ -1,0 +1,152 @@
+---
+title: Calendar | Dirigo
+description: Upcoming races, series, and club-relevant dates for Dirigo RC.
+---
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }}</title>
+  <meta name="description" content="{{ page.description }}">
+  <link rel="icon" type="image/svg+xml" href="{{ '/assets/images/favicon.svg' | relative_url }}">
+  <link rel="icon" type="image/png" sizes="96x96" href="{{ '/assets/images/favicon-96x96.png' | relative_url }}">
+  <link rel="icon" href="{{ '/favicon.ico' | relative_url }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ '/assets/images/apple-touch-icon.png' | relative_url }}">
+  <link rel="manifest" href="{{ '/assets/images/site.webmanifest' | relative_url }}">
+  <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2"
+    crossorigin>
+  <link rel="stylesheet" href="{{ '/styles.css' | relative_url }}">
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  {% include site-header.html current='calendar' %}
+
+  <main id="main">
+    {% assign today_key = site.time | date: "%Y%m%d" | plus: 0 %}
+    {% assign events = site.events | sort: "date" %}
+    {% assign upcoming_count = 0 %}
+    {% assign past_count = 0 %}
+
+    {% for event in events %}
+      {% assign event_end_date = event.end_date | default: event.date %}
+      {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
+      {% if event_end_key < today_key %}
+        {% assign past_count = past_count | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+
+    <section class="section pattern-news calendar-section calendar-section-main">
+      <div class="calendar-shell">
+        <aside class="calendar-sidebar">
+          <p class="eyebrow">Dirigo calendar</p>
+          <h1>Races, runs, and team dates.</h1>
+          <p>Public race dates, recurring series, and team-relevant events.</p>
+          <a class="button button-primary button-on-light" href="{{ '/updates/' | relative_url }}">Latest results</a>
+        </aside>
+
+        <div class="calendar-list">
+          {% for event in events %}
+            {% assign event_end_date = event.end_date | default: event.date %}
+            {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
+            {% if event_end_key >= today_key %}
+              {% assign upcoming_count = upcoming_count | plus: 1 %}
+              <article class="calendar-event">
+                <time class="calendar-date" datetime="{{ event.date | date: '%Y-%m-%d' }}">
+                  <span>{{ event.date | date: "%b" }}</span>
+                  <strong>{{ event.date | date: "%-d" }}</strong>
+                  {% if event.end_date %}
+                    <em>to {{ event.end_date | date: "%b %-d" }}</em>
+                  {% endif %}
+                </time>
+                <div>
+                  <div class="calendar-event-meta">
+                    <span>{{ event.type }}</span>
+                  </div>
+                  <h3>{{ event.title }}</h3>
+                  <p>{{ event.summary }}</p>
+                  <dl class="calendar-details">
+                    {% if event.time %}
+                      <div>
+                        <dt>Time</dt>
+                        <dd>{{ event.time }}</dd>
+                      </div>
+                    {% endif %}
+                    {% if event.location %}
+                      <div>
+                        <dt>Location</dt>
+                        <dd>{{ event.location }}</dd>
+                      </div>
+                    {% endif %}
+                    {% if event.recurrence %}
+                      <div>
+                        <dt>Repeats</dt>
+                        <dd>{{ event.recurrence }}</dd>
+                      </div>
+                    {% endif %}
+                  </dl>
+                  {% if event.links %}
+                    <p class="activity-links">
+                      {% for link in event.links %}
+                        <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
+                      {% endfor %}
+                    </p>
+                  {% endif %}
+                </div>
+              </article>
+            {% endif %}
+          {% endfor %}
+
+          {% if upcoming_count == 0 %}
+            <article class="search-empty">
+              <h2>No upcoming dates yet.</h2>
+              <p>Add Markdown files to <code>_events/</code> to populate the public calendar.</p>
+            </article>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    {% if past_count > 0 %}
+      <section class="section section-light calendar-section">
+        <div class="calendar-shell calendar-shell-past">
+          <aside class="calendar-sidebar">
+            <h2>Recent calendar history.</h2>
+            <p>Past dates stay visible for context, then the richer result story can live in Updates.</p>
+          </aside>
+          <div class="calendar-list calendar-list-compact">
+            {% for event in events reversed %}
+              {% assign event_end_date = event.end_date | default: event.date %}
+              {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
+              {% if event_end_key < today_key %}
+                <article class="calendar-event calendar-event-past">
+                  <time class="calendar-date" datetime="{{ event.date | date: '%Y-%m-%d' }}">
+                    <span>{{ event.date | date: "%b" }}</span>
+                    <strong>{{ event.date | date: "%-d" }}</strong>
+                    {% if event.end_date %}
+                      <em>to {{ event.end_date | date: "%b %-d" }}</em>
+                    {% endif %}
+                  </time>
+                  <div>
+                    <div class="calendar-event-meta">
+                      <span>{{ event.type }}</span>
+                    </div>
+                    <h3>{{ event.title }}</h3>
+                    <p>{{ event.location }}</p>
+                  </div>
+                </article>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  </main>
+
+  {% include site-footer.html %}
+</body>
+
+</html>

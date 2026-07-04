@@ -2,11 +2,12 @@
 
 Static website for Dirigo RC, served with GitHub Pages and lightly powered by Jekyll.
 
-Most pages are plain HTML/CSS. Jekyll is currently used for the updates feed:
+Most pages are plain HTML/CSS. Jekyll is currently used for the updates feed and calendar:
 
 - Homepage shows the newest update posts from `_posts/`.
 - `/updates/` shows the paginated update archive using `jekyll-paginate`.
 - `/updates/tags/.../` pages show updates for a single tag.
+- `/calendar/` shows upcoming races, series, and club-relevant dates from `_events/`.
 - `_includes/update-item.html` controls how each update card renders.
 
 ## Run Locally
@@ -93,6 +94,49 @@ The homepage automatically shows recent updates by post date. The full archive i
 
 When adding new tags, generate a matching page under `updates/tags/tag-slug/index.html` so inline tag links have somewhere to go.
 
+## Add A Calendar Event
+
+Create a new Markdown file in `_events/` using this naming pattern:
+
+```text
+YYYY-MM-DD-short-title.md
+```
+
+Example:
+
+```text
+_events/2026-08-01-beach-to-beacon.md
+```
+
+Use front matter like this:
+
+```yaml
+---
+title: TD Beach to Beacon 10K
+date: 2026-08-01
+time: 8:00 AM
+type: Race
+location: Cape Elizabeth, ME
+summary: Maine's marquee summer 10K and a recurring Dirigo measuring stick.
+recurrence: Optional recurrence note, such as Wednesdays through August
+tags:
+  - Beach to Beacon
+links:
+  - label: Race details
+    url: https://example.com/
+---
+```
+
+Use `end_date` for date ranges or recurring series:
+
+```yaml
+date: 2026-07-08
+end_date: 2026-08-26
+recurrence: Wednesdays through August 26
+```
+
+The calendar page automatically sorts events by `date`. Passed events move into the recent calendar history section.
+
 ## Update Layout Options
 
 Use `layout_style: single` for one large image:
@@ -141,6 +185,8 @@ Always include image credit links when photos come from photographers, race orga
 ├── updates/
 │   ├── index.html
 │   └── tags/
+├── calendar/
+│   └── index.html
 ├── 404.html
 ├── styles.css
 ├── _config.yml
@@ -149,6 +195,8 @@ Always include image credit links when photos come from photographers, race orga
 ├── _layouts/
 │   ├── tag.html
 │   └── updates-archive.html
+├── _events/
+│   └── YYYY-MM-DD-title.md
 ├── _posts/
 │   └── YYYY-MM-DD-title.md
 └── assets/
