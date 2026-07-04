@@ -1,4 +1,4 @@
-name: Draft race report update
+name: Race report update PR
 
 on:
   repository_dispatch:
@@ -24,7 +24,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  draft:
+  update:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +58,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Generate update draft
+      - name: Generate update
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5-mini' }}
@@ -157,16 +157,15 @@ jobs:
         id: create_pr
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: Draft race report update
+          commit-message: Generate race report update
           title: ${{ steps.generated_guard.outputs.title }}
           body-path: tmp/race-report-pr-body.md
           branch: automation/race-report-${{ github.run_id }}
           delete-branch: true
-          draft: true
           assignees: ${{ vars.RACE_REPORT_PR_ASSIGNEE || 'crowjonah' }}
           add-paths: ${{ steps.generated_guard.outputs.paths }}
           labels: |
-            automated draft
+            automated update
             content
 
       - name: Delete staged email payload branch

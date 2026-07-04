@@ -188,7 +188,7 @@ Always include image credit links when photos come from photographers, race orga
 
 ## Email-To-Draft Automation
 
-The repo includes an optional automation for turning a forwarded race report email, Discord `/recap` command, or authenticated webhook into a draft PR.
+The repo includes an optional automation for turning a forwarded race report email, Discord `/recap` command, or authenticated webhook into a review-ready PR.
 
 Flow:
 
@@ -198,8 +198,8 @@ forwarded email, Discord /recap, or webhook
 → temporary GitHub ingest branch
 → GitHub repository_dispatch with an ingest pointer
 → GitHub Actions
-→ OpenAI draft generator
-→ draft pull request
+→ OpenAI update generator
+→ pull request ready for review
 ```
 
 Files:
@@ -216,7 +216,7 @@ Email image attachments:
 - The generator sees those candidate image paths and may reference them in generated front matter.
 - Used attachments are renamed before the PR opens so final filenames are based on the generated post/event and original attachment filename when useful, not generated alt copy.
 - Attached-image alt text is replaced with deterministic, conservative text before the PR opens rather than trusting generated alt copy.
-- If attachments are provided but the generated draft forgets to use some or all of them, the generator adds the missing submitted images to the first relevant generated post/event instead of silently dropping them.
+- If attachments are provided but the generated update forgets to use some or all of them, the generator adds the missing submitted images to the first relevant generated post/event instead of silently dropping them.
 - Unused staged attachments are deleted before the PR is opened, so only images actually referenced by generated Markdown should appear in the PR.
 - Supported image attachment types are JPEG, PNG, GIF, WebP, and AVIF.
 
@@ -224,7 +224,7 @@ Safety limits:
 
 - The generator writes a manifest of intended PR files to `tmp/generated-files.txt`.
 - The PR action is restricted to that manifest instead of committing every changed file in the runner.
-- The workflow fails before opening a PR if the draft exceeds 25 files or 2,000 added text lines.
+- The workflow fails before opening a PR if the generated update exceeds 25 files or 2,000 added text lines.
 
 GitHub setup:
 
@@ -268,7 +268,7 @@ curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
 
 ### Discord `/recap` MVP
 
-The Discord path uses the same Worker and the same draft PR workflow. By default, `/recap` uses submitted text verbatim. An optional `polish` input can opt into Copilot-assisted editorialization before opening a draft PR.
+The Discord path uses the same Worker and the same review-ready PR workflow. By default, `/recap` uses submitted text verbatim. An optional `polish` input can opt into Copilot-assisted editorialization before opening a PR.
 
 Create the Discord application:
 
@@ -360,7 +360,7 @@ Discord Worker behavior:
 6. For inline submissions with images, defers the Discord response immediately, processes image fetches in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.
 7. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
 8. Triggers the existing `race-report-email` `repository_dispatch`.
-9. GitHub Actions creates a draft PR for review.
+9. GitHub Actions creates a PR ready for review.
 
 Discord safe-draft notes:
 
@@ -381,7 +381,7 @@ Discord safe-draft notes:
 
 Manual fallback:
 
-Run the `Draft race report update` workflow from the GitHub Actions tab and paste the email body into `digest_text`.
+Run the `Race report update PR` workflow from the GitHub Actions tab and paste the email body into `digest_text`.
 
 ## Site Structure
 

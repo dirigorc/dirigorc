@@ -689,7 +689,7 @@ def ensure_attached_images_used(staged: list[dict[str, str]], files: list[dict[s
     front_matter = remove_front_matter_blocks(front_matter, {"layout_style", "image", "images"})
     front_matter = front_matter.rstrip() + "\n" + "\n".join(image_front_matter_block(images))
     target["content"] = "---\n" + front_matter + "\n---" + body
-    result.setdefault("assumptions", []).append("Included submitted image attachments because the source provided them and the draft did not reference all of them.")
+    result.setdefault("assumptions", []).append("Included submitted image attachments because the source provided them and the generated update did not reference all of them.")
 
 
 def write_files(files: list[dict[str, str]]) -> list[str]:
@@ -859,7 +859,7 @@ def derive_pr_title(result: dict[str, Any], files: list[dict[str, str]], email: 
     if summary:
         return summary.rstrip(".")
 
-    return str(email.get("subject") or "Draft race report update")
+    return str(email.get("subject") or "Race report update")
 
 
 def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]:
@@ -898,7 +898,7 @@ def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]
                 "content": content,
             }
         ],
-        "summary": "Created a verbatim Discord /recap draft without AI editorialization.",
+        "summary": "Created a verbatim Discord /recap update without AI editorialization.",
         "assumptions": [],
         "skipped_duplicates": [],
         "missing": [],
@@ -908,7 +908,7 @@ def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]
 def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str]) -> None:
     PR_BODY_PATH.parent.mkdir(parents=True, exist_ok=True)
     sections = [
-        "## Race Report Draft",
+        "## Race Report Update",
         "",
         result.get("summary", "Generated race report content from a forwarded email."),
         "",

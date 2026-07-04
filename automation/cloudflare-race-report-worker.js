@@ -29,7 +29,7 @@ const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/g
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
-const DISCORD_FALLBACK_MESSAGE = "If Discord drops your draft while uploading images, paste the text into `/recap` first and send images separately, or use the HTTP test endpoint in the README.";
+const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, paste the text into `/recap` first and send images separately, or use the HTTP test endpoint in the README.";
 
 function allowedSender(sender, env) {
   if (!env.ALLOWED_FROM) return true;
@@ -259,7 +259,7 @@ function discordSubmissionAck(editorialMode, attachmentSummary) {
     details.push(DISCORD_FALLBACK_MESSAGE);
   }
 
-  return `Got it. I started a ${mode} draft website update PR for review.${details.length ? `\n\n${details.join("\n")}` : ""}`;
+  return `Got it. I started a ${mode} website update PR for review.${details.length ? `\n\n${details.join("\n")}` : ""}`;
 }
 
 async function discordFollowup(interaction, content) {
@@ -392,8 +392,8 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
       links,
     };
     ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
-    if (polish) return discordAck("Got it. I started an AI-edited draft website update PR for review.");
-    return discordAck("Got it. I started a verbatim draft website update PR for review.");
+    if (polish) return discordAck("Got it. I started an AI-edited website update PR for review.");
+    return discordAck("Got it. I started a verbatim website update PR for review.");
   }
 
   if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || interaction.data?.name !== "recap") {
@@ -412,7 +412,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
   if (requestedAttachments > 0) {
     ctx.waitUntil(
       processDiscordCommandSubmission(env, interaction, body).catch((error) => (
-        discordFollowup(interaction, `I received the recap text, but the background draft failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
+        discordFollowup(interaction, `I received the recap text, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
           .catch((followupError) => console.error(followupError))
       )),
     );
@@ -594,7 +594,7 @@ export default {
   async email(message, env, ctx) {
     const from = message.from || headerValue(message.headers, "from");
     if (!allowedSender(from, env)) {
-      message.setReject("Sender is not allowed to create Dirigo race report drafts.");
+      message.setReject("Sender is not allowed to create Dirigo race report updates.");
       return;
     }
 
