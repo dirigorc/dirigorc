@@ -22,12 +22,14 @@ const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
 const DISCORD_INTERACTION_MODAL_SUBMIT = 5;
 const DISCORD_RESPONSE_PONG = 1;
 const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
+const DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE = 5;
 const DISCORD_RESPONSE_MODAL = 9;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
+const DISCORD_FALLBACK_MESSAGE = "If Discord drops your draft while uploading images, paste the text into `/recap` first and send images separately, or use the HTTP test endpoint in the README.";
 
 function allowedSender(sender, env) {
   if (!env.ALLOWED_FROM) return true;
@@ -155,28 +157,52 @@ function discordAttachmentFromOption(interaction, optionName) {
   return interaction.data?.resolved?.attachments?.[id] || null;
 }
 
+function discordRequestedAttachmentCount(interaction) {
+  return DISCORD_ATTACHMENT_OPTION_NAMES
+    .map((optionName) => discordAttachmentFromOption(interaction, optionName))
+    .filter(Boolean).length;
+}
+
 async function discordAttachments(interaction) {
   const selected = DISCORD_ATTACHMENT_OPTION_NAMES.map((optionName) => discordAttachmentFromOption(interaction, optionName)).filter(Boolean);
 
   const attachments = [];
+  const skipped = [];
   for (const item of selected) {
     const contentType = item.content_type || "";
     const filename = item.filename || "attachment";
     const size = Number(item.size || 0);
     const url = item.url || "";
-    if (!url || !DISCORD_IMAGE_CONTENT_TYPES.has(contentType)) continue;
-    if (size <= 0 || size > MAX_DISCORD_ATTACHMENT_BYTES) continue;
+    if (!url) {
+      skipped.push(`${filename}: missing Discord attachment URL`);
+      continue;
+    }
+    if (!DISCORD_IMAGE_CONTENT_TYPES.has(contentType)) {
+      skipped.push(`${filename}: unsupported file type`);
+      continue;
+    }
+    if (size <= 0 || size > MAX_DISCORD_ATTACHMENT_BYTES) {
+      skipped.push(`${filename}: over the 8 MB per-image limit`);
+      continue;
+    }
 
     let response;
     try {
       response = await fetch(url);
     } catch (error) {
+      skipped.push(`${filename}: could not fetch from Discord`);
       continue;
     }
-    if (!response.ok) continue;
+    if (!response.ok) {
+      skipped.push(`${filename}: Discord returned ${response.status}`);
+      continue;
+    }
 
     const bytes = new Uint8Array(await response.arrayBuffer());
-    if (!bytes.length || bytes.length > MAX_DISCORD_ATTACHMENT_BYTES) continue;
+    if (!bytes.length || bytes.length > MAX_DISCORD_ATTACHMENT_BYTES) {
+      skipped.push(`${filename}: empty or over the 8 MB per-image limit`);
+      continue;
+    }
 
     attachments.push({
       filename,
@@ -185,7 +211,7 @@ async function discordAttachments(interaction) {
     });
   }
 
-  return attachments;
+  return { attachments, skipped, requested: selected.length };
 }
 
 function discordAck(content) {
@@ -199,6 +225,74 @@ function discordAck(content) {
     }),
     { headers: { "content-type": "application/json" } },
   );
+}
+
+function discordDeferredAck() {
+  return new Response(
+    JSON.stringify({
+      type: DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE,
+      data: {
+        flags: DISCORD_MESSAGE_EPHEMERAL,
+      },
+    }),
+    { headers: { "content-type": "application/json" } },
+  );
+}
+
+function discordSubmissionAck(editorialMode, attachmentSummary) {
+  const mode = editorialMode === "agentic" ? "AI-edited" : "verbatim";
+  const details = [];
+  if (attachmentSummary.requested > 0) {
+    details.push(`${attachmentSummary.attachments.length}/${attachmentSummary.requested} image attachment(s) accepted.`);
+  }
+  if (attachmentSummary.skipped.length > 0) {
+    details.push(`Skipped: ${attachmentSummary.skipped.slice(0, 3).join("; ")}.`);
+    if (attachmentSummary.skipped.length > 3) {
+      details.push(`Plus ${attachmentSummary.skipped.length - 3} more skipped image(s).`);
+    }
+  }
+  if (attachmentSummary.skipped.length > 0) {
+    details.push(DISCORD_FALLBACK_MESSAGE);
+  }
+
+  return `Got it. I started a ${mode} draft website update PR for review.${details.length ? `\n\n${details.join("\n")}` : ""}`;
+}
+
+async function discordFollowup(interaction, content) {
+  if (!interaction.application_id || !interaction.token) return;
+  const response = await fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content,
+      flags: DISCORD_MESSAGE_EPHEMERAL,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Discord follow-up failed: ${response.status} ${await response.text()}`);
+  }
+}
+
+async function processDiscordCommandSubmission(env, interaction, body) {
+  const attachmentSummary = await discordAttachments(interaction);
+  const editorialMode = discordEditorialMode(interaction);
+  const submittedBy = discordSubmittedBy(interaction);
+  const links = discordLinks(interaction, body);
+  const email = {
+    source: "discord",
+    editorial_mode: editorialMode,
+    submitted_by: submittedBy,
+    from: submittedBy,
+    subject: "Discord /recap",
+    text: body,
+    body,
+    raw: "",
+    attachments: attachmentSummary.attachments,
+    links,
+  };
+
+  await dispatchToGitHub(env, email);
+  await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary));
 }
 
 function discordOpenRecapModal(defaultAgentic) {
@@ -303,17 +397,28 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
   }
 
   const body = String(discordOption(interaction, "body") || "").trim();
-  const attachments = await discordAttachments(interaction);
+  const requestedAttachments = discordRequestedAttachmentCount(interaction);
   if (!body) {
-    if (attachments.length > 0) {
-      return discordAck("Please include recap text in body when submitting image attachments.");
+    if (requestedAttachments > 0) {
+      return discordAck(`Please include recap text in the inline body option when submitting image attachments. Discord modals cannot carry slash-command attachments.\n\n${DISCORD_FALLBACK_MESSAGE}`);
     }
     return discordOpenRecapModal(discordEditorialMode(interaction) === "agentic");
+  }
+
+  if (requestedAttachments > 0) {
+    ctx.waitUntil(
+      processDiscordCommandSubmission(env, interaction, body).catch((error) => (
+        discordFollowup(interaction, `I received the recap text, but the background draft failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
+          .catch((followupError) => console.error(followupError))
+      )),
+    );
+    return discordDeferredAck();
   }
 
   const editorialMode = discordEditorialMode(interaction);
   const submittedBy = discordSubmittedBy(interaction);
   const links = discordLinks(interaction, body);
+  const attachmentSummary = { attachments: [], skipped: [], requested: 0 };
   const email = {
     source: "discord",
     editorial_mode: editorialMode,
@@ -323,15 +428,12 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     text: body,
     body,
     raw: "",
-    attachments,
+    attachments: attachmentSummary.attachments,
     links,
   };
 
   ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
-  if (editorialMode === "agentic") {
-    return discordAck("Got it. I started an AI-edited draft website update PR for review.");
-  }
-  return discordAck("Got it. I started a verbatim draft website update PR for review.");
+  return discordAck(discordSubmissionAck(editorialMode, attachmentSummary));
 }
 
 async function dispatchToGitHub(env, email) {

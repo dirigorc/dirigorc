@@ -355,9 +355,19 @@ Discord Worker behavior:
 3. Defaults to `editorial_mode: "verbatim"`; if `agentic` is set (inline or modal), uses `editorial_mode: "agentic"`.
 4. Extracts URLs from recap text and optional `links` input so copied recap links survive Discord paste quirks.
 5. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload.
-6. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
-7. Triggers the existing `race-report-email` `repository_dispatch`.
-8. GitHub Actions creates a draft PR for review.
+6. For inline submissions with images, defers the Discord response immediately, processes image fetches in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.
+7. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
+8. Triggers the existing `race-report-email` `repository_dispatch`.
+9. GitHub Actions creates a draft PR for review.
+
+Discord safe-draft notes:
+
+- Discord can reject a slash command before the Worker receives it, especially when several large attachments are uploaded. If that happens, the Worker cannot recover the typed text.
+- Safest path for long recaps: run `/recap` with no inline body, paste the recap into the modal, and submit text/links first.
+- Safest path for image-heavy recaps: submit the text first, then use the HTTP test endpoint with base64 image attachments, or send a smaller follow-up recap with 1-2 images.
+- If Discord does deliver an inline command with images, the Worker now acknowledges it immediately and processes image downloads in the background to avoid interaction timeouts.
+- Inline image attachments are limited to JPEG, PNG, GIF, WebP, or AVIF, up to 8 MB each. The Worker will now report how many images were accepted and which ones were skipped when Discord does deliver the command.
+- When in doubt, keep a copy of the recap text before attaching multiple images in Discord's old slash-command UI.
 
 ## Discord Deployment Checklist
 
