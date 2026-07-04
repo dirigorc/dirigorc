@@ -214,6 +214,7 @@ Email image attachments:
 - The Worker stages the full forwarded email payload on a temporary GitHub branch so attached photos do not have to fit inside the small `repository_dispatch` payload.
 - The Action fetches that payload, extracts image attachments from the raw MIME email, and stages candidate assets under `assets/images/email/YYYY-MM-DD/`.
 - The generator sees those candidate image paths and may reference them in generated front matter.
+- Used attachments are renamed before the PR opens so final filenames are based on the generated post/event and nearby image alt text, not generic upload names.
 - Unused staged attachments are deleted before the PR is opened, so only images actually referenced by generated Markdown should appear in the PR.
 - Supported image attachment types are JPEG, PNG, GIF, WebP, and AVIF.
 

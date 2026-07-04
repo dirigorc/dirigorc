@@ -484,6 +484,86 @@ def prune_unused_attachments(staged: list[dict[str, str]], files: list[dict[str,
     return kept
 
 
+def content_slug(path_value: str) -> str:
+    stem = Path(path_value).stem
+    stem = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", stem)
+    return slugify(stem) or "dirigo-update"
+
+
+def clean_alt_slug(value: str) -> str:
+    slug = slugify(value)
+    if not slug or re.fullmatch(r"(image|photo|picture|attachment|race-photo)(-\d+)?", slug):
+        return ""
+    return slug[:72].strip("-")
+
+
+def image_alt_for_path(content: str, image_path: str) -> str:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if image_path not in line:
+            continue
+        for candidate in lines[index:index + 5] + lines[max(0, index - 4):index]:
+            match = re.match(r"^\s*alt:\s*(.+?)\s*$", candidate)
+            if not match:
+                continue
+            raw = match.group(1).strip()
+            if raw.startswith(("'", '"')) and raw.endswith(("'", '"')):
+                raw = raw[1:-1]
+            return raw.strip()
+    return ""
+
+
+def renamed_attachment_path(old_path: str, files: list[dict[str, str]], used_names: set[str]) -> str:
+    staged_path = ROOT / old_path
+    suffix = staged_path.suffix.lower() or ".jpg"
+    original_slug = slugify(staged_path.stem)
+    original_slug = re.sub(r"^\d{2}-", "", original_slug)
+
+    referencing_file = next((item for item in files if old_path in item.get("content", "")), {})
+    ref_slug = content_slug(referencing_file.get("path", "dirigo-update"))
+    alt_slug = clean_alt_slug(image_alt_for_path(referencing_file.get("content", ""), old_path))
+
+    parts = [ref_slug]
+    if alt_slug and alt_slug not in ref_slug:
+        parts.append(alt_slug)
+    elif original_slug and not re.fullmatch(r"(img|image|photo|attachment|screenshot|pxl|dsc)[-\w]*", original_slug):
+        parts.append(original_slug)
+
+    base = slugify("-".join(parts))[:110].strip("-") or ref_slug
+    directory = old_path.rsplit("/", 1)[0]
+    candidate = f"{directory}/{base}{suffix}"
+    counter = 2
+    while candidate in used_names or (ROOT / candidate).exists() and candidate != old_path:
+        candidate = f"{directory}/{base}-{counter}{suffix}"
+        counter += 1
+    used_names.add(candidate)
+    return candidate
+
+
+def rename_kept_attachments(staged: list[dict[str, str]], files: list[dict[str, str]], kept: list[str]) -> list[str]:
+    kept_set = set(kept)
+    used_names: set[str] = set()
+    renamed: list[str] = []
+
+    for item in staged:
+        old_path = item["path"]
+        if old_path not in kept_set:
+            continue
+        new_path = renamed_attachment_path(old_path, files, used_names)
+        old_file = ROOT / old_path
+        new_file = ROOT / new_path
+
+        if new_path != old_path:
+            new_file.parent.mkdir(parents=True, exist_ok=True)
+            old_file.rename(new_file)
+            for generated in files:
+                generated["content"] = generated.get("content", "").replace(old_path, new_path)
+            item["renamed_path"] = new_path
+        renamed.append(new_path)
+
+    return renamed
+
+
 def source_line(email: dict[str, Any]) -> str:
     source = email.get("source")
     if source == "discord":
@@ -596,7 +676,11 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, A
         sections.extend(["", "## Email Attachments"])
         if kept:
             sections.extend(f"- Used `{path}`" for path in kept)
-        unused = [item["path"] for item in staged if item["path"] not in kept]
+        unused = [
+            item["path"]
+            for item in staged
+            if item["path"] not in kept and item.get("renamed_path") not in kept
+        ]
         if unused:
             sections.extend(f"- Not used `{path}`" for path in unused)
 
@@ -690,6 +774,7 @@ Subject: {email['subject']}
         raise ValueError("Model returned invalid files list.")
     files.extend(ensure_tag_pages(files))
     kept_attachments = prune_unused_attachments(staged_attachments, files)
+    kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)
     written = write_files(files)
     written.extend(path for path in kept_attachments if path not in written)
     pr_title = derive_pr_title(result, files, email)

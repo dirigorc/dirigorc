@@ -38,6 +38,7 @@ The site uses:
    - Use only existing local image paths from the context unless the input explicitly provides usable assets.
    - Email image attachments are usable assets when the prompt lists them under "Email Image Attachments".
    - If an attached image clearly fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
+   - Attachment paths shown in the prompt are temporary staging names. The automation will rename used attachments to content-specific filenames before opening the PR.
    - Do not use every attachment automatically. Use only images that support the generated public update.
   - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
   - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
