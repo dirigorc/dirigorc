@@ -33,6 +33,29 @@ ALLOWED_PREFIXES = ("_posts/", "_events/", "updates/tags/")
 ATTACHMENT_PREFIX = "assets/images/email"
 IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"}
 URL_PATTERN = re.compile(r"https?://[^\s<>()\"']+", flags=re.IGNORECASE)
+FRONT_MATTER_STRING_KEYS = {
+    "title",
+    "description",
+    "category",
+    "layout",
+    "layout_style",
+    "stat",
+    "summary",
+    "alt",
+    "label",
+    "url",
+    "src",
+    "tag",
+    "time",
+    "type",
+    "location",
+    "team_note",
+    "recurrence",
+    "event_url",
+    "registration_url",
+    "results_url",
+    "related_update",
+}
 
 
 def read_text(path: Path, limit: int | None = None) -> str:
@@ -51,6 +74,19 @@ def slugify(value: str) -> str:
 def yaml_double_quoted(value: str) -> str:
     escaped = value.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+def yaml_quote_if_plain(value: str) -> str:
+    stripped = value.strip()
+    if not stripped:
+        return stripped
+    if stripped[0] in {'"', "'", "|", ">", "[", "{", "&", "*", "!", "<", "@"}:
+        return stripped
+    if stripped in {"true", "false", "null", "~"}:
+        return stripped
+    if re.fullmatch(r"-?\d+(\.\d+)?", stripped):
+        return stripped
+    return yaml_double_quoted(stripped)
 
 
 def safe_path(path_value: str, allowed_prefixes: tuple[str, ...] = ALLOWED_PREFIXES) -> Path:
@@ -439,15 +475,65 @@ def ensure_tag_pages(files: list[dict[str, str]]) -> list[dict[str, str]]:
                     "path": f"updates/tags/{slug}/index.html",
                     "content": (
                         "---\n"
-                        f'title: "{tag} Updates | Dirigo"\n'
-                        f'description: "Dirigo updates tagged {tag}."\n'
+                        f"title: {yaml_double_quoted(f'{tag} Updates | Dirigo')}\n"
+                        f"description: {yaml_double_quoted(f'Dirigo updates tagged {tag}.')}\n"
                         "layout: tag\n"
-                        f'tag: "{tag}"\n'
+                        f"tag: {yaml_double_quoted(tag)}\n"
                         "---\n"
                     ),
                 }
             )
     return additions
+
+
+def normalize_front_matter(content: str) -> str:
+    match = re.match(r"\A---\s*\n(.*?)\n---(\s*\n.*)?\Z", content, flags=re.DOTALL)
+    if not match:
+        return content
+
+    front_matter = match.group(1)
+    body = match.group(2) or "\n"
+    normalized_lines: list[str] = []
+    in_tags = False
+
+    for line in front_matter.splitlines():
+        stripped = line.strip()
+        if re.match(r"^[A-Za-z_][\w-]*:\s*$", stripped):
+            in_tags = stripped == "tags:"
+            normalized_lines.append(line)
+            continue
+
+        if in_tags:
+            tag_match = re.match(r"^(\s*-\s+)(.+?)\s*$", line)
+            if tag_match and not tag_match.group(2).lstrip().startswith(("label:", "url:", "src:", "alt:")):
+                normalized_lines.append(f"{tag_match.group(1)}{yaml_quote_if_plain(tag_match.group(2))}")
+                continue
+            if stripped and not line.startswith((" ", "-")):
+                in_tags = False
+
+        list_key_match = re.match(r"^(\s*-\s*)([A-Za-z_][\w-]*):\s+(.+?)\s*$", line)
+        if list_key_match and list_key_match.group(2) in FRONT_MATTER_STRING_KEYS:
+            normalized_lines.append(
+                f"{list_key_match.group(1)}{list_key_match.group(2)}: {yaml_quote_if_plain(list_key_match.group(3))}"
+            )
+            continue
+
+        key_match = re.match(r"^(\s*)([A-Za-z_][\w-]*):\s+(.+?)\s*$", line)
+        if key_match and key_match.group(2) in FRONT_MATTER_STRING_KEYS:
+            normalized_lines.append(
+                f"{key_match.group(1)}{key_match.group(2)}: {yaml_quote_if_plain(key_match.group(3))}"
+            )
+            continue
+
+        normalized_lines.append(line)
+
+    return "---\n" + "\n".join(normalized_lines) + "\n---" + body
+
+
+def normalize_generated_files(files: list[dict[str, str]]) -> None:
+    for item in files:
+        if item.get("path", "").startswith(("_posts/", "_events/", "updates/tags/")):
+            item["content"] = normalize_front_matter(item.get("content", ""))
 
 
 def write_files(files: list[dict[str, str]]) -> list[str]:
@@ -773,6 +859,7 @@ Subject: {email['subject']}
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")
     files.extend(ensure_tag_pages(files))
+    normalize_generated_files(files)
     kept_attachments = prune_unused_attachments(staged_attachments, files)
     kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)
     written = write_files(files)
