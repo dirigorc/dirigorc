@@ -36,9 +36,22 @@ jobs:
           INGEST_BRANCH: ${{ github.event.client_payload.ingest.branch }}
           INGEST_PATH: ${{ github.event.client_payload.ingest.path }}
         run: |
-          git fetch origin "${INGEST_BRANCH}:refs/remotes/origin/${INGEST_BRANCH}"
           mkdir -p tmp
-          git show "origin/${INGEST_BRANCH}:${INGEST_PATH}" > tmp/email-ingest-payload.json
+          fetched=0
+          for attempt in 1 2 3 4 5; do
+            if git fetch origin "${INGEST_BRANCH}:refs/remotes/origin/${INGEST_BRANCH}" && git show "origin/${INGEST_BRANCH}:${INGEST_PATH}" > tmp/email-ingest-payload.json; then
+              fetched=1
+              break
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              echo "Ingest payload not available yet (attempt ${attempt}/5). Retrying in 3s..."
+              sleep 3
+            fi
+          done
+          if [ "$fetched" -ne 1 ]; then
+            echo "Failed to fetch staged payload from ${INGEST_BRANCH}:${INGEST_PATH} after retries."
+            exit 1
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
