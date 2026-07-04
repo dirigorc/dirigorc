@@ -212,7 +212,7 @@ GitHub setup:
 
 1. Add repository secret `OPENAI_API_KEY`.
 2. Optionally add repository variable `OPENAI_MODEL`; default is `gpt-5-mini`.
-3. Make sure Actions can create pull requests under repository settings.
+3. Either enable **Allow GitHub Actions to create and approve pull requests** under repository settings, or add a repository secret `DIRIGO_AUTOMATION_TOKEN` (fine-grained token with Contents + Pull requests write on this repo).
 
 Cloudflare setup:
 

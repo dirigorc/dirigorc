@@ -55,8 +55,11 @@ jobs:
         run: bundle exec jekyll build --destination tmp/_site
 
       - name: Create pull request
+        id: create_pr
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.DIRIGO_AUTOMATION_TOKEN || github.token }}
           commit-message: Draft race report update
           title: Draft race report update
           body-path: tmp/race-report-pr-body.md
@@ -66,3 +69,15 @@ jobs:
           labels: |
             automated draft
             content
+
+      - name: Handle PR creation permission limits
+        if: steps.create_pr.outcome == 'failure'
+        env:
+          DRAFT_BRANCH: automation/race-report-${{ github.run_id }}
+        run: |
+          if git ls-remote --exit-code --heads origin "$DRAFT_BRANCH" >/dev/null; then
+            echo "::warning::Draft branch '$DRAFT_BRANCH' was pushed, but creating a PR is blocked for the current token. Enable 'Allow GitHub Actions to create and approve pull requests' or set DIRIGO_AUTOMATION_TOKEN."
+            exit 0
+          fi
+          echo "::error::create-pull-request failed before branch push. Failing the workflow to avoid hiding unrelated errors."
+          exit 1
