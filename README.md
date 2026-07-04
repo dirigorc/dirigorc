@@ -230,6 +230,7 @@ GitHub setup:
 3. Optionally add repository variable `RACE_REPORT_PR_ASSIGNEE`; default is `crowjonah`.
 4. Optional direct email notifications: add repository secret `RESEND_API_KEY`, and variables `RACE_REPORT_NOTIFY_FROM` and `RACE_REPORT_NOTIFY_EMAIL`.
 5. Make sure Actions can create pull requests under repository settings.
+6. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
 
 Cloudflare setup:
 
@@ -279,6 +280,7 @@ Set the interaction endpoint:
 2. Copy the Worker URL, for example `https://dirigo-race-report.YOUR-SUBDOMAIN.workers.dev`.
 3. In the Discord application, set **Interactions Endpoint URL** to the Worker URL.
 4. Save the application. Discord will send a signed `PING`; the Worker must verify it and respond before Discord accepts the URL.
+5. If you want a repeatable rollout, run [`scripts/deploy_discord_recap.sh`](scripts/deploy_discord_recap.sh) with `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` set in the environment.
 
 Create the `/recap` command:
 
@@ -314,6 +316,24 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
         "description": "Optional second race image attachment.",
         "type": 11,
         "required": false
+      },
+      {
+        "name": "image3",
+        "description": "Optional third race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image4",
+        "description": "Optional fourth race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image5",
+        "description": "Optional fifth race image attachment.",
+        "type": 11,
+        "required": false
       }
     ]
   }'
@@ -326,10 +346,18 @@ Discord Worker behavior:
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
 2. Responds immediately with an ephemeral acknowledgement.
 3. Defaults to `editorial_mode: "verbatim"`; if the optional `agentic` input is true, uses `editorial_mode: "agentic"`.
-4. Optionally accepts image attachments from `image1` and `image2` (JPEG, PNG, GIF, WebP, AVIF) and stages them with the ingest payload.
+4. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) and stages them with the ingest payload.
 5. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, and `body`.
 6. Triggers the existing `race-report-email` `repository_dispatch`.
 7. GitHub Actions creates a draft PR for review.
+
+## Discord Deployment Checklist
+
+1. Install the Discord app into the Dirigo server using the OAuth URL.
+2. Deploy the Worker from `dirigo-email-ingest/` with `npx wrangler deploy`.
+3. Register the guild slash command with `scripts/deploy_discord_recap.sh` or the equivalent `curl` call.
+4. Set `DISCORD_PUBLIC_KEY` on the Worker.
+5. Re-open Discord and test `/recap` with text, then with one or more images.
 
 Manual fallback:
 

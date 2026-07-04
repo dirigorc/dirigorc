@@ -38,7 +38,9 @@ The site uses:
    - Email image attachments are usable assets when the prompt lists them under "Email Image Attachments".
    - If an attached image clearly fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
    - Do not use every attachment automatically. Use only images that support the generated public update.
-   - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
+  - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
+  - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
+  - Do not end a post with a sentence like "Full results were shared with the team via ..." if a real result or gallery link is available. Put the link in front matter and keep the body focused on the facts.
    - If an image is needed but unavailable, leave the generated update imageless and mention it in `missing`.
 
 ## Post Front Matter

@@ -24,6 +24,7 @@ const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
 
 interface EmailAttachment {
 	filename: string;
@@ -176,10 +177,7 @@ function discordAttachmentFromOption(interaction: DiscordInteraction, optionName
 }
 
 async function discordAttachments(interaction: DiscordInteraction): Promise<EmailAttachment[]> {
-	const selected = [
-		discordAttachmentFromOption(interaction, "image1"),
-		discordAttachmentFromOption(interaction, "image2"),
-	].filter((item): item is DiscordResolvedAttachment => Boolean(item));
+	const selected = DISCORD_ATTACHMENT_OPTION_NAMES.map((optionName) => discordAttachmentFromOption(interaction, optionName)).filter((item): item is DiscordResolvedAttachment => Boolean(item));
 
 	const attachments: EmailAttachment[] = [];
 	for (const item of selected) {
