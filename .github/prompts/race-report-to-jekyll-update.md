@@ -34,6 +34,9 @@ The site uses:
 
 5. Images and links.
    - Use only existing local image paths from the context unless the input explicitly provides usable assets.
+   - Email image attachments are usable assets when the prompt lists them under "Email Image Attachments".
+   - If an attached image clearly fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
+   - Do not use every attachment automatically. Use only images that support the generated public update.
    - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
    - If an image is needed but unavailable, leave the generated update imageless and mention it in `missing`.
 

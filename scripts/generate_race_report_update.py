@@ -9,8 +9,12 @@ and emits a PR body summary.
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
+import email
+from email import policy
 import json
+import mimetypes
 import os
 import re
 import sys
@@ -23,7 +27,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 PROMPT_PATH = ROOT / ".github/prompts/race-report-to-jekyll-update.md"
 PR_BODY_PATH = ROOT / "tmp/race-report-pr-body.md"
+GENERATED_FILES_PATH = ROOT / "tmp/generated-files.txt"
 ALLOWED_PREFIXES = ("_posts/", "_events/", "updates/tags/")
+ATTACHMENT_PREFIX = "assets/images/email"
+IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"}
 
 
 def read_text(path: Path, limit: int | None = None) -> str:
@@ -39,13 +46,23 @@ def slugify(value: str) -> str:
     return value.strip("-")
 
 
-def safe_path(path_value: str) -> Path:
+def safe_path(path_value: str, allowed_prefixes: tuple[str, ...] = ALLOWED_PREFIXES) -> Path:
     if path_value.startswith("/") or ".." in Path(path_value).parts:
         raise ValueError(f"Unsafe generated path: {path_value}")
     normalized = path_value.replace("\\", "/")
-    if not normalized.startswith(ALLOWED_PREFIXES):
+    if not normalized.startswith(allowed_prefixes):
         raise ValueError(f"Generated path is outside allowed content dirs: {path_value}")
     return ROOT / normalized
+
+
+def safe_attachment_name(filename: str, index: int, content_type: str) -> str:
+    stem = Path(filename or f"attachment-{index}").stem
+    suffix = Path(filename or "").suffix.lower()
+    if not suffix:
+        suffix = mimetypes.guess_extension(content_type) or ".jpg"
+    suffix = ".jpg" if suffix == ".jpe" else suffix
+    stem = slugify(stem) or f"attachment-{index}"
+    return f"{index:02d}-{stem}{suffix}"
 
 
 def collect_file_list(pattern: str, limit: int = 40) -> list[str]:
@@ -86,17 +103,151 @@ def payload_from_github_event(event_path: Path) -> dict[str, Any]:
     }
 
 
-def normalize_email_payload(payload: dict[str, Any]) -> dict[str, str]:
+def payload_from_file(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
     email = payload.get("email", payload)
     subject = str(email.get("subject") or payload.get("subject") or "Race report digest")
     sender = str(email.get("from") or payload.get("from") or "Unknown sender")
     text = str(email.get("text") or email.get("body") or payload.get("text") or payload.get("body") or "")
     raw = str(email.get("raw") or payload.get("raw") or "")
+    attachments = email.get("attachments") or payload.get("attachments") or []
     if not text and raw:
         text = raw
     if not text.strip():
         raise ValueError("No email text/body found in dispatch payload.")
-    return {"subject": subject, "from": sender, "text": text, "raw": raw}
+    return {"subject": subject, "from": sender, "text": text, "raw": raw, "attachments": attachments}
+
+
+def image_dimensions(content_type: str, data: bytes) -> str:
+    try:
+        if content_type == "image/png" and data.startswith(b"\x89PNG\r\n\x1a\n"):
+            width = int.from_bytes(data[16:20], "big")
+            height = int.from_bytes(data[20:24], "big")
+            return f"{width}x{height}"
+        if content_type == "image/gif" and data[:3] == b"GIF":
+            width = int.from_bytes(data[6:8], "little")
+            height = int.from_bytes(data[8:10], "little")
+            return f"{width}x{height}"
+        if content_type == "image/jpeg" and data.startswith(b"\xff\xd8"):
+            index = 2
+            while index < len(data) - 9:
+                if data[index] != 0xFF:
+                    index += 1
+                    continue
+                marker = data[index + 1]
+                index += 2
+                if marker in {0xD8, 0xD9}:
+                    continue
+                size = int.from_bytes(data[index:index + 2], "big")
+                if marker in range(0xC0, 0xC4):
+                    height = int.from_bytes(data[index + 3:index + 5], "big")
+                    width = int.from_bytes(data[index + 5:index + 7], "big")
+                    return f"{width}x{height}"
+                index += size
+    except Exception:
+        return ""
+    return ""
+
+
+def decode_attachment_data(value: str) -> bytes:
+    if value.startswith("data:"):
+        value = value.split(",", 1)[-1]
+    return base64.b64decode(value, validate=False)
+
+
+def attachments_from_raw_email(raw: str) -> list[dict[str, Any]]:
+    if not raw:
+        return []
+    try:
+        message = email.message_from_string(raw, policy=policy.default)
+    except Exception:
+        return []
+
+    attachments: list[dict[str, Any]] = []
+    for part in message.walk():
+        content_type = part.get_content_type()
+        disposition = (part.get_content_disposition() or "").lower()
+        filename = part.get_filename() or ""
+        if disposition != "attachment" and not filename:
+            continue
+        if content_type not in IMAGE_CONTENT_TYPES:
+            continue
+        data = part.get_payload(decode=True)
+        if not data:
+            continue
+        attachments.append(
+            {
+                "filename": filename or f"attachment-{len(attachments) + 1}",
+                "content_type": content_type,
+                "data": data,
+            }
+        )
+    return attachments
+
+
+def attachments_from_payload(email_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    attachments: list[dict[str, Any]] = []
+    for index, item in enumerate(email_payload.get("attachments") or [], start=1):
+        content_type = str(item.get("content_type") or item.get("contentType") or "")
+        filename = str(item.get("filename") or item.get("name") or f"attachment-{index}")
+        data_value = item.get("data") or item.get("content") or item.get("base64")
+        if content_type not in IMAGE_CONTENT_TYPES or not data_value:
+            continue
+        try:
+            data = decode_attachment_data(str(data_value))
+        except Exception:
+            continue
+        attachments.append({"filename": filename, "content_type": content_type, "data": data})
+    attachments.extend(attachments_from_raw_email(str(email_payload.get("raw") or "")))
+    return attachments
+
+
+def stage_email_attachments(email_payload: dict[str, Any], today: str) -> list[dict[str, str]]:
+    staged: list[dict[str, str]] = []
+    seen_names: set[str] = set()
+    attachment_dir = ROOT / ATTACHMENT_PREFIX / today
+    attachments = attachments_from_payload(email_payload)
+
+    for index, attachment in enumerate(attachments, start=1):
+        content_type = attachment["content_type"]
+        data = attachment["data"]
+        if len(data) > 8 * 1024 * 1024:
+            continue
+        filename = safe_attachment_name(attachment.get("filename", ""), index, content_type)
+        while filename in seen_names:
+            filename = safe_attachment_name(f"{Path(filename).stem}-{index}{Path(filename).suffix}", index, content_type)
+        seen_names.add(filename)
+        relative_path = f"{ATTACHMENT_PREFIX}/{today}/{filename}"
+        path = safe_path(relative_path, allowed_prefixes=(ATTACHMENT_PREFIX,))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        staged.append(
+            {
+                "path": relative_path,
+                "filename": attachment.get("filename", filename),
+                "content_type": content_type,
+                "size": str(len(data)),
+                "dimensions": image_dimensions(content_type, data),
+            }
+        )
+    return staged
+
+
+def attachment_context(staged: list[dict[str, str]]) -> str:
+    if not staged:
+        return "No image attachments were found in the email payload."
+    lines = [
+        "The forwarded email included these image attachments. Use them only when they clearly fit a generated update or event. If used, reference the local path exactly.",
+    ]
+    for item in staged:
+        dimensions = f", {item['dimensions']}" if item.get("dimensions") else ""
+        lines.append(
+            f"- `{item['path']}` ({item['content_type']}, {item['size']} bytes{dimensions}; original filename: {item['filename']})"
+        )
+    return "\n".join(lines)
 
 
 def response_output_text(data: dict[str, Any]) -> str:
@@ -240,7 +391,28 @@ def write_files(files: list[dict[str, str]]) -> list[str]:
     return written
 
 
-def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, str]) -> None:
+def prune_unused_attachments(staged: list[dict[str, str]], files: list[dict[str, str]]) -> list[str]:
+    generated_text = "\n".join(item.get("content", "") for item in files)
+    kept: list[str] = []
+    for item in staged:
+        path = ROOT / item["path"]
+        if item["path"] in generated_text:
+            kept.append(item["path"])
+            continue
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    for directory in sorted((ROOT / ATTACHMENT_PREFIX).glob("*"), reverse=True):
+        if directory.is_dir():
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+    return kept
+
+
+def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str]) -> None:
     PR_BODY_PATH.parent.mkdir(parents=True, exist_ok=True)
     sections = [
         "## Race Report Draft",
@@ -255,6 +427,14 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, s
         sections.extend(f"- `{path}`" for path in written)
     else:
         sections.append("- No file changes generated.")
+
+    if staged:
+        sections.extend(["", "## Email Attachments"])
+        if kept:
+            sections.extend(f"- Used `{path}`" for path in kept)
+        unused = [item["path"] for item in staged if item["path"] not in kept]
+        if unused:
+            sections.extend(f"- Not used `{path}`" for path in unused)
 
     for key, heading in [
         ("assumptions", "Assumptions"),
@@ -275,20 +455,37 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, s
     PR_BODY_PATH.write_text("\n".join(sections) + "\n", encoding="utf-8")
 
 
+def write_generated_files_manifest(written: list[str]) -> None:
+    GENERATED_FILES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    unique = []
+    seen = set()
+    for path in written:
+        if path in seen:
+            continue
+        seen.add(path)
+        unique.append(path)
+    GENERATED_FILES_PATH.write_text("\n".join(unique) + ("\n" if unique else ""), encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event-path", default=os.environ.get("GITHUB_EVENT_PATH"))
+    parser.add_argument("--payload-file")
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "gpt-5-mini"))
     args = parser.parse_args()
 
-    if not args.event_path:
+    if args.payload_file:
+        payload = payload_from_file(Path(args.payload_file))
+    elif args.event_path:
+        payload = payload_from_github_event(Path(args.event_path))
+    else:
         raise RuntimeError("--event-path or GITHUB_EVENT_PATH is required.")
 
-    payload = payload_from_github_event(Path(args.event_path))
     email = normalize_email_payload(payload)
     skill_prompt = read_text(PROMPT_PATH)
     context = collect_recent_context()
     today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
+    staged_attachments = stage_email_attachments(email, today)
 
     prompt = f"""
 Current date: {today}
@@ -298,6 +495,10 @@ Current date: {today}
 # Existing Repo Context
 
 {context}
+
+# Email Image Attachments
+
+{attachment_context(staged_attachments)}
 
 # Forwarded Email
 
@@ -312,8 +513,11 @@ Subject: {email['subject']}
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")
     files.extend(ensure_tag_pages(files))
+    kept_attachments = prune_unused_attachments(staged_attachments, files)
     written = write_files(files)
-    write_pr_body(result, written, email)
+    written.extend(path for path in kept_attachments if path not in written)
+    write_generated_files_manifest(written)
+    write_pr_body(result, written, email, staged_attachments, kept_attachments)
     print(f"Wrote {len(written)} file(s).")
     for path in written:
         print(path)

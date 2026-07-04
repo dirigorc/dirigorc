@@ -28,6 +28,7 @@ function headerValue(headers, name) {
 
 async function dispatchToGitHub(env, email) {
   const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
+  const ingest = await createIngestPayload(env, email);
   const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
     method: "POST",
     headers: {
@@ -39,7 +40,7 @@ async function dispatchToGitHub(env, email) {
     },
     body: JSON.stringify({
       event_type: DISPATCH_EVENT_TYPE,
-      client_payload: { email },
+      client_payload: { ingest },
     }),
   });
 
@@ -47,6 +48,74 @@ async function dispatchToGitHub(env, email) {
     const detail = await response.text();
     throw new Error(`GitHub dispatch failed: ${response.status} ${detail}`);
   }
+}
+
+async function githubRequest(env, path, options = {}) {
+  const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
+  const response = await fetch(`https://api.github.com/repos/${repo}${path}`, {
+    ...options,
+    headers: {
+      "Accept": "application/vnd.github+json",
+      "Authorization": `Bearer ${env.GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
+      "User-Agent": "dirigorc-race-report-worker",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`GitHub API failed: ${response.status} ${detail}`);
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function textToBase64(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function safeId(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "race-report";
+}
+
+async function createIngestPayload(env, email) {
+  const baseBranch = env.GITHUB_REF || "main";
+  const id = `${Date.now()}-${safeId(email.subject || "race-report")}`;
+  const branch = `automation/email-ingest-${id}`;
+  const path = `tmp/email-ingest/${id}/payload.json`;
+
+  const baseRef = await githubRequest(env, `/git/ref/heads/${baseBranch}`);
+  await githubRequest(env, "/git/refs", {
+    method: "POST",
+    body: JSON.stringify({
+      ref: `refs/heads/${branch}`,
+      sha: baseRef.object.sha,
+    }),
+  });
+
+  await githubRequest(env, `/contents/${path}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: `Stage race report email payload: ${email.subject || "Race report"}`,
+      branch,
+      content: textToBase64(JSON.stringify({ email }, null, 2)),
+    }),
+  });
+
+  return {
+    branch,
+    path,
+    subject: email.subject || "Race report digest",
+    from: email.from || "Unknown sender",
+  };
 }
 
 async function emailPayloadFromRequest(request) {
@@ -58,6 +127,7 @@ async function emailPayloadFromRequest(request) {
       subject: body.subject || "Race report digest",
       text: body.text || body.body || body.plain || "",
       raw: body.raw || "",
+      attachments: body.attachments || [],
     };
   }
 
