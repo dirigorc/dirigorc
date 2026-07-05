@@ -18,10 +18,18 @@ tags:
   - "Daniel Bannon"
   - "Gorham 4 Miler"
   - "Karley Piers"
-layout_style: "single"
-image:
-  src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
-  alt: "Dirigo race photo from heather gallant 4th of july."
+layout_style: "image-row"
+images:
+  - src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
+    alt: "Heather Gallant during July racing in a Dirigo photo."
+  - src: "assets/images/email/2026-07-05/eliza-vermont city.jpg"
+    alt: "Eliza Kerschner racing at the Vermont City Marathon."
+  - src: "assets/images/email/2026-07-05/sheri-piers-memorial-day.jpg"
+    alt: "Sheri Piers racing at the Memorial Day 5K to Remember."
+  - src: "assets/images/email/2026-07-05/taylor-bickford-market-square.jpg"
+    alt: "Taylor Bickford racing at the Market Square Day 10K."
+  - src: "assets/images/email/2026-07-05/karley-piers.jpg"
+    alt: "Karley Piers racing at the Gorham 4 Miler."
 ---
 
 Highlights from late May and June racing around New England and beyond.
