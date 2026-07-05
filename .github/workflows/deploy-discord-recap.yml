@@ -1,0 +1,47 @@
+name: Deploy Discord recap worker
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+    paths:
+      - dirigo-email-ingest/src/**
+      - dirigo-email-ingest/wrangler.jsonc
+      - dirigo-email-ingest/package.json
+      - dirigo-email-ingest/package-lock.json
+      - scripts/deploy_discord_recap.sh
+      - automation/cloudflare-race-report-worker.js
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DISCORD_WORKER_DIR: dirigo-email-ingest
+      DISCORD_WORKER_NAME: dirigo-email-ingest
+      DISCORD_COMMAND_SCOPE: guild
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install worker dependencies
+        run: npm ci
+        working-directory: dirigo-email-ingest
+
+      - name: Deploy worker and register Discord command
+        run: sh scripts/deploy_discord_recap.sh
