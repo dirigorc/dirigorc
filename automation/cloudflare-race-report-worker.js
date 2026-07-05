@@ -293,6 +293,8 @@ async function processDiscordCommandSubmission(env, interaction, body) {
     raw: "",
     attachments: attachmentSummary.attachments,
     links,
+    discord_application_id: interaction.application_id || "",
+    discord_interaction_token: interaction.token || "",
   };
 
   await dispatchToGitHub(env, email);
@@ -390,6 +392,8 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
       body,
       raw: "",
       links,
+      discord_application_id: interaction.application_id || "",
+      discord_interaction_token: interaction.token || "",
     };
     ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
     if (polish) return discordAck("Got it. I started an AI-edited website update PR for review.");
@@ -434,6 +438,8 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     raw: "",
     attachments: attachmentSummary.attachments,
     links,
+    discord_application_id: interaction.application_id || "",
+    discord_interaction_token: interaction.token || "",
   };
 
   ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
@@ -451,6 +457,12 @@ async function dispatchToGitHub(env, email) {
     clientPayload.body = email.body || email.text || "";
     clientPayload.links = email.links || [];
     clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
+    if (email.discord_application_id && email.discord_interaction_token) {
+      clientPayload.discord_callback = {
+        application_id: email.discord_application_id,
+        token: email.discord_interaction_token,
+      };
+    }
   }
 
   const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {

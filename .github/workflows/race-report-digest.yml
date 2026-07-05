@@ -168,6 +168,36 @@ jobs:
             automated update
             content
 
+      - name: Send Discord PR link
+        if: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source == 'discord' && github.event.client_payload.discord_callback.application_id != '' && github.event.client_payload.discord_callback.token != '' && steps.create_pr.outputs.pull-request-url != '' }}
+        env:
+          DISCORD_APPLICATION_ID: ${{ github.event.client_payload.discord_callback.application_id }}
+          DISCORD_INTERACTION_TOKEN: ${{ github.event.client_payload.discord_callback.token }}
+          PR_URL: ${{ steps.create_pr.outputs.pull-request-url }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          url = f"https://discord.com/api/v10/webhooks/{os.environ['DISCORD_APPLICATION_ID']}/{os.environ['DISCORD_INTERACTION_TOKEN']}"
+          payload = {
+              "content": f"Ready for review: {os.environ['PR_URL']}",
+              "flags": 64,
+          }
+          request = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  response.read()
+          except Exception as error:
+              print(f"Discord PR follow-up failed: {error}")
+          PY
+
       - name: Delete staged email payload branch
         if: ${{ always() && github.event_name == 'repository_dispatch' && github.event.client_payload.ingest.branch != '' }}
         env:

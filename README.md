@@ -361,6 +361,7 @@ Discord Worker behavior:
 7. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
 8. Triggers the existing `race-report-email` `repository_dispatch`.
 9. GitHub Actions creates a PR ready for review.
+10. When Discord submitted the recap, the workflow posts the PR link back to the original interaction as an ephemeral follow-up.
 
 Discord safe-submission notes:
 
