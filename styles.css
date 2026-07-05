@@ -913,8 +913,12 @@ a {
   margin-bottom: 1rem;
 }
 
-.activity-image-row:has(> img:nth-child(3):last-child) {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.activity-image-row.is-hero-three:has(> img:nth-child(3):last-child) {
+  grid-template-columns: var(--hero-three-template, minmax(0, 1.06fr) minmax(0, 0.94fr));
+}
+
+.activity-image-row.is-hero-three:has(> img:nth-child(3):last-child)>img:first-child {
+  grid-column: 1 / -1;
 }
 
 .activity-image-row img {

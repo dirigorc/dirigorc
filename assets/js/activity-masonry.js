@@ -2,8 +2,8 @@
   const gallerySelector = "[data-masonry-gallery]";
   const columnClass = "activity-masonry-column";
   const readyClass = "is-masonry-ready";
+  const heroThreeClass = "is-hero-three";
   const minSavingsRatio = 0.12;
-  const mixedRatioThreshold = 0.45;
 
   const debounce = (callback, delay = 160) => {
     let timeout;
@@ -46,8 +46,10 @@
       }
     });
     gallery.classList.remove(readyClass);
+    gallery.classList.remove(heroThreeClass);
     gallery.style.removeProperty("--masonry-columns");
     gallery.style.removeProperty("--masonry-template");
+    gallery.style.removeProperty("--hero-three-template");
     gallery.replaceChildren(...images);
     return images;
   };
@@ -83,6 +85,28 @@
     return image.naturalHeight / image.naturalWidth;
   };
 
+  const isLandscape = (image) => image.naturalWidth > image.naturalHeight;
+
+  const heroThreeTemplate = (leftImage, rightImage) => {
+    const leftRatio = imageRatio(leftImage);
+    const rightRatio = imageRatio(rightImage);
+    if (!leftRatio || !rightRatio) {
+      return null;
+    }
+
+    // For closer rendered heights, give each column width inverse to its aspect ratio.
+    const leftWeight = rightRatio;
+    const rightWeight = leftRatio;
+    const total = leftWeight + rightWeight;
+    if (!total) {
+      return null;
+    }
+
+    const leftFr = (leftWeight / total) * 2;
+    const rightFr = (rightWeight / total) * 2;
+    return `minmax(0, ${leftFr.toFixed(2)}fr) minmax(0, ${rightFr.toFixed(2)}fr)`;
+  };
+
   const rowHeight = (ratios, columns) => {
     let height = 0;
     for (let index = 0; index < ratios.length; index += columns) {
@@ -100,32 +124,13 @@
     return heights;
   };
 
-  const balancedTriptych = (ratios) => {
-    if (ratios.length !== 3 || window.matchMedia("(max-width: 680px)").matches) {
-      return null;
-    }
-
-    const shortest = Math.min(...ratios);
-    const tallest = Math.max(...ratios);
-    if (tallest - shortest < mixedRatioThreshold) {
-      return null;
-    }
-
-    let featureIndex = ratios.indexOf(tallest);
-    let sideIndexes = ratios.map((_, index) => index).filter((index) => index !== featureIndex);
-    let featureWidth = (sideIndexes.reduce((sum, index) => sum + ratios[index], 0) / ratios[featureIndex]);
-
-    if (featureWidth < 0.86 || featureWidth > 1.45) {
-      featureIndex = ratios.indexOf(Math.max(...ratios.filter((ratio) => ratio < tallest)));
-      sideIndexes = ratios.map((_, index) => index).filter((index) => index !== featureIndex);
-      featureWidth = (sideIndexes.reduce((sum, index) => sum + ratios[index], 0) / ratios[featureIndex]);
-    }
-
-    featureWidth = Math.min(1.42, Math.max(0.9, featureWidth));
-    return { featureIndex, sideIndexes, featureWidth };
-  };
+  const balancedTriptych = () => null;
 
   const shouldUseMasonry = (ratios, baseColumns, masonryColumns) => {
+    if (ratios.length === 3) {
+      return false;
+    }
+
     if (masonryColumns <= 1) {
       return false;
     }
@@ -150,6 +155,14 @@
     }
 
     await waitForImages(images);
+
+    if (images.length === 3 && isLandscape(images[0])) {
+      gallery.classList.add(heroThreeClass);
+      const template = heroThreeTemplate(images[1], images[2]);
+      if (template) {
+        gallery.style.setProperty("--hero-three-template", template);
+      }
+    }
 
     const ratios = images.map(imageRatio);
     const baseColumns = baseColumnCount(images.length);

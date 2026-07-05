@@ -30,8 +30,6 @@ tags:
   - "Freddie Brill"
 layout_style: "image-row"
 images:
-  - src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
-    alt: "Heather Gallant during July racing in a Dirigo photo."
   - src: "assets/images/email/2026-07-05/eliza-vermont city.jpg"
     alt: "Eliza Kerschner racing at the Vermont City Marathon."
   - src: "assets/images/email/2026-07-05/sheri-piers-memorial-day.jpg"
