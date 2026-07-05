@@ -1,6 +1,6 @@
 ---
 title: "Luke Marsanskis and Bethanie Brown win Dirigo 5K honoring Dearing & Schulte"
-date: 2026-07-03
+date: 2025-06-27
 category: "Results"
 layout_style: "single"
 image:
