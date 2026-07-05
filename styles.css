@@ -921,6 +921,17 @@ a {
   grid-column: 1 / -1;
 }
 
+.activity-image-row.is-dense-grid {
+  grid-template-columns: repeat(var(--dense-columns, 3), minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.activity-image-row.is-dense-grid.is-dense-crop img {
+  aspect-ratio: 1 / 1;
+  height: 100%;
+  object-fit: cover;
+}
+
 .activity-image-row img {
   width: 100%;
   height: auto;
@@ -2012,6 +2023,7 @@ details p {
   .hero-content h1 {
     grid-column: 2;
   }
+
 
   .hero-content .hero-lede {
     grid-column: 1 / -1;

@@ -3,6 +3,8 @@
   const columnClass = "activity-masonry-column";
   const readyClass = "is-masonry-ready";
   const heroThreeClass = "is-hero-three";
+  const denseGridClass = "is-dense-grid";
+  const denseCropClass = "is-dense-crop";
   const minSavingsRatio = 0.12;
 
   const debounce = (callback, delay = 160) => {
@@ -47,11 +49,38 @@
     });
     gallery.classList.remove(readyClass);
     gallery.classList.remove(heroThreeClass);
+    gallery.classList.remove(denseGridClass);
+    gallery.classList.remove(denseCropClass);
     gallery.style.removeProperty("--masonry-columns");
     gallery.style.removeProperty("--masonry-template");
     gallery.style.removeProperty("--hero-three-template");
+    gallery.style.removeProperty("--dense-columns");
     gallery.replaceChildren(...images);
     return images;
+  };
+
+  const denseGridColumns = (imageCount) => {
+    if (window.matchMedia("(max-width: 560px)").matches) {
+      return 2;
+    }
+
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      if (imageCount >= 13) {
+        return 3;
+      }
+
+      return 2;
+    }
+
+    if (imageCount >= 13) {
+      return 5;
+    }
+
+    if (imageCount >= 9) {
+      return 4;
+    }
+
+    return 3;
   };
 
   const baseColumnCount = (imageCount) => {
@@ -155,6 +184,15 @@
     }
 
     await waitForImages(images);
+
+    if (images.length > 6) {
+      gallery.classList.add(denseGridClass);
+      gallery.style.setProperty("--dense-columns", String(denseGridColumns(images.length)));
+      if (images.length >= 13) {
+        gallery.classList.add(denseCropClass);
+      }
+      return;
+    }
 
     if (images.length === 3 && isLandscape(images[0])) {
       gallery.classList.add(heroThreeClass);
