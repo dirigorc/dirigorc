@@ -27,11 +27,13 @@ The site uses:
    - Write like a teammate with good judgment, not a marketer.
    - Use plain verbs and concrete details.
    - Prefer content-specific headlines and concise page titles over generic titles like "Race report update".
-  - For polished (`editorial_mode: agentic`) recaps, avoid dumping full result sheets. Lead with highlights and include representative top performances instead of every finisher line.
-  - If many results are provided, summarize by race with concise bullets or short paragraphs and preserve links in front matter so readers can view full results.
+   - For polished (`editorial_mode: agentic`) recaps, avoid dumping full result sheets. Lead with highlights and include representative top performances instead of every finisher line.
+   - If many results are provided, summarize by race with concise bullets or short paragraphs and preserve links in front matter so readers can view full results.
+   - For roundup emails, make the `summary` do real work: name the major wins, podiums, fastest marks, recurring series, and youth/team notes that define the update. Do not reduce a rich digest to "several runners posted strong efforts."
+   - In the post body, synthesize by theme or chronology. Avoid a bare copied list when a short narrative can connect the results.
    - Avoid polished-but-vague phrases like "calendar moving", "team-relevant events", "natural team target", or "steady weekly check-in for racing, fitness, and teammates".
    - Do not over-explain why normal club activity matters.
-  - Never include internal development or changelog wording in public copy (for example: "rename agentic option", "backward compatibility", implementation notes, or tooling references).
+   - Never include internal development or changelog wording in public copy (for example: "rename agentic option", "backward compatibility", implementation notes, or tooling references).
 
 4. Balance coverage.
    - Avoid gender imbalance when the source includes women, men, youth, masters, roads, track, and trail.
@@ -50,7 +52,7 @@ The site uses:
    - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
    - Do not end a post with a sentence like "Full results were shared with the team via ..." if a real result or gallery link is available. Put the link in front matter and keep the body focused on the facts.
    - If URLs are missing, record that in `missing` notes only. Do not add caveat sentences in the public-facing post body about missing links.
-  - Do not end public post body text with calls like "if you have links/photos, share them and we can update this post". Put requests for missing info only in `missing` notes.
+   - Do not end public post body text with calls like "if you have links/photos, share them and we can update this post". Put requests for missing info only in `missing` notes.
    - If an image is needed but unavailable, leave the generated update imageless and mention it in `missing`.
 
 ## Post Front Matter

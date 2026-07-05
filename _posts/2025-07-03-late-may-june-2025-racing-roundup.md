@@ -1,8 +1,8 @@
 ---
-title: "Eliza Kerschner 3rd at Vermont City; Sheri Piers and Taylor Bickford score local wins"
+title: "Late spring wins carry Dirigo into July."
 date: 2025-07-03
 category: "Results"
-summary: "A late-May through June roundup: Eliza Kerschner was third at the Vermont City Marathon, Sheri Piers won the Memorial Day 5K in Cumberland, and Taylor Bickford took the Market Square Day 10K; Justin Freeman and several Dirigo runners posted fast efforts on regional roads and the track."
+summary: "Dirigo closed May and June with wins, podiums, and a youth state-title relay. Eliza Kerschner was third at the Vermont City Marathon in 2:54:03, Sheri Piers won the Memorial Day 5K in Cumberland, Taylor Bickford won the Market Square Day 10K, Michelle Lilienthal won the Trail to Ale 10K, and Karley Piers returned to Maine with a 23:33 win at the Gorham 4 Miler. Justin Freeman ran 15:29 at Battle Road, Daniel Bannon placed at both Memorial Day and Coconut Chase, Seth Crockett was seventh at Old Port, and Dirigo kept showing up at the Weekly Back Cove Series."
 tags:
   - "Vermont City Marathon"
   - "Eliza Kerschner"
@@ -10,6 +10,8 @@ tags:
   - "Sheri Piers"
   - "Market Square Day 10K"
   - "Taylor Bickford"
+  - "Trail to Ale"
+  - "Michelle Lilienthal"
   - "Battle Road Twilight"
   - "Justin Freeman"
   - "Old Port Half Marathon"
@@ -18,6 +20,14 @@ tags:
   - "Daniel Bannon"
   - "Gorham 4 Miler"
   - "Karley Piers"
+  - "Weekly Back Cove Series"
+  - "Nick Denari"
+  - "Marah Borgman"
+  - "Laurel Manville"
+  - "Sara Tennent"
+  - "Georgia Moon"
+  - "Allie Schmitt"
+  - "Freddie Brill"
 layout_style: "image-row"
 images:
   - src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
@@ -32,34 +42,12 @@ images:
     alt: "Karley Piers racing at the Gorham 4 Miler."
 ---
 
-Highlights from late May and June racing around New England and beyond.
+Dirigo went into the July 4th racing weekend with a full month of momentum: marathon podiums, road wins, track speed, steady Back Cove turnout, and a youth group already making noise at the state level.
 
-Vermont City Marathon — Burlington, VT (5/25/25)
-- Eliza Kerschner — 3rd place, 2:54:03.
+Late May started with Eliza Kerschner taking third at the Vermont City Marathon in Burlington, running 2:54:03 on May 25. The next day in Cumberland, Sheri Piers won the Memorial Day 5K to Remember in 18:48, with Kristin Barry second among women in 19:46; Daniel Bannon was third overall in 16:40, and Kevin Murray finished eighth in 20:00.
 
-Memorial Day 5K to Remember — Cumberland, ME (5/26/25)
-- Sheri Piers — 1st, 18:48.
-- Daniel Bannon — 3rd, 16:40.
-- Kristin Barry — 2nd (women), 19:46.
-- Kevin Murray — 8th, 20:00.
+The results kept coming in June. Justin Freeman ran 15:29 for 10th at the Battle Road Twilight 5K in Waltham, Seth Crockett was seventh at the Old Port Half Marathon in 1:21:14, and Taylor Bickford won the Market Square Day 10K in Portsmouth in 37:58. Michelle Lilienthal won the Trail to Ale 10K, Daniel Bannon placed sixth at the Coconut Chase 10K in Honolulu, and Karley Piers won the Gorham 4 Miler in 23:33.
 
-Battle Road Twilight 5K — Waltham, MA (5/31/25)
-- Justin Freeman — 10th, 15:29.
+The Weekly Back Cove Series also turned into a regular blue-singlet checkpoint. Nick Denari won four early races, Marah Borgman picked up three wins, and Laurel Manville added another.
 
-Old Port Half Marathon — Portland, ME (6/7/25)
-- Seth Crockett — 7th, 1:21:14.
-
-Market Square Day 10K — Portsmouth, NH (6/14/25)
-- Taylor Bickford — 1st, 37:58.
-
-Coconut Chase 10K — Honolulu, HI (6/22/25)
-- Daniel Bannon — 6th, 28:16.
-
-Gorham 4 Miler — Gorham, ME (6/26/25)
-- Karley Piers — 1st, 23:33.
-
-Youth update
-- Falmouth's 4x800 relay won the Class A state title; the quartet listed as Dirigo members: Sara Tennent, Georgia Moon, Emory Westburg, and Maeve Ginevan.
-- Other Class A competitors called out in team notes: Freddie Brill (Falmouth), Allie Schmitt (Cheverus), Grace Alexander (Waynflete), and Annabel Kimball (Cheverus).
-
-If you raced over the holiday weekend and have results to add to the archive, please pass them to the club update editor; official links and full result pages will be attached when available.
+On the youth side, Falmouth's 4x800m relay won the Class A state title with Dirigo members Sara Tennent, Georgia Moon, Emory Westburg, and Maeve Ginevan on the squad. Freddie Brill, Allie Schmitt, Grace Alexander, and Annabel Kimball also raced the 3200m at the Class A State Championships.
