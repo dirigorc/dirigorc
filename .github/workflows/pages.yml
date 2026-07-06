@@ -35,12 +35,15 @@ jobs:
 
       - name: Ensure ImageMagick
         run: |
+          if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y imagemagick
+          fi
+
           if command -v magick >/dev/null 2>&1; then
             magick -version | head -n 1
           else
-            sudo apt-get update
-            sudo apt-get install -y imagemagick
-            magick -version | head -n 1
+            convert -version | head -n 1
           fi
 
       - name: Restore optimization cache

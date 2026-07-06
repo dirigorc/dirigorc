@@ -11,8 +11,15 @@ if [[ ! -d "$images_dir" ]]; then
   exit 0
 fi
 
-if ! command -v magick >/dev/null 2>&1; then
-  echo "ImageMagick (magick) is required for image optimization." >&2
+IMAGE_CMD=""
+if command -v magick >/dev/null 2>&1; then
+  IMAGE_CMD="magick"
+elif command -v convert >/dev/null 2>&1; then
+  IMAGE_CMD="convert"
+fi
+
+if [[ -z "$IMAGE_CMD" ]]; then
+  echo "ImageMagick is required for image optimization (missing both magick and convert binaries)." >&2
   exit 1
 fi
 
@@ -63,7 +70,7 @@ optimize_raster() {
   case "$ext" in
     jpg|jpeg)
       [[ "$original_size" -lt 1500000 ]] && return 1
-      magick "$file" \
+      "$IMAGE_CMD" "$file" \
         -auto-orient \
         -strip \
         -resize '2400x2400>' \
@@ -74,7 +81,7 @@ optimize_raster() {
       ;;
     png)
       [[ "$original_size" -lt 1200000 ]] && return 1
-      magick "$file" \
+      "$IMAGE_CMD" "$file" \
         -strip \
         -resize '2400x2400>' \
         -define png:compression-level=9 \
@@ -83,7 +90,7 @@ optimize_raster() {
       ;;
     webp)
       [[ "$original_size" -lt 1200000 ]] && return 1
-      magick "$file" \
+      "$IMAGE_CMD" "$file" \
         -auto-orient \
         -strip \
         -resize '2400x2400>' \
