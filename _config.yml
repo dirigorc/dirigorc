@@ -30,8 +30,7 @@ defaults:
       path: "_posts"
       type: "posts"
     values:
-      layout: null
-      output: false
+      layout: update
   - scope:
       path: "_events"
       type: "events"

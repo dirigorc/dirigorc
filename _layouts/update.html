@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+
+{% assign post_title = page.title | append: " | Dirigo" %}
+{% assign post_description = page.summary | default: page.excerpt | strip_html | normalize_whitespace %}
+{% assign post_og_image = "/assets/images/updates/2024-maine-half-marathon-54047916568_c67f301c86_o.jpg" %}
+{% assign post_og_alt = page.title %}
+{% if page.image and page.image.src %}
+{% assign post_og_image = "/" | append: page.image.src %}
+{% assign post_og_alt = page.image.alt | default: post_og_alt %}
+{% elsif page.images and page.images.first and page.images.first.src %}
+{% assign post_og_image = "/" | append: page.images.first.src %}
+{% assign post_og_alt = page.images.first.alt | default: post_og_alt %}
+{% endif %}
+{% include seo-head.html
+title=post_title
+description=post_description
+og_type="article"
+og_image=post_og_image
+og_image_alt=post_og_alt
+%}
+
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    {% include site-header.html current='updates' %}
+
+    <main id="main">
+        <section class="section pattern-news update-detail">
+            <div class="section-header">
+                <div>
+                    <p class="eyebrow">{{ page.category | default: "Update" }}</p>
+                    <h1>{{ page.title }}</h1>
+                    {% assign update_summary = page.summary | default: "Dirigo update." %}
+                    <p>{% include tag-linked-text.html update=page text=update_summary %}</p>
+                </div>
+            </div>
+
+            <p class="activity-meta">
+                <span>{{ page.category | default: "Update" }}</span>
+                <time datetime="{{ page.date | date: '%Y-%m-%d' }}">{{ page.date | date: "%b %-d, %Y" }}</time>
+            </p>
+
+            {% if page.stat %}
+            <p class="result-pill">{{ page.stat }}</p>
+            {% endif %}
+
+            {% if page.layout_style == "image-row" and page.images %}
+            <div class="activity-image-row update-detail-media" data-masonry-gallery>
+                {% for image in page.images %}
+                <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}">
+                {% endfor %}
+            </div>
+            {% elsif page.image %}
+            <img class="activity-image update-detail-media" src="{{ page.image.src | relative_url }}"
+                alt="{{ page.image.alt }}">
+            {% endif %}
+
+            <div class="update-detail-content">
+                {% include tag-linked-text.html update=page text=content %}
+            </div>
+
+            {% if page.links %}
+            <p class="activity-links">
+                {% for link in page.links %}
+                <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
+                {% endfor %}
+            </p>
+            {% endif %}
+
+            <nav class="pagination-nav" aria-label="Update navigation">
+                {% if page.previous %}
+                <a class="text-link" href="{{ page.previous.url | relative_url }}">Newer update</a>
+                {% else %}
+                <span></span>
+                {% endif %}
+                <a class="text-link" href="{{ '/updates/' | relative_url }}">All updates</a>
+                {% if page.next %}
+                <a class="text-link" href="{{ page.next.url | relative_url }}">Older update</a>
+                {% else %}
+                <span></span>
+                {% endif %}
+            </nav>
+        </section>
+    </main>
+
+    {% include site-footer.html %}
+    <script defer src="{{ '/assets/js/activity-masonry.js' | relative_url }}"></script>
+    <script defer src="{{ '/assets/js/image-lightbox.js' | relative_url }}"></script>
+</body>
+
+</html>

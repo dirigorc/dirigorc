@@ -879,6 +879,18 @@ a {
   margin-bottom: 0.35rem;
 }
 
+.update-title-link {
+  text-decoration-color: rgba(0, 87, 184, 0.34);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+.update-title-link:hover,
+.update-title-link:focus-visible {
+  color: var(--dirigo-blue);
+  text-decoration-color: currentColor;
+}
+
 .activity-item p:not(.activity-meta):not(.activity-links) {
   max-width: 780px;
   margin: 0;
@@ -1104,6 +1116,83 @@ body.has-lightbox {
   margin-top: 0.18rem;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.update-detail .section-header {
+  margin-bottom: 0.8rem;
+}
+
+.update-detail .section-header h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.update-detail .section-header p {
+  max-width: 760px;
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+}
+
+.update-detail-media {
+  margin-top: 1rem;
+}
+
+.update-detail-content {
+  max-width: 780px;
+  margin-top: 1.25rem;
+}
+
+.update-detail-content p,
+.update-detail-content ul,
+.update-detail-content ol,
+.update-detail-content blockquote {
+  margin: 0 0 1rem;
+}
+
+.update-detail-content ul,
+.update-detail-content ol {
+  padding-left: 1.25rem;
+}
+
+.update-detail-content a.tag-inline {
+  color: inherit;
+  text-decoration-color: rgba(0, 87, 184, 0.42);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.update-detail-content a.tag-inline:hover,
+.update-detail-content a.tag-inline:focus-visible {
+  color: var(--dirigo-blue);
+  text-decoration-color: currentColor;
+}
+
+.update-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.1rem 0 0;
+}
+
+.update-detail-tags .tag-inline {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.update-detail-tags .tag-inline:hover,
+.update-detail-tags .tag-inline:focus-visible {
+  color: var(--dirigo-blue);
+  border-color: rgba(0, 87, 184, 0.35);
 }
 
 .pagination-nav {
