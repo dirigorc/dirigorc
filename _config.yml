@@ -5,6 +5,7 @@ exclude:
   - .bundle/
   - .jekyll-cache/
   - .sass-cache/
+  - dirigo-email-ingest/
   - Gemfile
   - Gemfile.lock
   - gemfiles/
