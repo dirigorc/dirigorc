@@ -13,6 +13,14 @@
     {% assign og_image_width = include.og_image_width | default: page.og_image_width %}
     {% assign og_image_height = include.og_image_height | default: page.og_image_height %}
     {% assign block_indexing = include.noindex | default: page.noindex %}
+    {% assign is_article = include.article | default: false %}
+    {% assign article_headline = include.article_headline | default: page.title | default: meta_title %}
+    {% assign article_published_time = include.article_published_time | default: page.date | date_to_xmlschema %}
+    {% assign article_modified_time = include.article_modified_time | default: page.last_modified_at | default:
+    page.date | date_to_xmlschema %}
+    {% assign article_section = include.article_section | default: page.category %}
+    {% assign article_tags = include.article_tags | default: page.tags %}
+    {% assign article_author_name = include.article_author_name | default: page.author | default: site.title %}
     {% capture search_target %}{{ site.url }}/updates/?q={search_term_string}{% endcapture %}
 
     <meta charset="utf-8">
@@ -44,6 +52,19 @@
     <meta name="twitter:image" content="{{ og_image_url }}">
     <meta name="twitter:image:src" content="{{ og_image_url }}">
     <meta name="twitter:image:alt" content="{{ og_image_alt }}">
+
+    {% if is_article %}
+    <meta property="article:published_time" content="{{ article_published_time }}">
+    <meta property="article:modified_time" content="{{ article_modified_time }}">
+    {% if article_section %}
+    <meta property="article:section" content="{{ article_section }}">
+    {% endif %}
+    {% if article_tags %}
+    {% for tag in article_tags %}
+    <meta property="article:tag" content="{{ tag }}">
+    {% endfor %}
+    {% endif %}
+    {% endif %}
 
     {% if block_indexing %}
     <meta name="robots" content="noindex,follow">
@@ -93,4 +114,32 @@
       ]
     }
   </script>
+
+    {% if is_article %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": {{ article_headline | jsonify }},
+      "description": {{ meta_description | jsonify }},
+      "datePublished": {{ article_published_time | jsonify }},
+      "dateModified": {{ article_modified_time | jsonify }},
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": {{ canonical_url | jsonify }}
+      },
+      "author": {
+        "@type": "Organization",
+        "name": {{ article_author_name | jsonify }}
+      },
+      "publisher": {
+        "@id": {{ site.url | append: '/#organization' | jsonify }}
+      },
+      "image": [{{ og_image_url | jsonify }}],
+      "articleSection": {{ article_section | jsonify }},
+      "keywords": {{ article_tags | join: ', ' | jsonify }},
+      "isAccessibleForFree": true
+    }
+  </script>
+    {% endif %}
 </head>
