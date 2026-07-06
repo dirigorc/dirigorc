@@ -16,7 +16,6 @@ exclude:
   - vendor/ruby/
 plugins:
   - jekyll-paginate
-  - jekyll-sitemap
 collections:
   events:
     output: false
