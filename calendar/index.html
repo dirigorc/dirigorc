@@ -29,15 +29,6 @@ description: Upcoming races, series, and club-relevant dates for Dirigo RC.
     {% assign today_key = site.time | date: "%Y%m%d" | plus: 0 %}
     {% assign events = site.events | sort: "date" %}
     {% assign upcoming_count = 0 %}
-    {% assign past_count = 0 %}
-
-    {% for event in events %}
-      {% assign event_end_date = event.end_date | default: event.date %}
-      {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
-      {% if event_end_key < today_key %}
-        {% assign past_count = past_count | plus: 1 %}
-      {% endif %}
-    {% endfor %}
 
     <section class="section pattern-news calendar-section calendar-section-main">
       <div class="calendar-shell">
@@ -143,47 +134,6 @@ description: Upcoming races, series, and club-relevant dates for Dirigo RC.
         </div>
       </div>
     </section>
-
-    {% if past_count > 0 %}
-      <section class="section section-light calendar-section">
-        <div class="calendar-shell calendar-shell-past">
-          <aside class="calendar-sidebar">
-            <h2>Recent calendar history.</h2>
-            <p>Past dates stay visible for context, then the richer result story can live in Updates.</p>
-          </aside>
-          <div class="calendar-list calendar-list-compact">
-            {% for event in events reversed %}
-              {% assign event_end_date = event.end_date | default: event.date %}
-              {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
-              {% if event_end_key < today_key %}
-                {% capture event_anchor %}{{ event.date | date: "%Y-%m-%d" }}-{{ event.title | slugify }}{% endcapture %}
-                <article class="calendar-event calendar-event-past" id="{{ event_anchor }}">
-                  <time class="calendar-date" datetime="{{ event.date | date: '%Y-%m-%d' }}">
-                    <span>{{ event.date | date: "%b" }}</span>
-                    <strong>{{ event.date | date: "%-d" }}</strong>
-                    {% if event.end_date %}
-                      <em>to {{ event.end_date | date: "%b %-d" }}</em>
-                    {% endif %}
-                  </time>
-                  <div>
-                    <div class="calendar-event-meta">
-                      <span>{{ event.type }}</span>
-                    </div>
-                    <h3>{{ event.title }}</h3>
-                    <p>{{ event.location }}</p>
-                    {% if event.related_update %}
-                      <p class="activity-links">
-                        <a href="{{ event.related_update | relative_url }}">Related update</a>
-                      </p>
-                    {% endif %}
-                  </div>
-                </article>
-              {% endif %}
-            {% endfor %}
-          </div>
-        </div>
-      </section>
-    {% endif %}
   </main>
 
   {% include site-footer.html %}
