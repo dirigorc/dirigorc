@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% assign redirect_url = page.redirect_to | absolute_url %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Redirecting to Dirigo</title>
+    <meta name="robots" content="noindex,follow">
+    <link rel="canonical" href="{{ redirect_url }}">
+    <meta http-equiv="refresh" content="0; url={{ redirect_url }}">
+    <script>
+        window.location.replace({{ redirect_url | jsonify }});
+    </script>
+</head>
+
+<body>
+    <p>Redirecting to <a href="{{ redirect_url }}">{{ redirect_url }}</a>.</p>
+</body>
+
+</html>
