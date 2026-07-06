@@ -1,7 +1,29 @@
 <!doctype html>
 <html lang="en">
 
-{% include seo-head.html title=page.title description=page.description %}
+{% assign tag_updates = site.posts | sort: "date" | reverse %}
+{% assign tag_og_image = "/assets/images/updates/2024-maine-half-marathon-54047916568_c67f301c86_o.jpg" %}
+{% assign tag_og_image_alt = "Dirigo race updates for " | append: page.tag %}
+{% for update in tag_updates %}
+{% if update.tags contains page.tag %}
+{% if update.image and update.image.src %}
+{% assign tag_og_image = "/" | append: update.image.src %}
+{% assign tag_og_image_alt = update.image.alt | default: tag_og_image_alt %}
+{% break %}
+{% elsif update.images and update.images.first and update.images.first.src %}
+{% assign tag_og_image = "/" | append: update.images.first.src %}
+{% assign tag_og_image_alt = update.images.first.alt | default: tag_og_image_alt %}
+{% break %}
+{% endif %}
+{% endif %}
+{% endfor %}
+
+{% include seo-head.html
+title=page.title
+description=page.description
+og_image=tag_og_image
+og_image_alt=tag_og_image_alt
+%}
 
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
