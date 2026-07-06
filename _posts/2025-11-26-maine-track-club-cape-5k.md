@@ -13,7 +13,6 @@ tags:
   - "Maine Track Club Turkey Trot 5K"
   - "Garth Altenburg"
   - "Craig Robinson"
-  - "Cape Elizabeth"
 links:
   - label: "MTC Cape 5K results"
     url: "https://runsignup.com/Race/Results/76625#resultSetId-609443;perpage:100"
