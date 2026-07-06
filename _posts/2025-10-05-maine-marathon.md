@@ -2,12 +2,10 @@
 title: "Maine Marathon weekend delivers front-end Dirigo results."
 date: 2025-10-05
 category: "Results"
-layout_style: "image-row"
-images:
-  - src: assets/images/sammy-mills-2025-maine_marathon_3.webp
-    alt: Dirigo runner at the 2025 Maine Marathon weekend.
-  - src: assets/images/cliodhna-maine-half-2025.webp
-    alt: Clíodhna O'Malley racing at the 2025 Maine Half Marathon.
+layout_style: single
+image:
+  src: assets/images/cliodhna-maine-half-2025.webp
+  alt: Clíodhna O'Malley racing at the 2025 Maine Half Marathon.
 summary: "Dirigo stacked major results across the marathon and half in Portland. Harrison Osborne led the marathon team with third overall in 2:32:08, while Clíodhna O'Malley won the half in 1:15:06 and set a new course record. Veronica Graziano and Heather Gallant completed a 1-2-3 sweep in the women's half, and the team added deep top-20 finishes throughout both races."
 tags:
   - "Maine Marathon"

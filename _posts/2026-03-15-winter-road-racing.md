@@ -2,7 +2,7 @@
 title: Irish Road Rover and indoor nationals keep March moving.
 date: 2026-03-15
 category: Results
-layout_style: single
+layout_style: feature
 image:
   src: assets/images/alexis.jpg
   alt: Alexis Wilbert racing at Irish Road Rover in 2026.
