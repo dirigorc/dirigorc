@@ -55,34 +55,24 @@ jobs:
             image-opt-cache-v1-${{ runner.os }}-${{ github.ref_name }}-
             image-opt-cache-v1-${{ runner.os }}-
 
-      - name: Determine changed image files
-        id: changed_images
-        run: |
-          set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" != "push" ]]; then
-            echo "count=0" >> "$GITHUB_OUTPUT"
-            echo "files=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          changed_paths="$(git diff --name-only HEAD^ HEAD -- assets/images || true)"
-          changed_image_paths="$(printf '%s\n' "$changed_paths" | awk 'tolower($0) ~ /\.(jpg|jpeg|png|webp)$/')"
-          count="$(printf '%s\n' "$changed_image_paths" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
-          files="$(printf '%s\n' "$changed_image_paths" | sed '/^$/d' | tr '\n' ' ')"
-
-          echo "count=${count}" >> "$GITHUB_OUTPUT"
-          echo "files=${files}" >> "$GITHUB_OUTPUT"
-
       - name: Optimize built images
         env:
           IMAGE_OPTIMIZER_CACHE_DIR: ${{ runner.temp }}/image-opt-cache
         run: |
-          if [[ "${{ steps.changed_images.outputs.count }}" != "0" ]]; then
-            echo "Optimizing changed images only: ${{ steps.changed_images.outputs.files }}"
-            bash scripts/optimize_site_images.sh _site ${{ steps.changed_images.outputs.files }}
-          else
-            echo "No changed images detected or non-push trigger; running full optimization pass."
-            bash scripts/optimize_site_images.sh _site
+          echo "Running full optimization pass for the deploy artifact."
+          bash scripts/optimize_site_images.sh _site
+
+      - name: Verify artifact size
+        run: |
+          set -euo pipefail
+          site_kb="$(du -sk _site | awk '{print $1}')"
+          site_mb="$((site_kb / 1024))"
+          file_count="$(find _site -type f | wc -l | tr -d '[:space:]')"
+          echo "Built artifact size: ${site_mb}MB (${site_kb}KB) across ${file_count} files."
+
+          if [[ "$site_kb" -gt 950000 ]]; then
+            echo "Pages artifact exceeds 950MB safety threshold."
+            exit 1
           fi
 
       - name: Save optimization cache
@@ -110,3 +100,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          timeout: 1200000
