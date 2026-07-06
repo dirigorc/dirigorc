@@ -929,6 +929,14 @@ a {
   grid-column: 1 / -1;
 }
 
+.activity-image-row.is-hero-five:has(> img:nth-child(5):last-child) {
+  grid-template-columns: var(--hero-five-template, repeat(4, minmax(0, 1fr)));
+}
+
+.activity-image-row.is-hero-five:has(> img:nth-child(5):last-child)>img:first-child {
+  grid-column: 1 / -1;
+}
+
 .activity-image-row.is-dense-grid {
   grid-template-columns: repeat(var(--dense-columns, 3), minmax(0, 1fr));
   gap: 0.55rem;

@@ -4,6 +4,7 @@
   const readyClass = "is-masonry-ready";
   const heroThreeClass = "is-hero-three";
   const heroFourClass = "is-hero-four";
+  const heroFiveClass = "is-hero-five";
   const denseGridClass = "is-dense-grid";
   const denseCropClass = "is-dense-crop";
   const minSavingsRatio = 0.12;
@@ -51,6 +52,7 @@
     gallery.classList.remove(readyClass);
     gallery.classList.remove(heroThreeClass);
     gallery.classList.remove(heroFourClass);
+    gallery.classList.remove(heroFiveClass);
     gallery.classList.remove(denseGridClass);
     gallery.classList.remove(denseCropClass);
     gallery.style.removeProperty("--masonry-columns");
@@ -138,13 +140,13 @@
     return `minmax(0, ${leftFr.toFixed(2)}fr) minmax(0, ${rightFr.toFixed(2)}fr)`;
   };
 
-  const heroFourTemplate = (portraitImages) => {
-    if (portraitImages.length !== 3) {
+  const portraitRowTemplate = (portraitImages, totalFr = 3) => {
+    if (!portraitImages.length) {
       return null;
     }
 
-    const ratios = portraitImages.map(imageRatio).filter(Boolean);
-    if (ratios.length !== 3) {
+    const ratios = portraitImages.map(imageRatio).filter((ratio) => Number.isFinite(ratio) && ratio > 0);
+    if (ratios.length !== portraitImages.length) {
       return null;
     }
 
@@ -155,7 +157,7 @@
     }
 
     return weights
-      .map((weight) => `minmax(0, ${((weight / total) * 3).toFixed(2)}fr)`)
+      .map((weight) => `minmax(0, ${((weight / total) * totalFr).toFixed(2)}fr)`)
       .join(" ");
   };
 
@@ -234,9 +236,26 @@
         gallery.replaceChildren(...orderedImages);
         gallery.classList.add(heroFourClass);
 
-        const template = heroFourTemplate(portraitImages);
+        const template = portraitRowTemplate(portraitImages, 3);
         if (template) {
           gallery.style.setProperty("--hero-four-template", template);
+        }
+        return;
+      }
+    }
+
+    if (images.length === 5) {
+      const landscapeImages = images.filter(isLandscape);
+      const portraitImages = images.filter((image) => !isLandscape(image));
+
+      if (landscapeImages.length === 1 && portraitImages.length === 4) {
+        const orderedImages = [landscapeImages[0], ...portraitImages];
+        gallery.replaceChildren(...orderedImages);
+        gallery.classList.add(heroFiveClass);
+
+        const template = portraitRowTemplate(portraitImages, 4);
+        if (template) {
+          gallery.style.setProperty("--hero-five-template", template);
         }
         return;
       }
