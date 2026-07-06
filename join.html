@@ -3,20 +3,11 @@
 <!doctype html>
 <html lang="en">
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Join Dirigo | Dirigo</title>
-  <meta name="description"
-    content="Learn how to join Dirigo, a Maine running club for runners who train, race, and contribute to the team.">
-  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
-  <link rel="icon" type="image/png" sizes="96x96" href="assets/images/favicon-96x96.png">
-  <link rel="icon" href="favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png">
-  <link rel="manifest" href="assets/images/site.webmanifest">
-  <link rel="preload" href="assets/Mandrel-ExtBlaIt.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css">
-</head>
+{% include seo-head.html
+title="Join Dirigo | Dirigo"
+description="Learn how to join Dirigo, a Maine running club for runners who train, race, and contribute to the team."
+og_image="/assets/images/dirigo-join-instagram.jpg"
+%}
 
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -173,6 +164,47 @@
         </div>
       </div>
     </section>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Do I need to meet a time standard?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Dirigo has no time or age requirements for membership. Specific races or team scoring opportunities may have their own requirements."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I come to a group run before joining?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, when a run is listed as public. Check current details first, since some team activity may be informal, seasonal, or race-specific."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What does membership include?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Team membership, club communications, racing coordination, a team singlet, and connection to other Maine runners. Adult dues are $40 per year. Current benefits also include Coastal Run Maine discounts on shoes, fuel, and apparel."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Who do I contact?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Send Dirigo a DM on Instagram with your name, email, running background, and what you are looking for."
+            }
+          }
+        ]
+      }
+    </script>
   </main>
 
   {% include site-footer.html contact_href='#membership-contact' %}

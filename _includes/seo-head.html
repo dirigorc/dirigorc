@@ -1,0 +1,81 @@
+<head>
+    {% assign meta_title = include.title | default: page.title | default: site.title %}
+    {% assign meta_description = include.description | default: page.description | default: site.description %}
+    {% assign canonical_path = include.canonical_path | default: page.url %}
+    {% assign canonical_url = include.canonical_url | default: page.canonical_url | default: canonical_path |
+    absolute_url %}
+    {% assign og_type = include.og_type | default: page.og_type | default: "website" %}
+    {% assign og_image_path = include.og_image | default: page.og_image | default:
+    "/assets/images/dirigo-hero-instagram.jpg" %}
+    {% assign og_image_url = og_image_path | absolute_url %}
+    {% assign block_indexing = include.noindex | default: page.noindex %}
+    {% capture search_target %}{{ site.url }}/updates/?q={search_term_string}{% endcapture %}
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{{ meta_title }}</title>
+    <meta name="description" content="{{ meta_description }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+
+    <meta property="og:type" content="{{ og_type }}">
+    <meta property="og:title" content="{{ meta_title }}">
+    <meta property="og:description" content="{{ meta_description }}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:site_name" content="{{ site.title }}">
+    <meta property="og:image" content="{{ og_image_url }}">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ meta_title }}">
+    <meta name="twitter:description" content="{{ meta_description }}">
+    <meta name="twitter:image" content="{{ og_image_url }}">
+
+    {% if block_indexing %}
+    <meta name="robots" content="noindex,follow">
+    {% endif %}
+
+    <link rel="icon" type="image/svg+xml" href="{{ '/assets/images/favicon.svg' | relative_url }}">
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ '/assets/images/favicon-96x96.png' | relative_url }}">
+    <link rel="icon" href="{{ '/favicon.ico' | relative_url }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ '/assets/images/apple-touch-icon.png' | relative_url }}">
+    <link rel="manifest" href="{{ '/assets/images/site.webmanifest' | relative_url }}">
+    <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2"
+        crossorigin>
+    <link rel="stylesheet" href="{{ '/styles.css' | relative_url }}">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SportsOrganization",
+          "@id": {{ site.url | append: '/#organization' | jsonify }},
+          "name": {{ site.title | jsonify }},
+          "url": {{ site.url | append: '/' | jsonify }},
+          "description": {{ site.description | jsonify }},
+          "sport": "Running",
+          "sameAs": [
+            "https://www.instagram.com/dirigorc/",
+            "https://www.facebook.com/profile.php?id=61564665052852",
+            "https://www.strava.com/clubs/139159"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": {{ site.url | append: '/#website' | jsonify }},
+          "url": {{ site.url | append: '/' | jsonify }},
+          "name": {{ site.title | jsonify }},
+          "description": {{ site.description | jsonify }},
+          "publisher": {
+            "@id": {{ site.url | append: '/#organization' | jsonify }}
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {{ search_target | jsonify }},
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+  </script>
+</head>
