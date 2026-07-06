@@ -3,6 +3,7 @@
   const columnClass = "activity-masonry-column";
   const readyClass = "is-masonry-ready";
   const heroThreeClass = "is-hero-three";
+  const heroFourClass = "is-hero-four";
   const denseGridClass = "is-dense-grid";
   const denseCropClass = "is-dense-crop";
   const minSavingsRatio = 0.12;
@@ -49,6 +50,7 @@
     });
     gallery.classList.remove(readyClass);
     gallery.classList.remove(heroThreeClass);
+    gallery.classList.remove(heroFourClass);
     gallery.classList.remove(denseGridClass);
     gallery.classList.remove(denseCropClass);
     gallery.style.removeProperty("--masonry-columns");
@@ -136,6 +138,27 @@
     return `minmax(0, ${leftFr.toFixed(2)}fr) minmax(0, ${rightFr.toFixed(2)}fr)`;
   };
 
+  const heroFourTemplate = (portraitImages) => {
+    if (portraitImages.length !== 3) {
+      return null;
+    }
+
+    const ratios = portraitImages.map(imageRatio).filter(Boolean);
+    if (ratios.length !== 3) {
+      return null;
+    }
+
+    const weights = ratios.map((ratio) => 1 / ratio);
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    if (!total) {
+      return null;
+    }
+
+    return weights
+      .map((weight) => `minmax(0, ${((weight / total) * 3).toFixed(2)}fr)`)
+      .join(" ");
+  };
+
   const rowHeight = (ratios, columns) => {
     let height = 0;
     for (let index = 0; index < ratios.length; index += columns) {
@@ -199,6 +222,23 @@
       const template = heroThreeTemplate(images[1], images[2]);
       if (template) {
         gallery.style.setProperty("--hero-three-template", template);
+      }
+    }
+
+    if (images.length === 4) {
+      const landscapeImages = images.filter(isLandscape);
+      const portraitImages = images.filter((image) => !isLandscape(image));
+
+      if (landscapeImages.length === 1 && portraitImages.length === 3) {
+        const orderedImages = [landscapeImages[0], ...portraitImages];
+        gallery.replaceChildren(...orderedImages);
+        gallery.classList.add(heroFourClass);
+
+        const template = heroFourTemplate(portraitImages);
+        if (template) {
+          gallery.style.setProperty("--hero-four-template", template);
+        }
+        return;
       }
     }
 
