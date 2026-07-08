@@ -76,14 +76,14 @@ article_author_name=site.title
             {% endif %}
 
             <nav class="pagination-nav" aria-label="Update navigation">
-                {% if page.previous %}
-                <a class="text-link" href="{{ page.previous.url | relative_url }}">Newer update</a>
+                {% if page.next %}
+                <a class="text-link" href="{{ page.next.url | relative_url }}">Newer update</a>
                 {% else %}
                 <span></span>
                 {% endif %}
                 <a class="text-link" href="{{ '/updates/' | relative_url }}">All updates</a>
-                {% if page.next %}
-                <a class="text-link" href="{{ page.next.url | relative_url }}">Older update</a>
+                {% if page.previous %}
+                <a class="text-link" href="{{ page.previous.url | relative_url }}">Older update</a>
                 {% else %}
                 <span></span>
                 {% endif %}
