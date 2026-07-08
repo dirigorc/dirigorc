@@ -925,6 +925,10 @@ a {
   margin-bottom: 1rem;
 }
 
+.activity-image-row:has(> img:nth-child(2):last-child) {
+  grid-template-columns: var(--two-image-template, repeat(2, minmax(0, 1fr)));
+}
+
 .activity-image-row.is-hero-three:has(> img:nth-child(3):last-child) {
   grid-template-columns: var(--hero-three-template, minmax(0, 1.06fr) minmax(0, 0.94fr));
 }
@@ -2006,7 +2010,7 @@ details p {
   }
 
   .activity-image-row:has(> img:nth-child(2):last-child) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: var(--two-image-template, repeat(2, minmax(0, 1fr)));
   }
 
   .activity-item:nth-child(even) .activity-feature {

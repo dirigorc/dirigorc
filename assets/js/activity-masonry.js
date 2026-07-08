@@ -58,6 +58,7 @@
     gallery.style.removeProperty("--masonry-columns");
     gallery.style.removeProperty("--masonry-template");
     gallery.style.removeProperty("--hero-three-template");
+    gallery.style.removeProperty("--two-image-template");
     gallery.style.removeProperty("--dense-columns");
     gallery.replaceChildren(...images);
     return images;
@@ -161,6 +162,26 @@
       .join(" ");
   };
 
+  const pairTemplate = (leftImage, rightImage, totalFr = 2) => {
+    const leftRatio = imageRatio(leftImage);
+    const rightRatio = imageRatio(rightImage);
+    if (!leftRatio || !rightRatio) {
+      return null;
+    }
+
+    // Choose column widths inverse to image ratios so rendered heights align.
+    const leftWeight = 1 / leftRatio;
+    const rightWeight = 1 / rightRatio;
+    const total = leftWeight + rightWeight;
+    if (!total) {
+      return null;
+    }
+
+    const leftFr = (leftWeight / total) * totalFr;
+    const rightFr = (rightWeight / total) * totalFr;
+    return `minmax(0, ${leftFr.toFixed(2)}fr) minmax(0, ${rightFr.toFixed(2)}fr)`;
+  };
+
   const rowHeight = (ratios, columns) => {
     let height = 0;
     for (let index = 0; index < ratios.length; index += columns) {
@@ -209,6 +230,14 @@
     }
 
     await waitForImages(images);
+
+    if (images.length === 2) {
+      const template = pairTemplate(images[0], images[1]);
+      if (template) {
+        gallery.style.setProperty("--two-image-template", template);
+      }
+      return;
+    }
 
     if (images.length > 6) {
       gallery.classList.add(denseGridClass);
