@@ -14,7 +14,7 @@ images:
     alt: Dirigo teammates after racing the 2026 L.L.Bean July 4th 10K.
   - src: assets/images/bethanie-llbean.jpg
     alt: Bethanie Brown racing at the 2026 L.L.Bean July 4th 10K.
-summary: "Dirigo had a strong L.L.Bean July 4th 10K in tough heat, led by Veronica Graziano winning the women's race and Alexis Wilbert finishing next, with Bethanie Brown completing a Dirigo 1-3. Eric and Jonathan Clement were both in the top 15, Robert Ashby finished ahead of Seth Crockett, and Nevin Duffey plus Dave Ouellette also raced."
+summary: "Dirigo had a strong L.L.Bean July 4th 10K in tough heat, led by Veronica Graziano winning the women's race and Alexis Wilbert finishing next, with Bethanie Brown completing a Dirigo 1-3. Eric and Jonathan Clement were both in the top 15, Robert Ashby finished ahead of Seth Crockett, and Nevin Duffey plus Dave Ouellette also raced. In the Long Island 5 Miler (postponed to July 5), Nick Denari took the win."
 tags:
   - "L.L.Bean 10K"
   - "July Fourth"
@@ -24,6 +24,7 @@ tags:
   - "Jonathan Clement"
   - "Robert Ashby"
   - "Seth Crockett"
+  - "Nick Denari"
   - "Nevin Duffey"
   - "Dave Ouellette"
 links:
@@ -40,5 +41,7 @@ links:
 Quick hits from Freeport: Dirigo had a big showing in hard heat at the L.L.Bean July 4th 10K.
 
 Veronica Graziano took the women's win, Alexis was next, and Bethanie made it a Dirigo 1-3 on the women's side. Eric and Jonathan Clement both landed in the top 15, with Robert Ashby just ahead of Seth Crockett. Nevin Duffey and Dave Ouellette were also in the field.
+
+Nick Denari added the best one-liner from the day: "Not quite 5 miles and not quite the 4th of July."
 
 Great work in tough conditions, and great to see so much blue out there on July 4th.
