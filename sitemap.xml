@@ -29,6 +29,12 @@ permalink: /sitemap.xml
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>{{ '/feed.xml' | absolute_url }}</loc>
+    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>{{ '/calendar/' | absolute_url }}</loc>
     <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
     <changefreq>weekly</changefreq>
