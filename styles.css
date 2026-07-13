@@ -767,12 +767,13 @@ a {
 .pattern-news>.section-header {
   position: relative;
   display: block;
+  padding-bottom: 1.9rem;
 }
 
 .pattern-news>.section-header .section-header-links {
   position: absolute;
   right: 0;
-  bottom: 0;
+  bottom: 0.15rem;
 }
 
 .icon-button {
