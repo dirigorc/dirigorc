@@ -114,12 +114,30 @@
 
   const imageRatio = (image) => {
     if (!image.naturalWidth || !image.naturalHeight) {
+      const width = Number(image.getAttribute("width"));
+      const height = Number(image.getAttribute("height"));
+      if (width && height) {
+        return height / width;
+      }
+
       return 1;
     }
     return image.naturalHeight / image.naturalWidth;
   };
 
-  const isLandscape = (image) => image.naturalWidth > image.naturalHeight;
+  const hasImageDimensions = (image) => {
+    if (image.naturalWidth && image.naturalHeight) {
+      return true;
+    }
+
+    return Boolean(Number(image.getAttribute("width")) && Number(image.getAttribute("height")));
+  };
+
+  const isLandscape = (image) => {
+    const naturalWidth = image.naturalWidth || Number(image.getAttribute("width"));
+    const naturalHeight = image.naturalHeight || Number(image.getAttribute("height"));
+    return naturalWidth > naturalHeight;
+  };
 
   const heroThreeTemplate = (leftImage, rightImage) => {
     const leftRatio = imageRatio(leftImage);
@@ -229,7 +247,9 @@
       return;
     }
 
-    await waitForImages(images);
+    if (!images.every(hasImageDimensions)) {
+      await waitForImages(images);
+    }
 
     if (images.length === 2) {
       const template = pairTemplate(images[0], images[1]);

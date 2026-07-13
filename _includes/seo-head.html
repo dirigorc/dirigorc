@@ -77,6 +77,12 @@
     <link rel="manifest" href="{{ '/assets/images/site.webmanifest' | relative_url }}">
     <link rel="alternate" type="application/rss+xml" title="{{ site.title }} Updates"
         href="{{ '/feed.xml' | absolute_url }}">
+    {% if include.preload_image_path %}
+    <link rel="preload" as="image" href="{{ include.preload_image_path | relative_url }}"
+        {% if include.preload_image_srcset %} imagesrcset="{{ include.preload_image_srcset }}" {% endif %}
+        {% if include.preload_image_sizes %} imagesizes="{{ include.preload_image_sizes }}" {% endif %}
+        fetchpriority="high">
+    {% endif %}
     <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2"
         crossorigin>
     <link rel="stylesheet" href="{{ '/styles.css' | relative_url }}">

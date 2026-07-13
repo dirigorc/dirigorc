@@ -56,7 +56,8 @@ og_image_height=1249
               <p>{{ event.summary }}</p>
               {% if event.image %}
               <figure class="calendar-media">
-                <img src="{{ event.image.src | relative_url }}" alt="{{ event.image.alt }}">
+                <img src="{{ event.image.src | relative_url }}" alt="{{ event.image.alt }}"
+                  {% include image-attributes.html src=event.image.src loading="lazy" decoding="async" %}>
                 {% if event.image_credit %}
                 <figcaption>
                   <a href="{{ event.image_credit.url }}" target="_blank" rel="noopener noreferrer">{{

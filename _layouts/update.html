@@ -55,12 +55,14 @@ article_author_name=site.title
             {% if page.layout_style == "image-row" and page.images %}
             <div class="activity-image-row update-detail-media" data-masonry-gallery>
                 {% for image in page.images %}
-                <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}">
+                <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}"
+                    {% include image-attributes.html src=image.src loading="lazy" decoding="async" %}>
                 {% endfor %}
             </div>
             {% elsif page.image %}
             <img class="activity-image update-detail-media" src="{{ page.image.src | relative_url }}"
-                alt="{{ page.image.alt }}">
+                alt="{{ page.image.alt }}"
+                {% include image-attributes.html src=page.image.src loading="eager" decoding="async" fetchpriority="high" %}>
             {% endif %}
 
             <div class="update-detail-content">

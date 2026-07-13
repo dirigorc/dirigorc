@@ -7,7 +7,8 @@
   <div>
     {% if update.layout_style == "feature" %}
     <div class="activity-feature">
-      <img src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}">
+      <img src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}"
+        {% include image-attributes.html src=update.image.src loading="lazy" decoding="async" %}>
       <div>
         {% if update.stat %}
         <p class="result-pill">{{ update.stat }}</p>
@@ -27,11 +28,13 @@
     {% if update.layout_style == "image-row" and update.images %}
     <div class="activity-image-row" data-masonry-gallery>
       {% for image in update.images %}
-      <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}">
+      <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}"
+        {% include image-attributes.html src=image.src loading="lazy" decoding="async" %}>
       {% endfor %}
     </div>
     {% elsif update.image %}
-    <img class="activity-image" src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}">
+    <img class="activity-image" src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}"
+      {% include image-attributes.html src=update.image.src loading="lazy" decoding="async" %}>
     {% endif %}
     <h3><a class="update-title-link" href="{{ update.url | relative_url }}">{{ update.title }}</a></h3>
     <p>{% include tag-linked-text.html update=update text=update.summary %}</p>

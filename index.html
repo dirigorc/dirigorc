@@ -11,6 +11,9 @@ og_image="/assets/images/dirigo-hero-instagram.jpg"
 og_image_alt="Dirigo runners in blue team singlets standing near the water."
 og_image_width=3936
 og_image_height=2624
+preload_image_path="/assets/images/dirigo-hero-instagram-1600.jpg"
+preload_image_srcset="/assets/images/dirigo-hero-instagram-960.jpg 960w, /assets/images/dirigo-hero-instagram-1600.jpg 1600w, /assets/images/dirigo-hero-instagram-2400.jpg 2400w, /assets/images/dirigo-hero-instagram.jpg 3936w"
+preload_image_sizes="100vw"
 %}
 
 <body>
@@ -20,13 +23,20 @@ og_image_height=2624
 
   <main id="main">
     <section class="hero hero-home pattern-hero">
-      <img src="assets/images/dirigo-hero-instagram.jpg"
-        alt="Dirigo runners in blue team singlets standing near the water.">
+      {% assign home_hero_src = "assets/images/dirigo-hero-instagram.jpg" %}
+      <picture>
+        <source srcset="{{ '/assets/images/dirigo-hero-instagram-960.jpg' | relative_url }} 960w, {{ '/assets/images/dirigo-hero-instagram-1600.jpg' | relative_url }} 1600w, {{ '/assets/images/dirigo-hero-instagram-2400.jpg' | relative_url }} 2400w, {{ '/assets/images/dirigo-hero-instagram.jpg' | relative_url }} 3936w"
+          sizes="100vw">
+        <img src="{{ home_hero_src | relative_url }}"
+          alt="Dirigo runners in blue team singlets standing near the water."
+          {% include image-attributes.html src=home_hero_src loading="eager" decoding="async" fetchpriority="high" %}>
+      </picture>
       <div class="hero-overlay"></div>
       <p class="photo-credit hero-credit">Photo by <a href="https://mainerunningphotos.com/" target="_blank"
           rel="noopener noreferrer">David Colby Young</a></p>
       <div class="hero-content">
-        <img class="hero-mark" src="assets/images/dirigo-logo-white-min.png" alt="">
+        <img class="hero-mark" src="assets/images/dirigo-logo-white-min.png" alt=""
+          {% include image-attributes.html src="assets/images/dirigo-logo-white-min.png" loading="eager" decoding="async" %}>
         <p class="eyebrow">Maine running club | Competitive since 2002</p>
         <h1>Race hard.<br />Train together.</h1>
         <p class="hero-lede">Dirigo brings Maine runners together for committed training, team racing, and representing
@@ -109,7 +119,8 @@ og_image_height=2624
         </div>
         <a class="history-teaser-image" href="history.html" aria-label="Read the Dirigo history">
           <img src="assets/images/history/15048047043_d3dd6bc4d0_z.jpg"
-            alt="Runners starting a road race with Dirigo athletes visible in the field.">
+            alt="Runners starting a road race with Dirigo athletes visible in the field."
+            {% include image-attributes.html src="assets/images/history/15048047043_d3dd6bc4d0_z.jpg" loading="lazy" decoding="async" %}>
         </a>
       </div>
     </section>
@@ -125,7 +136,8 @@ og_image_height=2624
         </div>
         <a class="partner-logo" href="https://maine.coastalrunco.com/" target="_blank" rel="noopener noreferrer"
           aria-label="Visit Coastal Run Maine">
-          <img src="assets/images/coastal-run-maine-logo.avif" alt="Coastal Run Maine logo">
+          <img src="assets/images/coastal-run-maine-logo.avif" alt="Coastal Run Maine logo"
+            {% include image-attributes.html src="assets/images/coastal-run-maine-logo.avif" loading="lazy" decoding="async" %}>
         </a>
       </div>
     </section>

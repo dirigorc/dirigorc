@@ -2,7 +2,8 @@
 <footer class="site-footer" id="contact">
     <div>
         <a class="brand footer-brand" href="{{ '/' | relative_url }}">
-            <img class="brand-logo" src="{{ '/assets/images/dirigo-logo-white-min.png' | relative_url }}" alt="">
+            <img class="brand-logo" src="{{ '/assets/images/dirigo-logo-white-min.png' | relative_url }}" alt=""
+                {% include image-attributes.html src="assets/images/dirigo-logo-white-min.png" loading="lazy" decoding="async" %}>
             <span>
                 <strong>Dirigo</strong>
                 <small>Maine running club</small>

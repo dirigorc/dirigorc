@@ -1,0 +1,14 @@
+{% assign image_src = include.src | default: "" %}
+{% assign first_image_src_character = image_src | slice: 0 %}
+{% if first_image_src_character == "/" %}
+{% assign image_src = image_src | slice: 1, image_src.size %}
+{% endif %}
+{% assign image_src = image_src | replace: "%20", " " %}
+{% assign image_meta = nil %}
+{% for image_meta_item in site.data.image_dimensions %}
+{% if image_meta_item.src == image_src %}
+{% assign image_meta = image_meta_item %}
+{% break %}
+{% endif %}
+{% endfor %}
+{% if image_meta %} width="{{ image_meta.width }}" height="{{ image_meta.height }}"{% endif %}{% if include.loading %} loading="{{ include.loading }}"{% endif %}{% if include.fetchpriority %} fetchpriority="{{ include.fetchpriority }}"{% endif %}{% if include.decoding %} decoding="{{ include.decoding }}"{% endif %}

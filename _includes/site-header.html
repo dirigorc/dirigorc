@@ -1,6 +1,7 @@
 <header class="site-header">
     <a class="brand" href="{{ '/' | relative_url }}" aria-label="Dirigo home">
-        <img class="brand-wordmark" src="{{ '/assets/images/dirigo-wordmark-min.png' | relative_url }}" alt="Dirigo">
+        <img class="brand-wordmark" src="{{ '/assets/images/dirigo-wordmark-min.png' | relative_url }}" alt="Dirigo"
+            {% include image-attributes.html src="assets/images/dirigo-wordmark-min.png" loading="eager" decoding="async" %}>
     </a>
     <nav class="site-nav" aria-label="Primary navigation">
         <a{% if include.current=='join' %} aria-current="page" {% endif %} href="{{ '/join.html' | relative_url }}">
