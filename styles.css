@@ -798,7 +798,7 @@ a {
   font-family: var(--font-display);
   font-style: italic;
   margin: 0;
-  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-size: clamp(2.4rem, 4vw, 3.15rem);
   line-height: 1;
   text-transform: uppercase;
 }
