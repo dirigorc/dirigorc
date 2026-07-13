@@ -5,7 +5,8 @@ permalink: /feed.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
   xmlns:atom="http://www.w3.org/2005/Atom"
-  xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
     <title>{{ site.title | xml_escape }} Updates</title>
     <atom:link href="{{ '/feed.xml' | absolute_url }}" rel="self" type="application/rss+xml" />
@@ -15,11 +16,25 @@ permalink: /feed.xml
     <lastBuildDate>{{ site.time | date_to_rfc822 }}</lastBuildDate>
     {% assign posts = site.posts | sort: 'date' | reverse %}
     {% for post in posts limit: 25 %}
+    {% assign feed_image_src = "" %}
+    {% assign feed_image_alt = post.title %}
+    {% if post.image and post.image.src %}
+    {% assign feed_image_src = post.image.src %}
+    {% assign feed_image_alt = post.image.alt | default: post.title %}
+    {% elsif post.images and post.images.first %}
+    {% assign feed_image_src = post.images.first.src %}
+    {% assign feed_image_alt = post.images.first.alt | default: post.title %}
+    {% endif %}
+    {% capture feed_content %}{% if feed_image_src %}<p><img src="{{ feed_image_src | absolute_url }}" alt="{{ feed_image_alt | escape }}"></p>{% endif %}{{ post.content | markdownify }}{% endcapture %}
     <item>
       <title>{{ post.title | xml_escape }}</title>
       <link>{{ post.url | absolute_url }}</link>
       <guid isPermaLink="true">{{ post.url | absolute_url }}</guid>
       <pubDate>{{ post.date | date_to_rfc822 }}</pubDate>
+      {% if feed_image_src %}
+      <media:content url="{{ feed_image_src | absolute_url }}" medium="image" />
+      <media:thumbnail url="{{ feed_image_src | absolute_url }}" />
+      {% endif %}
       {% if post.category %}
       <category>{{ post.category | xml_escape }}</category>
       {% endif %}
@@ -29,7 +44,7 @@ permalink: /feed.xml
       {% endfor %}
       {% endif %}
       <description>{{ post.summary | default: post.excerpt | strip_html | normalize_whitespace | xml_escape }}</description>
-      <content:encoded>{{ post.content | markdownify | xml_escape }}</content:encoded>
+      <content:encoded>{{ feed_content | xml_escape }}</content:encoded>
     </item>
     {% endfor %}
   </channel>
