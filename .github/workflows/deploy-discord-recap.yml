@@ -1,4 +1,4 @@
-name: Deploy Discord recap worker
+name: Deploy Discord commands worker
 
 on:
   pull_request:
@@ -43,5 +43,5 @@ jobs:
         run: npm ci
         working-directory: dirigo-email-ingest
 
-      - name: Deploy worker and register Discord command
+      - name: Deploy worker and register Discord commands
         run: sh scripts/deploy_discord_recap.sh

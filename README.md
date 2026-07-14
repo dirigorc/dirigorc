@@ -188,17 +188,17 @@ Always include image credit links when photos come from photographers, race orga
 
 ## Email-To-Draft Automation
 
-The repo includes an optional automation for turning a forwarded race report email, Discord `/recap` command, or authenticated webhook into a review-ready PR.
+The repo includes optional automation for turning a forwarded race report email, Discord command, or authenticated webhook into a review-ready PR.
 
 Flow:
 
 ```text
-forwarded email, Discord /recap, or webhook
+forwarded email, Discord /recap, Discord /event, or webhook
 → Cloudflare Worker
 → temporary GitHub ingest branch
 → GitHub repository_dispatch with an ingest pointer
 → GitHub Actions
-→ OpenAI update generator
+→ OpenAI/Jekyll content generator
 → pull request ready for review
 ```
 
@@ -206,7 +206,9 @@ Files:
 
 - `automation/cloudflare-race-report-worker.js`: Cloudflare Worker endpoint.
 - `.github/workflows/race-report-digest.yml`: GitHub Action that generates and opens the PR.
+- `.github/workflows/calendar-event-digest.yml`: GitHub Action that generates and opens calendar-event PRs.
 - `.github/prompts/race-report-to-jekyll-update.md`: Editorial and content rules for the generator.
+- `.github/prompts/calendar-event-to-jekyll.md`: Calendar-event rules for `_events/` files.
 - `scripts/generate_race_report_update.py`: Script that writes `_posts/`, `_events/`, and tag pages.
 
 Email image attachments:
@@ -233,7 +235,7 @@ GitHub setup:
 3. Optionally add repository variable `RACE_REPORT_PR_ASSIGNEE`; default is `crowjonah`.
 4. Optional direct email notifications: add repository secret `RESEND_API_KEY`, and variables `RACE_REPORT_NOTIFY_FROM` and `RACE_REPORT_NOTIFY_EMAIL`.
 5. Make sure Actions can create pull requests under repository settings.
-6. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
+6. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) and [.github/prompts/calendar-event-to-jekyll.md](.github/prompts/calendar-event-to-jekyll.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
 
 Cloudflare setup:
 
@@ -266,9 +268,14 @@ curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
   }'
 ```
 
-### Discord `/recap` MVP
+To target the calendar-event workflow instead of the race-report workflow, include `"command": "event"` in the JSON body or send `X-Dirigo-Command: event` with a plain-text request.
 
-The Discord path uses the same Worker and the same review-ready PR workflow. By default, `/recap` uses submitted text verbatim. An optional `polish` input can opt into Copilot-assisted editorialization before opening a PR.
+### Discord `/recap` and `/event`
+
+The Discord path uses the same Worker and review-ready PR pattern for two commands:
+
+- `/recap`: draft an Updates post from race results or club notes. By default it uses submitted text verbatim; an optional `polish` input can opt into AI-assisted editorialization before opening a PR.
+- `/event`: draft or update a Calendar event from upcoming race, group run, meet, deadline, or team-date details. This always uses the calendar-event prompt and writes `_events/` files only.
 
 Create the Discord application:
 
@@ -283,11 +290,12 @@ Set the interaction endpoint:
 2. Copy the Worker URL, for example `https://dirigo-race-report.YOUR-SUBDOMAIN.workers.dev`.
 3. In the Discord application, set **Interactions Endpoint URL** to the Worker URL.
 4. Save the application. Discord will send a signed `PING`; the Worker must verify it and respond before Discord accepts the URL.
-5. If you want a repeatable rollout, run [`scripts/deploy_discord_recap.sh`](scripts/deploy_discord_recap.sh) with `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` set in the environment.
+5. If you want a repeatable rollout, run [`scripts/deploy_discord_recap.sh`](scripts/deploy_discord_recap.sh) with `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` set in the environment. The script deploys the Worker and registers both `/recap` and `/event`.
 
-Create the `/recap` command:
+Create the commands manually:
 
 ```sh
+# /recap: draft an Updates post
 curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/guilds/$DISCORD_GUILD_ID/commands" \
   -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
   -H "Content-Type: application/json" \
@@ -346,6 +354,30 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
       }
     ]
   }'
+
+# /event: draft a Calendar event
+curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/guilds/$DISCORD_GUILD_ID/commands" \
+  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "event",
+    "description": "Draft a Dirigo calendar event from upcoming-event details.",
+    "type": 1,
+    "options": [
+      {
+        "name": "body",
+        "description": "Upcoming race, group run, meet, deadline, or team date details.",
+        "type": 3,
+        "required": true
+      },
+      {
+        "name": "links",
+        "description": "Optional event, registration, results, or photo URLs.",
+        "type": 3,
+        "required": false
+      }
+    ]
+  }'
 ```
 
 Guild commands are usually available quickly while testing. A global command uses `/applications/$DISCORD_APPLICATION_ID/commands` instead, but it can take longer to appear.
@@ -353,20 +385,22 @@ Guild commands are usually available quickly while testing. A global command use
 Discord Worker behavior:
 
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
-2. If `body` is omitted, opens a modal for recap text, links, and a polish toggle.
-3. Defaults to `editorial_mode: "verbatim"`; if `polish` is set (inline or modal), uses `editorial_mode: "agentic"`.
-4. Extracts URLs from recap text and optional `links` input so copied recap links survive Discord paste quirks.
-5. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload.
-6. For inline submissions with images, defers the Discord response immediately, processes image fetches in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.
-7. Stages a payload with `source: "discord"`, `submitted_by`, `editorial_mode`, `body`, and `links`.
-8. Triggers the existing `race-report-email` `repository_dispatch`.
-9. GitHub Actions creates a PR ready for review.
-10. When Discord submitted the recap, the workflow posts the PR link back to the original interaction as an ephemeral follow-up.
+2. For `/recap`, if `body` is omitted, opens a modal for recap text, links, and a polish toggle.
+3. For `/event`, requires an inline `body` and sends the payload to the `calendar-event-email` dispatch workflow.
+4. Defaults `/recap` to `editorial_mode: "verbatim"`; if `polish` is set (inline or modal), uses `editorial_mode: "agentic"`.
+5. Forces `/event` to `editorial_mode: "agentic"` so the calendar prompt can map details into structured front matter.
+6. Extracts URLs from submitted text and optional `links` input so copied links survive Discord paste quirks.
+7. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload.
+8. For inline submissions with images, defers the Discord response immediately, processes image fetches in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.
+9. Stages a payload with `source: "discord"`, `command`, `submitted_by`, `editorial_mode`, `body`, and `links`.
+10. Triggers `race-report-email` for `/recap` or `calendar-event-email` for `/event`.
+11. GitHub Actions creates a PR ready for review and posts the PR link back to the original interaction as an ephemeral follow-up.
 
 Discord safe-submission notes:
 
 - Discord can reject a slash command before the Worker receives it, especially when several large attachments are uploaded. If that happens, the Worker cannot recover the typed text.
 - Safest path for long recaps: run `/recap` with no inline body, paste the recap into the modal, and submit text/links first.
+- Safest path for calendar events: run `/event` with concise event details in `body`, then add registration, race, or image-credit URLs in `links`.
 - Safest path for image-heavy recaps: submit the text first, then use the HTTP test endpoint with base64 image attachments, or send a smaller follow-up recap with 1-2 images.
 - If Discord does deliver an inline command with images, the Worker now acknowledges it immediately and processes image downloads in the background to avoid interaction timeouts.
 - Inline image attachments are limited to JPEG, PNG, GIF, WebP, or AVIF, up to 8 MB each. The Worker will now report how many images were accepted and which ones were skipped when Discord does deliver the command.
@@ -376,13 +410,14 @@ Discord safe-submission notes:
 
 1. Install the Discord app into the Dirigo server using the OAuth URL.
 2. Deploy the Worker from `dirigo-email-ingest/` with `npx wrangler deploy`.
-3. Register the guild slash command with `scripts/deploy_discord_recap.sh` or the equivalent `curl` call.
+3. Register the guild slash commands with `scripts/deploy_discord_recap.sh` or the equivalent `curl` calls.
 4. Set `DISCORD_PUBLIC_KEY` on the Worker.
-5. Re-open Discord and test `/recap` with text, then with one or more images.
+5. Re-open Discord and test `/recap` with text, then `/event` with an upcoming race or group run.
 
 Manual fallback:
 
 Run the `Race report update PR` workflow from the GitHub Actions tab and paste the email body into `digest_text`.
+Run the `Calendar event PR` workflow for upcoming events that should land in `_events/`.
 
 ## Site Structure
 

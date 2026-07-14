@@ -3,7 +3,7 @@
  *
  * Supports two entry points:
  * - Email Routing Worker: attach this Worker to an address such as updates@dirigorc.com.
- * - Discord interactions endpoint for the /recap slash command.
+ * - Discord interactions endpoint for the /recap and /event slash commands.
  * - HTTP POST webhook: send JSON or plain text to the Worker URL.
  *
  * Required Worker secrets/vars:
@@ -13,10 +13,13 @@
  *
  * Optional vars:
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
- * - DISCORD_PUBLIC_KEY: Required only for the Discord /recap interaction endpoint.
+ * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
  */
 
-const DISPATCH_EVENT_TYPE = "race-report-email";
+const DISPATCH_EVENT_TYPES = {
+  recap: "race-report-email",
+  event: "calendar-event-email",
+};
 const DISCORD_INTERACTION_PING = 1;
 const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
 const DISCORD_INTERACTION_MODAL_SUBMIT = 5;
@@ -29,7 +32,7 @@ const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/g
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
-const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, paste the text into `/recap` first and send images separately, or use the HTTP test endpoint in the README.";
+const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, paste the text into the slash command first and send images separately, or use the HTTP test endpoint in the README.";
 
 function allowedSender(sender, env) {
   if (!env.ALLOWED_FROM) return true;
@@ -106,6 +109,12 @@ function parsePolish(value, fallback = false) {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return fallback;
   return ["1", "true", "yes", "y", "polish", "agentic", "on"].includes(normalized);
+}
+
+function normalizeCommand(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["event", "calendar", "calendar-event", "calendar_event"].includes(normalized)) return "event";
+  return "recap";
 }
 
 function extractUrls(text) {
@@ -277,17 +286,18 @@ async function discordFollowup(interaction, content) {
   }
 }
 
-async function processDiscordCommandSubmission(env, interaction, body) {
+async function processDiscordCommandSubmission(env, interaction, body, command = "recap") {
   const attachmentSummary = await discordAttachments(interaction);
-  const editorialMode = discordEditorialMode(interaction);
+  const editorialMode = command === "event" ? "agentic" : discordEditorialMode(interaction);
   const submittedBy = discordSubmittedBy(interaction);
   const links = discordLinks(interaction, body);
   const email = {
     source: "discord",
+    command,
     editorial_mode: editorialMode,
     submitted_by: submittedBy,
     from: submittedBy,
-    subject: "Discord /recap",
+    subject: `Discord /${command}`,
     text: body,
     body,
     raw: "",
@@ -298,7 +308,7 @@ async function processDiscordCommandSubmission(env, interaction, body) {
   };
 
   await dispatchToGitHub(env, email);
-  await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary));
+  await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
 function discordOpenRecapModal(defaultPolish) {
@@ -400,13 +410,17 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     return discordAck("Got it. I started a verbatim website update PR for review.");
   }
 
-  if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || interaction.data?.name !== "recap") {
+  if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || !["recap", "event"].includes(interaction.data?.name)) {
     return discordAck("Unknown command.");
   }
 
+  const command = interaction.data.name;
   const body = String(discordOption(interaction, "body") || "").trim();
   const requestedAttachments = discordRequestedAttachmentCount(interaction);
   if (!body) {
+    if (command === "event") {
+      return discordAck("Please include event details in the body option.");
+    }
     if (requestedAttachments > 0) {
       return discordAck(`Please include recap text in the inline body option when submitting image attachments. Discord modals cannot carry slash-command attachments.\n\n${DISCORD_FALLBACK_MESSAGE}`);
     }
@@ -415,24 +429,25 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
 
   if (requestedAttachments > 0) {
     ctx.waitUntil(
-      processDiscordCommandSubmission(env, interaction, body).catch((error) => (
-        discordFollowup(interaction, `I received the recap text, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
+      processDiscordCommandSubmission(env, interaction, body, command).catch((error) => (
+        discordFollowup(interaction, `I received the ${command === "event" ? "event details" : "recap text"}, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
           .catch((followupError) => console.error(followupError))
       )),
     );
     return discordDeferredAck();
   }
 
-  const editorialMode = discordEditorialMode(interaction);
+  const editorialMode = command === "event" ? "agentic" : discordEditorialMode(interaction);
   const submittedBy = discordSubmittedBy(interaction);
   const links = discordLinks(interaction, body);
   const attachmentSummary = { attachments: [], skipped: [], requested: 0 };
   const email = {
     source: "discord",
+    command,
     editorial_mode: editorialMode,
     submitted_by: submittedBy,
     from: submittedBy,
-    subject: "Discord /recap",
+    subject: `Discord /${command}`,
     text: body,
     body,
     raw: "",
@@ -443,15 +458,18 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
   };
 
   ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
-  return discordAck(discordSubmissionAck(editorialMode, attachmentSummary));
+  return discordAck(discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
 async function dispatchToGitHub(env, email) {
   const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
   const ingest = await createIngestPayload(env, email);
+  const command = normalizeCommand(email.command || email.content_type);
+  const eventType = DISPATCH_EVENT_TYPES[command] || DISPATCH_EVENT_TYPES.recap;
   const clientPayload = { ingest };
   if (email.source === "discord") {
     clientPayload.source = "discord";
+    clientPayload.command = command;
     clientPayload.editorial_mode = email.editorial_mode || "verbatim";
     clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
     clientPayload.body = email.body || email.text || "";
@@ -475,7 +493,7 @@ async function dispatchToGitHub(env, email) {
       "X-GitHub-Api-Version": "2022-11-28",
     },
     body: JSON.stringify({
-      event_type: DISPATCH_EVENT_TYPE,
+      event_type: eventType,
       client_payload: clientPayload,
     }),
   });
@@ -524,7 +542,8 @@ function safeId(value) {
 
 async function createIngestPayload(env, email) {
   const baseBranch = env.GITHUB_REF || "main";
-  const id = `${Date.now()}-${safeId(email.subject || "race-report")}`;
+  const command = normalizeCommand(email.command || email.content_type);
+  const id = `${Date.now()}-${safeId(email.subject || command || "race-report")}`;
   const branch = `automation/email-ingest-${id}`;
   const path = `tmp/email-ingest/${id}/payload.json`;
 
@@ -540,7 +559,7 @@ async function createIngestPayload(env, email) {
   await githubRequest(env, `/contents/${path}`, {
     method: "PUT",
     body: JSON.stringify({
-      message: `Stage race report email payload: ${email.subject || "Race report"}`,
+      message: `Stage ${command === "event" ? "calendar event" : "race report"} payload: ${email.subject || "Dirigo update"}`,
       branch,
       content: textToBase64(JSON.stringify({ email }, null, 2)),
     }),
@@ -556,9 +575,12 @@ async function createIngestPayload(env, email) {
 
 async function emailPayloadFromRequest(request) {
   const contentType = request.headers.get("content-type") || "";
+  const commandHeader = request.headers.get("x-dirigo-command") || request.headers.get("x-dirigo-content-type") || "";
   if (contentType.includes("application/json")) {
     const body = await request.json();
     return {
+      command: normalizeCommand(body.command || body.type || body.content_type || commandHeader),
+      content_type: body.content_type || body.type || commandHeader,
       from: body.from || body.sender || "HTTP webhook",
       subject: body.subject || "Race report digest",
       text: body.text || body.body || body.plain || "",
@@ -569,6 +591,8 @@ async function emailPayloadFromRequest(request) {
 
   const text = await request.text();
   return {
+    command: normalizeCommand(commandHeader),
+    content_type: commandHeader,
     from: request.headers.get("x-email-from") || "HTTP webhook",
     subject: request.headers.get("x-email-subject") || "Race report digest",
     text,
@@ -579,7 +603,7 @@ async function emailPayloadFromRequest(request) {
 export default {
   async fetch(request, env, ctx) {
     if (request.method !== "POST") {
-      return new Response("Send POST requests to submit a race report digest.\n", { status: 405 });
+      return new Response("Send POST requests to submit a race report digest or calendar event.\n", { status: 405 });
     }
 
     if (request.headers.has("x-signature-ed25519") || request.headers.has("x-signature-timestamp")) {
@@ -606,7 +630,7 @@ export default {
   async email(message, env, ctx) {
     const from = message.from || headerValue(message.headers, "from");
     if (!allowedSender(from, env)) {
-      message.setReject("Sender is not allowed to create Dirigo race report updates.");
+      message.setReject("Sender is not allowed to create Dirigo site updates.");
       return;
     }
 

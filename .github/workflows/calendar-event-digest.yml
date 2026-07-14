@@ -1,0 +1,205 @@
+name: Calendar event PR
+
+on:
+  repository_dispatch:
+    types:
+      - calendar-event-email
+  workflow_dispatch:
+    inputs:
+      subject:
+        description: Email subject or short label
+        required: false
+        default: Manual calendar event
+      from:
+        description: Sender label
+        required: false
+        default: manual workflow_dispatch
+      digest_text:
+        description: Paste the upcoming event details
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch staged email payload
+        if: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.ingest.branch != '' }}
+        env:
+          INGEST_BRANCH: ${{ github.event.client_payload.ingest.branch }}
+          INGEST_PATH: ${{ github.event.client_payload.ingest.path }}
+        run: |
+          mkdir -p tmp
+          fetched=0
+          for attempt in 1 2 3 4 5; do
+            if git fetch origin "${INGEST_BRANCH}:refs/remotes/origin/${INGEST_BRANCH}" && git show "origin/${INGEST_BRANCH}:${INGEST_PATH}" > tmp/email-ingest-payload.json; then
+              fetched=1
+              break
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              echo "Ingest payload not available yet (attempt ${attempt}/5). Retrying in 3s..."
+              sleep 3
+            fi
+          done
+          if [ "$fetched" -ne 1 ]; then
+            echo "Failed to fetch staged payload from ${INGEST_BRANCH}:${INGEST_PATH} after retries."
+            exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate calendar event
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5-mini' }}
+        run: |
+          if [ -f tmp/email-ingest-payload.json ]; then
+            python scripts/generate_race_report_update.py --mode calendar-event --payload-file tmp/email-ingest-payload.json
+          else
+            python scripts/generate_race_report_update.py --mode calendar-event
+          fi
+
+      - name: Guard generated change size
+        run: |
+          if [ ! -s tmp/generated-files.txt ]; then
+            echo "No generated files were listed. Refusing to create an empty or unconstrained PR."
+            exit 1
+          fi
+
+          file_count="$(grep -cve '^[[:space:]]*$' tmp/generated-files.txt)"
+          if [ "$file_count" -gt 25 ]; then
+            echo "Generated $file_count files, which is over the 25-file safety limit."
+            cat tmp/generated-files.txt
+            exit 1
+          fi
+
+          added_lines=0
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            case "$path" in
+              _events/*.md|assets/images/email/*/*) ;;
+              *)
+                echo "Generated path is outside the PR allowlist: $path"
+                exit 1
+                ;;
+            esac
+
+            if [ ! -e "$path" ]; then
+              echo "Generated path listed but missing: $path"
+              exit 1
+            fi
+
+            if git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
+              lines="$(git diff --numstat -- "$path" | awk '{ added += $1 } END { print added + 0 }')"
+            elif file "$path" | grep -qiE 'image|bitmap|jpeg|png|gif|webp|avif'; then
+              lines=0
+            else
+              lines="$(wc -l < "$path" | tr -d ' ')"
+            fi
+            added_lines=$((added_lines + lines))
+          done < tmp/generated-files.txt
+
+          if [ "$added_lines" -gt 2000 ]; then
+            echo "Generated $added_lines added text lines, which is over the 2000-line safety limit."
+            cat tmp/generated-files.txt
+            exit 1
+          fi
+
+          {
+            echo "paths<<EOF"
+            cat tmp/generated-files.txt
+            echo "EOF"
+            echo "title<<EOF"
+            cat tmp/race-report-pr-title.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        id: generated_guard
+
+      - name: Validate generated front matter
+        run: |
+          ruby -ryaml -rdate <<'RUBY'
+          Dir["_posts/*.md", "_events/*.md", "updates/tags/*/index.html"].each do |f|
+            text = File.read(f)
+            fm = text.split(/^---\s*$/)[1]
+            next unless fm
+
+            begin
+              YAML.safe_load(fm, permitted_classes: [Date, Time], aliases: true)
+            rescue Psych::Exception => e
+              warn "YAML failed in #{f}: #{e.message}"
+              warn fm
+              exit 1
+            end
+          end
+          puts "yaml ok"
+          RUBY
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.1.6"
+          bundler-cache: true
+
+      - name: Build site
+        run: bundle exec jekyll build --destination tmp/_site
+
+      - name: Create pull request
+        id: create_pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: Generate calendar event
+          title: ${{ steps.generated_guard.outputs.title }}
+          body-path: tmp/race-report-pr-body.md
+          branch: automation/calendar-event-${{ github.run_id }}
+          delete-branch: true
+          assignees: ${{ vars.CALENDAR_EVENT_PR_ASSIGNEE || 'crowjonah' }}
+          add-paths: ${{ steps.generated_guard.outputs.paths }}
+          labels: |
+            automated calendar
+            content
+
+      - name: Send Discord PR link
+        if: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.source == 'discord' && github.event.client_payload.discord_callback.application_id != '' && github.event.client_payload.discord_callback.token != '' && steps.create_pr.outputs.pull-request-url != '' }}
+        env:
+          DISCORD_APPLICATION_ID: ${{ github.event.client_payload.discord_callback.application_id }}
+          DISCORD_INTERACTION_TOKEN: ${{ github.event.client_payload.discord_callback.token }}
+          PR_URL: ${{ steps.create_pr.outputs.pull-request-url }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          url = f"https://discord.com/api/v10/webhooks/{os.environ['DISCORD_APPLICATION_ID']}/{os.environ['DISCORD_INTERACTION_TOKEN']}"
+          payload = {
+              "content": f"Ready for review: {os.environ['PR_URL']}",
+              "flags": 64,
+          }
+          request = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  response.read()
+          except Exception as error:
+              print(f"Discord PR follow-up failed: {error}")
+          PY
+
+      - name: Delete staged email payload branch
+        if: ${{ always() && github.event_name == 'repository_dispatch' && github.event.client_payload.ingest.branch != '' }}
+        env:
+          INGEST_BRANCH: ${{ github.event.client_payload.ingest.branch }}
+        run: git push origin --delete "${INGEST_BRANCH}" || true
