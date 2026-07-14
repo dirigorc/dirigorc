@@ -1922,12 +1922,13 @@ details p {
 
   .site-nav {
     width: 100%;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 0.35rem clamp(0.85rem, 4vw, 1.5rem);
+    gap: clamp(0.62rem, 3vw, 1.35rem);
     padding-top: 0.72rem;
     border-top: 1px solid rgba(255, 255, 255, 0.28);
     transform: none;
+    white-space: nowrap;
   }
 
   .hero {
@@ -2098,11 +2099,12 @@ details p {
   }
 
   .brand-wordmark {
-    width: clamp(10rem, 58vw, 12rem);
+    width: clamp(8.75rem, 50vw, 11rem);
   }
 
   .site-nav {
-    font-size: 0.82rem;
+    gap: clamp(0.52rem, 2.85vw, 1rem);
+    font-size: clamp(0.68rem, 2.75vw, 0.82rem);
   }
 
   .hero {
@@ -2212,4 +2214,15 @@ details p {
     width: 100%;
   }
 
+}
+
+@media (max-width: 350px) {
+  .site-header {
+    padding-inline: 0.75rem;
+  }
+
+  .site-nav {
+    gap: 0.5rem;
+    font-size: 0.66rem;
+  }
 }
