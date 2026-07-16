@@ -1,0 +1,79 @@
+{% assign event = include.event %}
+{% assign occurrence_date = include.occurrence_date %}
+{% assign occurrence_anchor_date = occurrence_date | date: "%Y-%m-%d" %}
+{% capture event_anchor %}{{ occurrence_anchor_date }}-{{ event.title | slugify }}{% endcapture %}
+<article class="calendar-event" id="{{ event_anchor }}">
+  <time class="calendar-date" datetime="{{ occurrence_anchor_date }}">
+    <span>{{ occurrence_date | date: "%b" }}</span>
+    <strong>{{ occurrence_date | date: "%-d" }}</strong>
+  </time>
+  <div>
+    <div class="calendar-event-meta">
+      <span>{{ event.type }}</span>
+    </div>
+    <h3>{{ event.title }}</h3>
+    <p>{{ event.summary }}</p>
+    {% if event.image %}
+    <figure class="calendar-media">
+      <img src="{{ event.image.src | relative_url }}" alt="{{ event.image.alt }}"
+        {% include image-attributes.html src=event.image.src loading="lazy" decoding="async" %}>
+      {% if event.image_credit %}
+      <figcaption>
+        <a href="{{ event.image_credit.url }}" target="_blank" rel="noopener noreferrer">{{ event.image_credit.label
+          }}</a>
+      </figcaption>
+      {% endif %}
+    </figure>
+    {% endif %}
+    <dl class="calendar-details">
+      {% if event.time %}
+      <div>
+        <dt>Time</dt>
+        <dd>{{ event.time }}</dd>
+      </div>
+      {% endif %}
+      {% if event.location %}
+      <div>
+        <dt>Location</dt>
+        <dd>{{ event.location }}</dd>
+      </div>
+      {% endif %}
+      {% if event.recurrence %}
+      <div>
+        <dt>Repeats</dt>
+        <dd>{{ event.recurrence }}</dd>
+      </div>
+      {% endif %}
+      {% if event.registration_deadline %}
+      <div>
+        <dt>Deadline</dt>
+        <dd>{{ event.registration_deadline }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+    {% if event.team_note %}
+    <div class="calendar-team-note">
+      <p>{{ event.team_note }}</p>
+    </div>
+    {% endif %}
+    {% if event.event_url or event.registration_url or event.results_url or event.related_update or event.links %}
+    <p class="activity-links">
+      {% if event.event_url %}
+      <a href="{{ event.event_url }}" target="_blank" rel="noopener noreferrer">Event details</a>
+      {% endif %}
+      {% if event.registration_url %}
+      <a href="{{ event.registration_url }}" target="_blank" rel="noopener noreferrer">Register</a>
+      {% endif %}
+      {% if event.results_url %}
+      <a href="{{ event.results_url }}" target="_blank" rel="noopener noreferrer">Results</a>
+      {% endif %}
+      {% if event.related_update %}
+      <a href="{{ event.related_update | relative_url }}">Related update</a>
+      {% endif %}
+      {% for link in event.links %}
+      <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
+      {% endfor %}
+    </p>
+    {% endif %}
+  </div>
+</article>

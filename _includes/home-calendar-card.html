@@ -1,0 +1,18 @@
+{% assign event = include.event %}
+{% assign occurrence_date = include.occurrence_date %}
+{% assign occurrence_anchor_date = occurrence_date | date: "%Y-%m-%d" %}
+{% capture event_anchor %}{{ occurrence_anchor_date }}-{{ event.title | slugify }}{% endcapture %}
+<article class="home-calendar-card">
+  <time class="calendar-date" datetime="{{ occurrence_anchor_date }}">
+    <span>{{ occurrence_date | date: "%b" }}</span>
+    <strong>{{ occurrence_date | date: "%-d" }}</strong>
+  </time>
+  <div>
+    <p class="calendar-event-meta">
+      <span>{{ event.type }}</span>
+    </p>
+    <h3>{{ event.title }}</h3>
+    <p>{{ event.team_note | default: event.summary }}</p>
+    <a class="text-link" href="{{ '/calendar/' | relative_url }}#{{ event_anchor }}">Details</a>
+  </div>
+</article>
