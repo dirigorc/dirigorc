@@ -52,6 +52,15 @@ og_image_height=1249
           {% elsif occurrence_key == event_start_key %}
           {% assign render_event = true %}
           {% endif %}
+          {% if render_event and event.skip_dates %}
+          {% assign occurrence_iso = occurrence_date | date: "%Y-%m-%d" %}
+          {% for skip_date in event.skip_dates %}
+          {% assign skip_iso = skip_date | date: "%Y-%m-%d" %}
+          {% if occurrence_iso == skip_iso %}
+          {% assign render_event = false %}
+          {% endif %}
+          {% endfor %}
+          {% endif %}
           {% if render_event %}
           {% assign upcoming_count = upcoming_count | plus: 1 %}
           {% include calendar-event-card.html event=event occurrence_date=occurrence_date %}
@@ -92,6 +101,15 @@ og_image_height=1249
                 {% endif %}
               {% elsif occurrence_key == event_start_key %}
                 {% assign render_event = true %}
+              {% endif %}
+              {% if render_event and event.skip_dates %}
+                {% assign occurrence_iso = occurrence_date | date: "%Y-%m-%d" %}
+                {% for skip_date in event.skip_dates %}
+                  {% assign skip_iso = skip_date | date: "%Y-%m-%d" %}
+                  {% if occurrence_iso == skip_iso %}
+                    {% assign render_event = false %}
+                  {% endif %}
+                {% endfor %}
               {% endif %}
               {% if render_event %}
                 {% unless first_event %},{% endunless %}
