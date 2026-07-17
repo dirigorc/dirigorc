@@ -1715,6 +1715,52 @@ details p {
   color: var(--muted);
 }
 
+.donation-note {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: rgba(0, 87, 184, 0.08);
+  border: 1px solid rgba(0, 87, 184, 0.16);
+  border-left: 5px solid var(--dirigo-blue);
+  border-radius: var(--radius);
+}
+
+.donation-note img {
+  flex: 0 0 auto;
+  width: clamp(84px, 18vw, 112px);
+  height: auto;
+  padding: 0.35rem;
+  background: var(--paper);
+  border: 1px solid rgba(0, 87, 184, 0.16);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.donation-note div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.donation-note span {
+  color: var(--dirigo-blue);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.donation-note p {
+  margin: 0;
+  color: var(--ink);
+}
+
+.donation-note strong {
+  display: inline-block;
+  color: var(--ink);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .membership-form {
   display: grid;
   gap: 1rem;
@@ -2012,6 +2058,10 @@ details p {
   .legacy-list article,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .donation-note {
+    align-items: flex-start;
   }
 
   .calendar-date {
