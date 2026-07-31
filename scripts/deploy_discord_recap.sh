@@ -10,6 +10,8 @@ WORKER_NAME="${DISCORD_WORKER_NAME:-dirigo-email-ingest}"
 COMMAND_SCOPE="${DISCORD_COMMAND_SCOPE:-guild}"
 LAST_COMMAND_ERROR_CODE=0
 
+# Touch this file to trigger Discord command deployment after workflow changes.
+
 cd "$(dirname "$0")/.."
 
 cd "$WORKER_DIR"
