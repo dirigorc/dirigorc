@@ -136,9 +136,9 @@ JSON
     "options": [
       {
         "name": "body",
-        "description": "Upcoming race, group run, meet, deadline, or team date details.",
+        "description": "Optional event details (leave empty to use modal).",
         "type": 3,
-        "required": true
+        "required": false
       },
       {
         "name": "links",

@@ -32,7 +32,35 @@ const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/g
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
+const DISCORD_EVENT_MODAL_ID = "event_modal_v1";
 const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, paste the text into the slash command first and send images separately, or use the HTTP test endpoint in the README.";
+const DATEISH_PATTERN = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|today|tomorrow|tonight|next\s+week|this\s+weekend|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
+const RESULTISH_PATTERN = /\b(?:\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?|\d+(?:\.\d+)?\s?(?:k|mile|miler|marathon|half|meters?|m|place|overall|oa|win|winner|won|pr|pb|course record|age group|ag)|results?)\b/i;
+const INCOMPLETE_MEMBER_NAMES = [
+	{ pattern: /\bDave\s+O\b/i, replacements: ["Dave Ouellette"] },
+	{ pattern: /\bAshby\b/i, replacements: ["Robert Ashby", "Rob Ashby"] },
+	{ pattern: /\bDenari\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
+	{ pattern: /\bHarmon\b/i, replacements: ["Chris Harmon"] },
+	{ pattern: /\bChad\b/i, replacements: ["Chad Boucher"] },
+	{ pattern: /\bNate\b/i, replacements: ["Nate Priest"] },
+	{ pattern: /\bSeth\b/i, replacements: ["Seth Crockett"] },
+	{ pattern: /\bCrow\b/i, replacements: ["Crow Norlander"] },
+	{ pattern: /\bMarah\b/i, replacements: ["Marah Borgman"] },
+	{ pattern: /\bKarley\b/i, replacements: ["Karley Piers"] },
+	{ pattern: /\bAly\b/i, replacements: ["Aly Ursiny"] },
+	{ pattern: /\bCliodhna\b/i, replacements: ["Cliodhna O'Malley", "Clíodhna O'Malley"] },
+	{ pattern: /\bVeronica\b/i, replacements: ["Veronica Graziano"] },
+	{ pattern: /\bHeather\b/i, replacements: ["Heather Gallant"] },
+	{ pattern: /\bAdane\b/i, replacements: ["Adane Bewset"] },
+	{ pattern: /\bDeven\b/i, replacements: ["Deven Abrams"] },
+	{ pattern: /\bEric\b/i, replacements: ["Eric Sofen"] },
+	{ pattern: /\bAlexis\b/i, replacements: ["Alexis Wilbert"] },
+	{ pattern: /\bDan\b/i, replacements: ["Dan Bannon"] },
+	{ pattern: /\bNick\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
+	{ pattern: /\bJorma\b/i, replacements: ["Jorma Kurry"] },
+	{ pattern: /\bLaurel\b/i, replacements: ["Laurel Manville", "Laurel Driscoll"] },
+	{ pattern: /\bJustin\b/i, replacements: ["Justin Freeman", "Justin Tomison"] },
+];
 
 interface EmailAttachment {
 	filename: string;
@@ -220,6 +248,53 @@ function extractUrls(text: string): string[] {
 	return unique;
 }
 
+function wordCount(text: string): number {
+	return text.split(/\s+/).filter(Boolean).length;
+}
+
+function includesFullName(text: string, names: string[]): boolean {
+	const normalized = text.toLowerCase();
+	return names.some((name) => normalized.includes(name.toLowerCase()));
+}
+
+function incompleteMemberNameReason(body: string): string {
+	const matches: string[] = [];
+	for (const item of INCOMPLETE_MEMBER_NAMES) {
+		if (!item.pattern.test(body)) continue;
+		if (includesFullName(body, item.replacements)) continue;
+		matches.push(item.replacements.join(" or "));
+	}
+	const unique = [...new Set(matches)];
+	if (unique.length === 0) return "";
+	const examples = unique.slice(0, 5).join(", ");
+	const suffix = unique.length > 5 ? ", etc." : "";
+	return `Please use full member names before I create a PR. Possible fixes: ${examples}${suffix}.`;
+}
+
+function clarificationReason(command: "recap" | "event", body: string, requestedAttachments: number): string {
+	const trimmed = body.trim();
+	const words = wordCount(trimmed);
+	const hasUrl = extractUrls(trimmed).length > 0;
+	const hasDate = DATEISH_PATTERN.test(trimmed);
+	const hasResult = RESULTISH_PATTERN.test(trimmed);
+	const incompleteNameReason = incompleteMemberNameReason(trimmed);
+
+	if (command === "event") {
+		if (!trimmed) return "Please add the event name, date, time, location, and any useful links.";
+		if (!hasDate) return "Please add the event date before I create a calendar PR.";
+		if (words < 4) return "Please add a little more context, like the event name, location, and time.";
+		if (incompleteNameReason) return incompleteNameReason;
+		return "";
+	}
+
+	if (!trimmed) return "Please add the race recap or club note.";
+	if (incompleteNameReason) return incompleteNameReason;
+	if (requestedAttachments > 0) return "";
+	if (words < 6) return "Please add a few more details before I create an update PR.";
+	if (words < 16 && !hasResult && !hasUrl) return "Please add a result, race name, date, or source link so the update has enough context.";
+	return "";
+}
+
 function discordLinks(interaction: DiscordInteraction, body: string): string[] {
 	const linksField = String(discordOption(interaction, "links") || "");
 	const urls = [...extractUrls(body), ...extractUrls(linksField)];
@@ -401,14 +476,30 @@ async function processDiscordCommandSubmission(env: WorkerEnv, interaction: Disc
 	await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
-function discordOpenRecapModal(defaultPolish: boolean): Response {
+function discordOpenRecapModal(defaultPolish: boolean, body = "", links = "", reason = ""): Response {
 	return new Response(
 		JSON.stringify({
 			type: DISCORD_RESPONSE_MODAL,
 			data: {
 				custom_id: DISCORD_RECAP_MODAL_ID,
-				title: "Create Dirigo recap",
+				title: reason ? "Clarify Dirigo recap" : "Create Dirigo recap",
 				components: [
+					...(reason ? [
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									custom_id: "reason",
+									label: "What I need",
+									style: 2,
+									required: false,
+									max_length: 300,
+									value: reason,
+								},
+							],
+						},
+					] : []),
 					{
 						type: 1,
 						components: [
@@ -419,6 +510,7 @@ function discordOpenRecapModal(defaultPolish: boolean): Response {
 								style: 2,
 								required: true,
 								max_length: 4000,
+								value: body.slice(0, 4000),
 							},
 						],
 					},
@@ -433,6 +525,7 @@ function discordOpenRecapModal(defaultPolish: boolean): Response {
 								required: false,
 								max_length: 1000,
 								placeholder: "Paste result links, one per line or spaced.",
+								value: links.slice(0, 1000),
 							},
 						],
 					},
@@ -447,6 +540,67 @@ function discordOpenRecapModal(defaultPolish: boolean): Response {
 								required: false,
 								max_length: 8,
 								value: defaultPolish ? "yes" : "no",
+							},
+						],
+					},
+				],
+			},
+		}),
+		{ headers: { "content-type": "application/json" } },
+	);
+}
+
+function discordOpenEventModal(body = "", links = "", reason = ""): Response {
+	return new Response(
+		JSON.stringify({
+			type: DISCORD_RESPONSE_MODAL,
+			data: {
+				custom_id: DISCORD_EVENT_MODAL_ID,
+				title: reason ? "Clarify Dirigo event" : "Create Dirigo event",
+				components: [
+					...(reason ? [
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									custom_id: "reason",
+									label: "What I need",
+									style: 2,
+									required: false,
+									max_length: 300,
+									value: reason,
+								},
+							],
+						},
+					] : []),
+					{
+						type: 1,
+						components: [
+							{
+								type: 4,
+								custom_id: "body",
+								label: "Event details",
+								style: 2,
+								required: true,
+								max_length: 4000,
+								placeholder: "Event name, date, time, location, and what Dirigo should know.",
+								value: body.slice(0, 4000),
+							},
+						],
+					},
+					{
+						type: 1,
+						components: [
+							{
+								type: 4,
+								custom_id: "links",
+								label: "Source URLs (optional)",
+								style: 2,
+								required: false,
+								max_length: 1000,
+								placeholder: "Paste event, registration, results, or photo links.",
+								value: links.slice(0, 1000),
 							},
 						],
 					},
@@ -484,6 +638,8 @@ async function handleDiscordInteraction(
 	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && interaction.data?.custom_id === DISCORD_RECAP_MODAL_ID) {
 		const body = discordModalInput(interaction, "body");
 		if (!body) return discordAck("Please include recap text.");
+		const reason = clarificationReason("recap", body, 0);
+		if (reason) return discordAck(`${reason}\n\nPlease rerun /recap with the full names in the body.`);
 		const linksField = discordModalInput(interaction, "links");
 		const links = [...extractUrls(body), ...extractUrls(linksField)];
 		const polish = parsePolish(discordModalInput(interaction, "polish"), parsePolish(discordModalInput(interaction, "agentic"), false));
@@ -507,21 +663,57 @@ async function handleDiscordInteraction(
 		return discordAck("Got it. I started a verbatim website update PR for review.");
 	}
 
+	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && interaction.data?.custom_id === DISCORD_EVENT_MODAL_ID) {
+		const body = discordModalInput(interaction, "body");
+		if (!body) return discordAck("Please include event details.");
+		const reason = clarificationReason("event", body, 0);
+		if (reason) return discordAck(`${reason}\n\nPlease rerun /event with the full names in the body.`);
+		const linksField = discordModalInput(interaction, "links");
+		const links = [...extractUrls(body), ...extractUrls(linksField)];
+		const submittedBy = discordSubmittedBy(interaction);
+		const email: EmailPayload = {
+			source: "discord",
+			command: "event",
+			editorial_mode: "agentic",
+			submitted_by: submittedBy,
+			from: submittedBy,
+			subject: "Discord /event",
+			text: body,
+			body,
+			raw: "",
+			links,
+			discord_application_id: interaction.application_id || "",
+			discord_interaction_token: interaction.token || "",
+		};
+		ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
+		return discordAck("Got it. I started a calendar event PR for review.");
+	}
+
 	if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || !["recap", "event"].includes(interaction.data?.name || "")) {
 		return discordAck("Unknown command.");
 	}
 
 	const command = normalizeCommand(interaction.data?.name);
 	const body = String(discordOption(interaction, "body") || "").trim();
+	const linksField = String(discordOption(interaction, "links") || "").trim();
 	const requestedAttachments = discordRequestedAttachmentCount(interaction);
 	if (!body) {
 		if (command === "event") {
-			return discordAck("Please include event details in the body option.");
+			return discordOpenEventModal("", linksField, clarificationReason(command, body, requestedAttachments));
 		}
 		if (requestedAttachments > 0) {
 			return discordAck(`Please include recap text in the inline body option when submitting image attachments. Discord modals cannot carry slash-command attachments.\n\n${DISCORD_FALLBACK_MESSAGE}`);
 		}
 		return discordOpenRecapModal(discordEditorialMode(interaction) === "agentic");
+	}
+
+	const reason = clarificationReason(command, body, requestedAttachments);
+	if (reason) {
+		if (requestedAttachments > 0) {
+			return discordAck(`${reason}\n\nWhen submitting image attachments, Discord modals cannot carry the files forward. Please rerun /${command} with the missing details in the body and reattach the images.`);
+		}
+		if (command === "event") return discordOpenEventModal(body, linksField, reason);
+		return discordOpenRecapModal(discordEditorialMode(interaction) === "agentic", body, linksField, reason);
 	}
 
 	if (requestedAttachments > 0) {
