@@ -233,9 +233,13 @@ GitHub setup:
 1. Add repository secret `OPENAI_API_KEY`.
 2. Optionally add repository variable `OPENAI_MODEL`; default is `gpt-5-mini`.
 3. Optionally add repository variable `RACE_REPORT_PR_ASSIGNEE`; default is `crowjonah`.
-4. Optional direct email notifications: add repository secret `RESEND_API_KEY`, and variables `RACE_REPORT_NOTIFY_FROM` and `RACE_REPORT_NOTIFY_EMAIL`.
-5. Make sure Actions can create pull requests under repository settings.
-6. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) and [.github/prompts/calendar-event-to-jekyll.md](.github/prompts/calendar-event-to-jekyll.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
+4. Optionally add repository variable `RACE_REPORT_PR_REVIEWERS`; default is `crowjonah`. Use comma-separated GitHub usernames for more than one reviewer.
+5. Optionally add repository variable `CALENDAR_EVENT_PR_ASSIGNEE`; default is `crowjonah`.
+6. Optionally add repository variable `CALENDAR_EVENT_PR_REVIEWERS`; default is `crowjonah`. Use comma-separated GitHub usernames for more than one reviewer.
+7. Optional direct email notifications: add repository secret `RESEND_API_KEY`, and variables `RACE_REPORT_NOTIFY_FROM` and `RACE_REPORT_NOTIFY_EMAIL`.
+8. Make sure Actions can create pull requests under repository settings.
+9. Make sure the intended reviewers have GitHub email notifications enabled for review requests. The workflow can request review, but GitHub account notification settings control whether that becomes an email.
+10. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) and [.github/prompts/calendar-event-to-jekyll.md](.github/prompts/calendar-event-to-jekyll.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
 
 Cloudflare setup:
 

@@ -163,6 +163,7 @@ jobs:
           branch: automation/calendar-event-${{ github.run_id }}
           delete-branch: true
           assignees: ${{ vars.CALENDAR_EVENT_PR_ASSIGNEE || 'crowjonah' }}
+          reviewers: ${{ vars.CALENDAR_EVENT_PR_REVIEWERS || 'crowjonah' }}
           add-paths: ${{ steps.generated_guard.outputs.paths }}
           labels: |
             automated calendar

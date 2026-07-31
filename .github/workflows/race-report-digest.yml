@@ -163,6 +163,7 @@ jobs:
           branch: automation/race-report-${{ github.run_id }}
           delete-branch: true
           assignees: ${{ vars.RACE_REPORT_PR_ASSIGNEE || 'crowjonah' }}
+          reviewers: ${{ vars.RACE_REPORT_PR_REVIEWERS || 'crowjonah' }}
           add-paths: ${{ steps.generated_guard.outputs.paths }}
           labels: |
             automated update
