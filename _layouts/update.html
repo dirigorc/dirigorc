@@ -53,7 +53,7 @@ article_author_name=site.title
             {% endif %}
 
             {% if page.layout_style == "image-row" and page.images %}
-            <div class="activity-image-row update-detail-media" data-masonry-gallery>
+            <div class="activity-image-row update-detail-media{% if page.feature_first_image %} is-feature-first{% endif %}" data-masonry-gallery>
                 {% for image in page.images %}
                 <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}"
                     {% include image-attributes.html src=image.src loading="lazy" decoding="async" %}>

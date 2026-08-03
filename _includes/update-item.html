@@ -26,7 +26,7 @@
     </div>
     {% else %}
     {% if update.layout_style == "image-row" and update.images %}
-    <div class="activity-image-row" data-masonry-gallery>
+    <div class="activity-image-row{% if update.feature_first_image %} is-feature-first{% endif %}" data-masonry-gallery>
       {% for image in update.images %}
       <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}"
         {% include image-attributes.html src=image.src loading="lazy" decoding="async" %}>

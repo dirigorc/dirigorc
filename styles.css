@@ -974,10 +974,20 @@ a {
   gap: 0.55rem;
 }
 
+.activity-image-row.is-feature-first>img:first-child {
+  grid-column: 1 / -1;
+}
+
 .activity-image-row.is-dense-grid.is-dense-crop img {
   aspect-ratio: 1 / 1;
   height: 100%;
   object-fit: cover;
+}
+
+.activity-image-row.is-feature-first.is-dense-grid.is-dense-crop>img:first-child {
+  aspect-ratio: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .activity-image-row img {
