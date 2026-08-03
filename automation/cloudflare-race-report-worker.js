@@ -29,11 +29,16 @@ const DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE = 5;
 const DISCORD_RESPONSE_MODAL = 9;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
+const DISCORD_TEXT_CONTENT_TYPES = new Set(["text/plain", "text/markdown", "message/rfc822", "application/octet-stream"]);
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const MAX_DISCORD_TEXT_ATTACHMENT_BYTES = 256 * 1024;
 const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
+const DISCORD_TEXT_ATTACHMENT_OPTION_NAME = "recap_file";
+const DISCORD_MODAL_BODY_MAX = 4000;
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
 const DISCORD_EVENT_MODAL_ID = "event_modal_v1";
-const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, paste the text into the slash command first and send images separately, or use the HTTP test endpoint in the README.";
+const DISCORD_LONG_RECAP_MESSAGE = "For long recaps, save the text as a .txt or .md file and rerun /recap with recap_file attached. Discord text boxes can reject long pasted reports before the Worker receives them.";
+const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, submit the recap text first, attach a .txt/.md file with recap_file, or use the HTTP test endpoint in the README.";
 const DATEISH_PATTERN = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|today|tomorrow|tonight|next\s+week|this\s+weekend|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
 const RESULTISH_PATTERN = /\b(?:\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?|\d+(?:\.\d+)?\s?(?:k|mile|miler|marathon|half|meters?|m|place|overall|oa|win|winner|won|pr|pb|course record|age group|ag)|results?)\b/i;
 const INCOMPLETE_MEMBER_NAMES = [
@@ -245,6 +250,19 @@ function discordAttachmentFromOption(interaction, optionName) {
   return interaction.data?.resolved?.attachments?.[id] || null;
 }
 
+function attachmentContentType(item) {
+  return String(item.content_type || "").split(";")[0].trim().toLowerCase();
+}
+
+function attachmentExtension(filename) {
+  const match = String(filename || "").toLowerCase().match(/\.([a-z0-9]+)$/);
+  return match ? match[1] : "";
+}
+
+function discordTextAttachmentFromOption(interaction) {
+  return discordAttachmentFromOption(interaction, DISCORD_TEXT_ATTACHMENT_OPTION_NAME);
+}
+
 function discordRequestedAttachmentCount(interaction) {
   return DISCORD_ATTACHMENT_OPTION_NAMES
     .map((optionName) => discordAttachmentFromOption(interaction, optionName))
@@ -257,7 +275,7 @@ async function discordAttachments(interaction) {
   const attachments = [];
   const skipped = [];
   for (const item of selected) {
-    const contentType = item.content_type || "";
+    const contentType = attachmentContentType(item);
     const filename = item.filename || "attachment";
     const size = Number(item.size || 0);
     const url = item.url || "";
@@ -300,6 +318,49 @@ async function discordAttachments(interaction) {
   }
 
   return { attachments, skipped, requested: selected.length };
+}
+
+async function discordTextAttachment(interaction) {
+  const item = discordTextAttachmentFromOption(interaction);
+  if (!item) return { text: "", skipped: [], requested: 0, filename: "" };
+
+  const filename = item.filename || "recap.txt";
+  const contentType = attachmentContentType(item);
+  const extension = attachmentExtension(filename);
+  const size = Number(item.size || 0);
+  const url = item.url || "";
+  const skipped = [];
+
+  if (!url) skipped.push(`${filename}: missing Discord attachment URL`);
+  if (!DISCORD_TEXT_CONTENT_TYPES.has(contentType) && !["txt", "md", "markdown", "eml"].includes(extension)) {
+    skipped.push(`${filename}: attach a .txt, .md, or .eml recap file`);
+  }
+  if (size <= 0 || size > MAX_DISCORD_TEXT_ATTACHMENT_BYTES) {
+    skipped.push(`${filename}: over the 256 KB recap-file limit`);
+  }
+  if (skipped.length > 0) return { text: "", skipped, requested: 1, filename };
+
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    return { text: "", skipped: [`${filename}: could not fetch from Discord`], requested: 1, filename };
+  }
+  if (!response.ok) {
+    return { text: "", skipped: [`${filename}: Discord returned ${response.status}`], requested: 1, filename };
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.length || bytes.length > MAX_DISCORD_TEXT_ATTACHMENT_BYTES) {
+    return { text: "", skipped: [`${filename}: empty or over the 256 KB recap-file limit`], requested: 1, filename };
+  }
+
+  return {
+    text: new TextDecoder("utf-8", { fatal: false, ignoreBOM: false }).decode(bytes).trim(),
+    skipped: [],
+    requested: 1,
+    filename,
+  };
 }
 
 function discordAck(content) {
@@ -386,6 +447,24 @@ async function processDiscordCommandSubmission(env, interaction, body, command =
   await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
+async function processDiscordRecapFileSubmission(env, interaction, inlineBody = "") {
+  const fileSummary = await discordTextAttachment(interaction);
+  if (!fileSummary.text) {
+    const detail = fileSummary.skipped.length ? `\n\n${fileSummary.skipped.join("\n")}` : "";
+    await discordFollowup(interaction, `I could not read the recap file.${detail}\n\n${DISCORD_LONG_RECAP_MESSAGE}`);
+    return;
+  }
+
+  const body = [inlineBody.trim(), fileSummary.text].filter(Boolean).join("\n\n").trim();
+  const reason = clarificationReason("recap", body, discordRequestedAttachmentCount(interaction));
+  if (reason) {
+    await discordFollowup(interaction, `${reason}\n\nPlease edit the recap file and rerun /recap.`);
+    return;
+  }
+
+  await processDiscordCommandSubmission(env, interaction, body, "recap");
+}
+
 function discordOpenRecapModal(defaultPolish, body = "", links = "", reason = "") {
   return new Response(
     JSON.stringify({
@@ -419,8 +498,8 @@ function discordOpenRecapModal(defaultPolish, body = "", links = "", reason = ""
                 label: "Recap text",
                 style: 2,
                 required: true,
-                max_length: 4000,
-                value: body.slice(0, 4000),
+                max_length: DISCORD_MODAL_BODY_MAX,
+                value: body.slice(0, DISCORD_MODAL_BODY_MAX),
               },
             ],
           },
@@ -493,9 +572,9 @@ function discordOpenEventModal(body = "", links = "", reason = "") {
                 label: "Event details",
                 style: 2,
                 required: true,
-                max_length: 4000,
+                max_length: DISCORD_MODAL_BODY_MAX,
                 placeholder: "Event name, date, time, location, and what Dirigo should know.",
-                value: body.slice(0, 4000),
+                value: body.slice(0, DISCORD_MODAL_BODY_MAX),
               },
             ],
           },
@@ -600,14 +679,38 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
   const body = String(discordOption(interaction, "body") || "").trim();
   const linksField = String(discordOption(interaction, "links") || "").trim();
   const requestedAttachments = discordRequestedAttachmentCount(interaction);
+  const hasRecapFile = command === "recap" && Boolean(discordTextAttachmentFromOption(interaction));
   if (!body) {
     if (command === "event") {
       return discordOpenEventModal("", linksField, clarificationReason(command, body, requestedAttachments));
+    }
+    if (hasRecapFile) {
+      ctx.waitUntil(
+        processDiscordRecapFileSubmission(env, interaction).catch((error) => (
+          discordFollowup(interaction, `I received the recap file, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
+            .catch((followupError) => console.error(followupError))
+        )),
+      );
+      return discordDeferredAck();
     }
     if (requestedAttachments > 0) {
       return discordAck(`Please include recap text in the inline body option when submitting image attachments. Discord modals cannot carry slash-command attachments.\n\n${DISCORD_FALLBACK_MESSAGE}`);
     }
     return discordOpenRecapModal(discordEditorialMode(interaction) === "agentic");
+  }
+
+  if (command === "recap" && body.length > DISCORD_MODAL_BODY_MAX - 100 && !hasRecapFile) {
+    return discordAck(DISCORD_LONG_RECAP_MESSAGE);
+  }
+
+  if (hasRecapFile) {
+    ctx.waitUntil(
+      processDiscordRecapFileSubmission(env, interaction, body).catch((error) => (
+        discordFollowup(interaction, `I received the recap file, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
+          .catch((followupError) => console.error(followupError))
+      )),
+    );
+    return discordDeferredAck();
   }
 
   const reason = clarificationReason(command, body, requestedAttachments);

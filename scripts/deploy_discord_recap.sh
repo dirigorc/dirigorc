@@ -80,8 +80,15 @@ create_commands() {
     "options": [
       {
         "name": "body",
-        "description": "Optional inline recap text (leave empty to use modal).",
+        "description": "Optional short recap text. Use recap_file for long reports.",
         "type": 3,
+        "required": false,
+        "max_length": 3900
+      },
+      {
+        "name": "recap_file",
+        "description": "Optional .txt/.md recap file for long race reports.",
+        "type": 11,
         "required": false
       },
       {
