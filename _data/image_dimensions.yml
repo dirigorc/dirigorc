@@ -77,6 +77,9 @@
 - src: "assets/images/dirigo-bot.png"
   width: 1254
   height: 1254
+- src: "assets/images/dirigo-coastal-run-maine-back-cove-outpaint-original-faces-instagram-1080x1350.jpeg"
+  width: 1080
+  height: 1350
 - src: "assets/images/dirigo-hero-instagram-1600.jpg"
   width: 1600
   height: 1067
