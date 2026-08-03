@@ -186,6 +186,65 @@ Put update images in `assets/images/` or a subfolder inside it. Use descriptive 
 
 Always include image credit links when photos come from photographers, race organizers, Instagram galleries, or partner clubs.
 
+## Results Harvester MVP
+
+The repo includes an early helper for turning a race results page into a reviewable Dirigo-specific digest before writing an update post.
+
+Use this when you have:
+
+- A public race results URL.
+- An optional photo gallery URL.
+- A privacy-safe member roll CSV with names and aliases only.
+
+Do not commit the treasurer's member spreadsheet, dues status, emails, phone numbers, addresses, or payment notes. Export a separate matching file with this shape:
+
+```csv
+display_name,aliases,tags
+Nick Denari,"Nicholas Denari;Denari","Nick Denari"
+Robert Ashby,"Rob Ashby;Ashby","Robert Ashby"
+```
+
+If the source is a Google Sheet with column A as last name and column B as first name, export it as CSV and use it directly. Headers like `Last Name,First Name`, `Last,First`, or `Surname,Given Name` are accepted:
+
+```csv
+Last Name,First Name
+Denari,Nick
+Ashby,Robert
+```
+
+For better matching, add an optional `Aliases` column for nicknames, formal names, maiden names, or common result-list variants:
+
+```csv
+Last Name,First Name,Aliases
+Denari,Nick,"Nicholas Denari;Denari"
+Ashby,Robert,"Rob Ashby;Ashby"
+```
+
+In Google Sheets, use **File → Download → Comma Separated Values (.csv)**. Save the export somewhere outside the repo if it contains the real member roll, for example:
+
+```text
+~/Downloads/dirigo-member-roll.csv
+```
+
+Run the harvester:
+
+```sh
+python3 scripts/results_harvester/cli.py \
+  --member-roll ~/Downloads/dirigo-member-roll.csv \
+  --results-url "https://example.com/results" \
+  --photo-url "https://example.com/photos" \
+  --race "Race Name" \
+  --date 2026-08-03 \
+  --out tmp/results-harvest.json \
+  --markdown-out tmp/results-harvest.md
+```
+
+The output separates confirmed matches from possible matches and lists candidate photos scored by name, bib, Dirigo/team hints, and race terms. Treat the Markdown output as review context for `/recap`, the GitHub workflow, or a hand-written update. Possible matches should be checked before publishing.
+
+The parser is intentionally generic right now: it reads normal HTML tables, CSV result exports, and gallery pages without extra dependencies. If a timing site is JavaScript-rendered, such as some RTRT leaderboards, use a CSV/export option when available or save a copied results table as CSV and pass that file to `--results-url`.
+
+Add site-specific adapters later for RunSignUp, Race Roster, All Sports Events, UltraSignup, MileSplit/Tyler Timing, Maine Running Photos, GeoSnapshot, RTRT, or other timing/photo sites when a generic scrape is not good enough.
+
 ## Email-To-Draft Automation
 
 The repo includes optional automation for turning a forwarded race report email, Discord command, or authenticated webhook into a review-ready PR.
