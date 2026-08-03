@@ -30,11 +30,15 @@ images:
     alt: Beach to Beacon awards podium.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-finish-sign-team.webp
     alt: Dirigo runners after Beach to Beacon 2026.
+  - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-family-photo.webp
+    alt: Dirigo runner after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-dirigo-duo.webp
     alt: Dirigo runners after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-women-duo.webp
     alt: Dirigo runners after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-thumbs-up.webp
+    alt: Dirigo runner after Beach to Beacon 2026.
+  - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-friends-duo.webp
     alt: Dirigo runner after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-supporter-duo.webp
     alt: Dirigo runner after Beach to Beacon 2026.
@@ -45,7 +49,7 @@ images:
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-mens-duo.webp
     alt: Dirigo runners after Beach to Beacon 2026.
 
-summary: "Beach to Beacon turned into a showcase for the blue singlet: Georgia Moon won the Girls High School Mile, Dirigo women filled seven of the top ten Maine women's spots in the 10K, Elizabeth Kanzleiter finished 11th among Maine women before joining the team, and age-group podiums stretched across the club."
+summary: "Dirigo's Beach to Beacon weekend had range: Georgia Moon won the Girls High School Mile, then the women's squad put seven runners in the Maine top ten over 10K. Clíodhna O'Malley led the group in 35:10, with Heather Gallant, Bethanie Brown, Veronica Graziano, Alexis Wilbert, Aly Ursiny, and Karley Piers all close behind."
 tags:
   - "Beach to Beacon"
   - "Georgia Moon"
