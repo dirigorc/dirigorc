@@ -1014,6 +1014,23 @@ a {
   align-items: start;
 }
 
+.activity-image-row.is-balanced-rows {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.activity-balanced-row {
+  display: grid;
+  grid-template-columns: var(--balanced-row-template, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.activity-balanced-row img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 .activity-masonry-column {
   display: grid;
   gap: 0.75rem;
