@@ -26,6 +26,9 @@
 - src: "assets/images/alexis.jpg"
   width: 2101
   height: 2521
+- src: "assets/images/alexis-clamfest.jpg"
+  width: 1080
+  height: 1440
 - src: "assets/images/apple-touch-icon.png"
   width: 180
   height: 180
@@ -272,6 +275,9 @@
 - src: "assets/images/karley-piers-bridgton-26.jpg"
   width: 1800
   height: 1200
+- src: "assets/images/karley-piers-valor-twilight-meet-3.webp"
+  width: 2190
+  height: 1642
 - src: "assets/images/Laurel-Manville-b2b-25.jpg"
   width: 911
   height: 1214
@@ -329,6 +335,9 @@
 - src: "assets/images/taylor-bickford-b2b-25.jpg"
   width: 738
   height: 983
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-women-group.webp"
+  width: 1800
+  height: 907
 - src: "assets/images/updates/17735184_H24127610-2018.webp"
   width: 1560
   height: 1170

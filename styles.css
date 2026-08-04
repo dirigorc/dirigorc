@@ -778,6 +778,12 @@ a {
   gap: 0.9rem;
 }
 
+.section-footer-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
 .pattern-news>.section-header {
   position: relative;
   display: block;

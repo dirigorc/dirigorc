@@ -1,0 +1,51 @@
+<section class="section home-calendar" id="calendar" aria-labelledby="home-calendar-title">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">Coming up</p>
+      <h2 id="home-calendar-title">On the calendar.</h2>
+      <p>Race dates, recurring series, and team-relevant events.</p>
+    </div>
+    <div class="section-header-links">
+      <a class="text-link" href="{{ '/calendar/' | relative_url }}">Full calendar</a>
+    </div>
+  </div>
+  <div class="home-calendar-grid">
+    {% assign events = site.events | sort: "date" %}
+    {% assign today_seconds = site.time | date: "%s" | plus: 0 %}
+    {% assign shown_events = 0 %}
+    {% for day_offset in (0..370) %}
+      {% assign offset_seconds = day_offset | times: 86400 %}
+      {% assign occurrence_date = today_seconds | plus: offset_seconds %}
+      {% assign occurrence_key = occurrence_date | date: "%Y%m%d" | plus: 0 %}
+      {% assign occurrence_wday = occurrence_date | date: "%w" %}
+      {% for event in events %}
+        {% assign event_start_key = event.date | date: "%Y%m%d" | plus: 0 %}
+        {% assign event_start_wday = event.date | date: "%w" %}
+        {% assign event_end_date = event.end_date | default: event.date %}
+        {% assign event_end_key = event_end_date | date: "%Y%m%d" | plus: 0 %}
+        {% assign render_event = false %}
+        {% if event.end_date and event.recurrence %}
+          {% if occurrence_key >= event_start_key and occurrence_key <= event_end_key and occurrence_wday == event_start_wday %}
+            {% assign render_event = true %}
+          {% endif %}
+        {% elsif occurrence_key == event_start_key %}
+          {% assign render_event = true %}
+        {% endif %}
+        {% if render_event and event.skip_dates %}
+          {% assign occurrence_iso = occurrence_date | date: "%Y-%m-%d" %}
+          {% for skip_date in event.skip_dates %}
+            {% assign skip_iso = skip_date | date: "%Y-%m-%d" %}
+            {% if occurrence_iso == skip_iso %}
+              {% assign render_event = false %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if render_event and shown_events < 3 %}
+          {% assign shown_events = shown_events | plus: 1 %}
+          {% include home-calendar-card.html event=event occurrence_date=occurrence_date %}
+        {% endif %}
+      {% endfor %}
+      {% if shown_events >= 3 %}{% break %}{% endif %}
+    {% endfor %}
+  </div>
+</section>
