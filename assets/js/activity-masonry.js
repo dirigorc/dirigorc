@@ -69,7 +69,7 @@
 
   const isLandscape = (image) => imageRatio(image) > 1;
 
-  const rowSize = (imageCount) => {
+  const rowSize = (gallery, imageCount) => {
     if (window.matchMedia("(max-width: 680px)").matches) {
       return 1;
     }
@@ -78,10 +78,18 @@
       return 2;
     }
 
+    if (gallery.classList.contains("is-home-preview")) {
+      return 3;
+    }
+
     return imageCount > 6 ? 3 : 2;
   };
 
   const shouldFeatureFirstImage = (gallery, images) => {
+    if (gallery.classList.contains("is-home-preview")) {
+      return false;
+    }
+
     if (gallery.classList.contains("is-feature-first")) {
       return true;
     }
@@ -119,7 +127,7 @@
       nextImageIndex = 1;
     }
 
-    const imagesPerRow = rowSize(images.length - nextImageIndex);
+    const imagesPerRow = rowSize(gallery, images.length - nextImageIndex);
     for (let index = nextImageIndex; index < images.length; index += imagesPerRow) {
       rows.push(createRow(images.slice(index, index + imagesPerRow)));
     }

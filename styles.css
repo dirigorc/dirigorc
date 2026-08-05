@@ -1150,6 +1150,10 @@ body.has-lightbox {
   margin-top: 0.85rem;
 }
 
+.activity-item .activity-gallery-more {
+  margin: -0.25rem 0 0.85rem;
+}
+
 .activity-links a {
   color: var(--dirigo-blue);
   font-size: 0.84rem;

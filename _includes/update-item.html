@@ -26,12 +26,21 @@
     </div>
     {% else %}
     {% if update.layout_style == "image-row" and update.images %}
-    <div class="activity-image-row{% if update.feature_first_image %} is-feature-first{% endif %}" data-masonry-gallery>
-      {% for image in update.images %}
+    {% assign gallery_image_limit = update.images.size %}
+    {% if include.homepage %}
+    {% assign gallery_image_limit = 3 %}
+    {% endif %}
+    <div class="activity-image-row{% if include.homepage %} is-home-preview{% elsif update.feature_first_image %} is-feature-first{% endif %}" data-masonry-gallery>
+      {% for image in update.images limit: gallery_image_limit %}
       <img src="{{ image.src | relative_url }}" alt="{{ image.alt }}"
         {% include image-attributes.html src=image.src loading="lazy" decoding="async" %}>
       {% endfor %}
     </div>
+    {% if include.homepage and update.images.size > gallery_image_limit %}
+    <p class="activity-links activity-gallery-more">
+      <a href="{{ update.url | relative_url }}">View all {{ update.images.size }} photos</a>
+    </p>
+    {% endif %}
     {% elsif update.image %}
     <img class="activity-image" src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}"
       {% include image-attributes.html src=update.image.src loading="lazy" decoding="async" %}>

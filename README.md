@@ -186,6 +186,12 @@ Put update images in `assets/images/` or a subfolder inside it. Use descriptive 
 
 Always include image credit links when photos come from photographers, race organizers, Instagram galleries, or partner clubs.
 
+After adding or replacing images, refresh the intrinsic-dimension manifest so browsers can reserve layout space and gallery scripts do not need to download lazy images just to calculate their aspect ratios:
+
+```sh
+ruby scripts/generate_image_dimensions.rb
+```
+
 ## Results Harvester MVP
 
 The repo includes an early helper for turning a race results page into a reviewable Dirigo-specific digest before writing an update post.

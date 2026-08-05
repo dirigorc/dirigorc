@@ -8,6 +8,9 @@
 - src: "assets/images/2026-women.jpg"
   width: 1536
   height: 2048
+- src: "assets/images/55396533931_e8cf7538a7_o.jpg"
+  width: 3936
+  height: 2624
 - src: "assets/images/736760103_1726341262151685_3898646427631666071_n.jpeg"
   width: 809
   height: 1626
@@ -23,24 +26,108 @@
 - src: "assets/images/745843022_1635634061903728_3731182651340256416_n.jpg"
   width: 1500
   height: 2000
-- src: "assets/images/alexis.jpg"
-  width: 2101
-  height: 2521
+- src: "assets/images/747753146_4423714901280344_8097772894635732153_n.jpeg"
+  width: 2048
+  height: 1185
 - src: "assets/images/alexis-clamfest.jpg"
   width: 1080
   height: 1440
+- src: "assets/images/alexis.jpg"
+  width: 2101
+  height: 2521
 - src: "assets/images/apple-touch-icon.png"
   width: 180
   height: 180
 - src: "assets/images/ashby.jpg"
   width: 945
   height: 1260
+- src: "assets/images/b2b26/20260801_B2B_JLautenberger_0111.jpeg"
+  width: 8192
+  height: 5461
+- src: "assets/images/b2b26/260801-HaileyK-TDB2B-00733.jpeg"
+  width: 1640
+  height: 2464
+- src: "assets/images/b2b26/260801-HaileyK-TDB2B-00741.jpeg"
+  width: 1640
+  height: 2464
+- src: "assets/images/b2b26/260801-HaileyK-TDB2B-00758.jpeg"
+  width: 1640
+  height: 2464
+- src: "assets/images/b2b26/260801-JacksonM-TDB2B-02191.jpeg"
+  width: 1824
+  height: 2736
+- src: "assets/images/b2b26/260801-NathanK-TDB2B-23332.jpeg"
+  width: 1640
+  height: 2464
+- src: "assets/images/b2b26/260801-PedroC-TDB2B-34666.jpeg"
+  width: 1600
+  height: 2400
+- src: "assets/images/b2b26/260801-TimH-TDB2B-60091.jpeg"
+  width: 1856
+  height: 2784
+- src: "assets/images/b2b26/260801-TimH-TDB2B-60144.jpeg"
+  width: 1856
+  height: 2784
+- src: "assets/images/b2b26/260801-ZachM-TDB2B-68339.jpeg"
+  width: 2000
+  height: 3008
+- src: "assets/images/b2b26/260801-ZachM-TDB2B-68375.jpeg"
+  width: 2000
+  height: 3008
+- src: "assets/images/b2b26/260801-ZachM-TDB2B-68381.jpeg"
+  width: 2000
+  height: 3008
+- src: "assets/images/b2b26/IMG_6364.webp"
+  width: 1170
+  height: 866
+- src: "assets/images/b2b26/IMG_6368.webp"
+  width: 1251
+  height: 2048
+- src: "assets/images/b2b26/IMG_6369.webp"
+  width: 1170
+  height: 1727
+- src: "assets/images/b2b26/IMG_6370.webp"
+  width: 1170
+  height: 1547
+- src: "assets/images/b2b26/IMG_6372.webp"
+  width: 1170
+  height: 1032
+- src: "assets/images/b2b26/IMG_6381.webp"
+  width: 890
+  height: 1951
+- src: "assets/images/b2b26/IMG_6382.webp"
+  width: 2048
+  height: 1032
+- src: "assets/images/b2b26/IMG_6383.webp"
+  width: 934
+  height: 2000
+- src: "assets/images/b2b26/IMG_6384.webp"
+  width: 934
+  height: 2000
+- src: "assets/images/b2b26/IMG_6386.webp"
+  width: 934
+  height: 2000
+- src: "assets/images/b2b26/IMG_6387.webp"
+  width: 1401
+  height: 1651
+- src: "assets/images/b2b26/IMG_6388.webp"
+  width: 934
+  height: 1921
+- src: "assets/images/b2b26/IMG_6393.webp"
+  width: 1170
+  height: 1397
 - src: "assets/images/back cove 2026.jpg"
   width: 1641
   height: 1249
+- src: "assets/images/back-cove-team-pic.jpeg"
+  width: 1003
+  height: 1568
 - src: "assets/images/bethanie-llbean.jpg"
   width: 750
   height: 1000
+- src: "assets/images/bridge-long-run-pic.jpeg"
+  width: 971
+  height: 1619
 - src: "assets/images/bridgton-2025.jpg"
   width: 2048
   height: 1638
@@ -171,8 +258,8 @@
   width: 1440
   height: 1920
 - src: "assets/images/email/2026-07-05/karley-piers.jpg"
-  width: 6048
-  height: 4024
+  width: 4024
+  height: 6048
 - src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
   width: 1363
   height: 2672
@@ -185,6 +272,9 @@
 - src: "assets/images/Eric-Sofen-b2b-25.jpg"
   width: 911
   height: 1214
+- src: "assets/images/eric-sofen-clamfest-55404766144_3d2e1d5f49_o.jpg"
+  width: 2624
+  height: 3936
 - src: "assets/images/favicon-96x96.png"
   width: 96
   height: 96
@@ -278,6 +368,9 @@
 - src: "assets/images/karley-piers-valor-twilight-meet-3.webp"
   width: 2190
   height: 1642
+- src: "assets/images/kevin-murray-clamfest-55404590981_ca3b946a2a_o.jpg"
+  width: 3936
+  height: 2624
 - src: "assets/images/Laurel-Manville-b2b-25.jpg"
   width: 911
   height: 1214
@@ -308,6 +401,9 @@
 - src: "assets/images/Marah-Borgman-b2b-25.jpg"
   width: 882
   height: 1176
+- src: "assets/images/nedicus-swain-clamfest-55404765539_15e5af9be7_o.jpg"
+  width: 2624
+  height: 3936
 - src: "assets/images/nick-denari-b2b25.jpg"
   width: 683
   height: 910
@@ -320,9 +416,15 @@
 - src: "assets/images/rob-gomez-craig-robinson.jpg"
   width: 1440
   height: 811
+- src: "assets/images/robert-ashby-clamfest-55404714248_a26938101f_o.jpg"
+  width: 2624
+  height: 3936
 - src: "assets/images/romayn.jpg"
   width: 921
   height: 1151
+- src: "assets/images/ryan-morrison-clamfest-55404714528_8ec5c43925_o.jpg"
+  width: 2624
+  height: 3936
 - src: "assets/images/sammy-mills-2025-maine_marathon_3.webp"
   width: 2048
   height: 1491
@@ -330,23 +432,92 @@
   width: 3936
   height: 2624
 - src: "assets/images/seth-mecta.jpg"
-  width: 3936
-  height: 2624
+  width: 2624
+  height: 3936
 - src: "assets/images/taylor-bickford-b2b-25.jpg"
   width: 738
   height: 983
-- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-women-group.webp"
-  width: 1800
-  height: 907
 - src: "assets/images/updates/17735184_H24127610-2018.webp"
   width: 1560
   height: 1170
 - src: "assets/images/updates/2024-maine-half-marathon-54047916568_c67f301c86_o.jpg"
-  width: 6000
-  height: 4000
+  width: 4000
+  height: 6000
 - src: "assets/images/updates/77922300-IMG_1097-150x150-2018.jpg"
   width: 150
   height: 150
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-alexis-wilbert.webp"
+  width: 799
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-blue-coast.webp"
+  width: 798
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-coast-runner.webp"
+  width: 798
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-finish-grass.webp"
+  width: 799
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-pack-road.webp"
+  width: 799
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-race-action.webp"
+  width: 1600
+  height: 1067
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-start-selfie.webp"
+  width: 1170
+  height: 866
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-women-group.webp"
+  width: 1800
+  height: 907
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-women-pack.webp"
+  width: 1800
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-women-shore-road.webp"
+  width: 800
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-finish-sign-team.webp"
+  width: 1170
+  height: 1032
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-high-school-mile-finishers.webp"
+  width: 813
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-high-school-mile-medalists.webp"
+  width: 733
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-karley-piers.webp"
+  width: 800
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-masters-awards-podium.webp"
+  width: 908
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-dirigo-duo.webp"
+  width: 547
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-family-photo.webp"
+  width: 1170
+  height: 1163
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-friends-duo.webp"
+  width: 560
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-mens-duo.webp"
+  width: 1005
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-supporter-duo.webp"
+  width: 560
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-team-group.webp"
+  width: 1018
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-three-runners.webp"
+  width: 583
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-thumbs-up.webp"
+  width: 560
+  height: 1200
+- src: "assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-women-duo.webp"
+  width: 560
+  height: 1200
 - src: "assets/images/updates/B2B-rob-gomez-2017.jpg"
   width: 600
   height: 403
@@ -384,8 +555,8 @@
   width: 1080
   height: 1426
 - src: "assets/images/updates/great-pumpkin-2024-gretchen-speed-54096945012_086273a0a2_o.jpg"
-  width: 6000
-  height: 4000
+  width: 4000
+  height: 6000
 - src: "assets/images/updates/greely-turkey-trot-2024-54170557531_bea35c1127_o.jpg"
   width: 4107
   height: 1705
@@ -405,11 +576,11 @@
   width: 427
   height: 640
 - src: "assets/images/updates/mtc-turkey-trot-clement-2024-54162321190_4155f72019_o.jpg"
-  width: 6000
-  height: 4000
+  width: 4000
+  height: 6000
 - src: "assets/images/updates/mtc-turkey-trot-Tebbets-2024-54163573522_9edcde8235_o.jpg"
-  width: 6048
-  height: 4024
+  width: 4024
+  height: 6048
 - src: "assets/images/updates/Norfolk-Wrentham-Times-1024x576-2019.png"
   width: 1024
   height: 576
@@ -420,8 +591,8 @@
   width: 991
   height: 879
 - src: "assets/images/updates/thanksgiving-4-miler-2024-54174649824_1d9ea68d22_o.jpg"
-  width: 6048
-  height: 4024
+  width: 4024
+  height: 6048
 - src: "assets/images/valor-track-meet/729589850_18024404378837074_7641894536964394979_n.jpg"
   width: 1170
   height: 1382

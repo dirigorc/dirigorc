@@ -15,7 +15,7 @@
     {% assign shown_results = 0 %}
     {% for update in updates %}
       {% if shown_results < 3 %}
-        {% include update-item.html update=update %}
+        {% include update-item.html update=update homepage=true %}
         {% assign shown_results = shown_results | plus: 1 %}
       {% endif %}
     {% endfor %}
