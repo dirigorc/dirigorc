@@ -9,6 +9,17 @@ images_root = root.join("assets/images")
 output_path = root.join("_data/image_dimensions.yml")
 extensions = %w[.avif .gif .jpeg .jpg .png .webp]
 
+image_magick = %w[magick convert].find do |command|
+  ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |directory|
+    File.executable?(File.join(directory, command))
+  end
+end
+
+unless image_magick
+  warn "ImageMagick is required (expected `magick` or `convert` in PATH)."
+  exit 1
+end
+
 image_paths = images_root.glob("**/*")
   .select(&:file?)
   .select { |path| extensions.include?(path.extname.downcase) }
@@ -19,7 +30,7 @@ failures = []
 
 image_paths.each do |path|
   stdout, stderr, result = Open3.capture3(
-    "magick",
+    image_magick,
     "#{path}[0]",
     "-auto-orient",
     "-format",
@@ -49,5 +60,9 @@ entries.each do |relative_path, width, height|
   output << "  height: #{height}\n"
 end
 
-output_path.write(output)
-puts "Wrote #{entries.length} image dimensions to #{output_path.relative_path_from(root)}."
+if output_path.exist? && output_path.read == output
+  puts "Image dimensions are already up to date (#{entries.length} images)."
+else
+  output_path.write(output)
+  puts "Wrote #{entries.length} image dimensions to #{output_path.relative_path_from(root)}."
+end

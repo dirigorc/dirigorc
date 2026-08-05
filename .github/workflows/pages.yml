@@ -27,12 +27,6 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
-
       - name: Ensure ImageMagick
         run: |
           if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
@@ -45,6 +39,15 @@ jobs:
           else
             convert -version | head -n 1
           fi
+
+      - name: Generate image dimensions
+        run: ruby scripts/generate_image_dimensions.rb
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
 
       - name: Restore optimization cache
         uses: actions/cache/restore@v4

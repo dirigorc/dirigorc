@@ -43,10 +43,10 @@ bundle _2.6.9_ install
 
 The `Gemfile` uses the `github-pages` gem to mirror the GitHub Pages build environment.
 
-Run the local server:
+Run the local server (this refreshes image dimensions before Jekyll starts):
 
 ```sh
-bundle exec jekyll serve --livereload
+make serve
 ```
 
 Then open:
@@ -186,7 +186,7 @@ Put update images in `assets/images/` or a subfolder inside it. Use descriptive 
 
 Always include image credit links when photos come from photographers, race organizers, Instagram galleries, or partner clubs.
 
-After adding or replacing images, refresh the intrinsic-dimension manifest so browsers can reserve layout space and gallery scripts do not need to download lazy images just to calculate their aspect ratios:
+The `make build` and `make serve` commands automatically refresh the intrinsic-dimension manifest. The deploy workflow also regenerates it before building the site. To refresh it directly without running Jekyll:
 
 ```sh
 ruby scripts/generate_image_dimensions.rb
