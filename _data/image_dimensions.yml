@@ -146,6 +146,9 @@
 - src: "assets/images/Coastal Run Maine_Full Transparent.avif"
   width: 464
   height: 310
+- src: "assets/images/coastal-run-maine-dirigo-group-2026.jpg"
+  width: 2789
+  height: 2092
 - src: "assets/images/coastal-run-maine-logo.avif"
   width: 464
   height: 310
