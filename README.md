@@ -305,6 +305,7 @@ GitHub setup:
 8. Make sure Actions can create pull requests under repository settings.
 9. Make sure the intended reviewers have GitHub email notifications enabled for review requests. The workflow can request review, but GitHub account notification settings control whether that becomes an email.
 10. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) and [.github/prompts/calendar-event-to-jekyll.md](.github/prompts/calendar-event-to-jekyll.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
+11. Optional Diri direct messages: keep the existing repository secret `DISCORD_BOT_TOKEN` and add repository variable `DISCORD_PR_DM_USER_ID` with the numeric Discord user ID that should receive every newly created race-report or calendar-event PR. Notification failures do not block PR creation.
 
 Cloudflare setup:
 

@@ -199,6 +199,16 @@ jobs:
               print(f"Discord PR follow-up failed: {error}")
           PY
 
+      - name: DM reviewer via Diri
+        if: ${{ steps.create_pr.outputs.pull-request-operation == 'created' && steps.create_pr.outputs.pull-request-url != '' }}
+        continue-on-error: true
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_PR_DM_USER_ID: ${{ vars.DISCORD_PR_DM_USER_ID }}
+          PR_TITLE: ${{ steps.generated_guard.outputs.title }}
+          PR_URL: ${{ steps.create_pr.outputs.pull-request-url }}
+        run: python scripts/send_discord_dm.py
+
       - name: Delete staged email payload branch
         if: ${{ always() && github.event_name == 'repository_dispatch' && github.event.client_payload.ingest.branch != '' }}
         env:
