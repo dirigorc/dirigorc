@@ -389,7 +389,7 @@ function discordDeferredAck() {
 }
 
 function discordSubmissionAck(editorialMode, attachmentSummary) {
-  const mode = editorialMode === "agentic" ? "AI-edited" : "verbatim";
+  const mode = editorialMode === "agentic" ? "AI-edited" : "verbatim-copy";
   const details = [];
   if (attachmentSummary.requested > 0) {
     details.push(`${attachmentSummary.attachments.length}/${attachmentSummary.requested} image attachment(s) accepted.`);
@@ -524,7 +524,7 @@ function discordOpenRecapModal(defaultPolish, body = "", links = "", reason = ""
               {
                 type: 4,
                 custom_id: "polish",
-                label: "Polish wording? (yes/no)",
+                label: "Polish body wording? (yes/no)",
                 style: 1,
                 required: false,
                 max_length: 8,
@@ -642,7 +642,7 @@ async function handleDiscordInteraction(request, env, ctx, rawBody) {
     };
     ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
     if (polish) return discordAck("Got it. I started an AI-edited website update PR for review.");
-    return discordAck("Got it. I started a verbatim website update PR for review.");
+    return discordAck("Got it. I started a verbatim-copy website update PR with normalized metadata and tags for review.");
   }
 
   if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && interaction.data?.custom_id === DISCORD_EVENT_MODAL_ID) {

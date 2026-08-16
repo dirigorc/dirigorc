@@ -343,7 +343,7 @@ To target the calendar-event workflow instead of the race-report workflow, inclu
 
 The Discord path uses the same Worker and review-ready PR pattern for two commands:
 
-- `/recap`: draft an Updates post from race results or club notes. By default it uses submitted text verbatim; an optional `polish` input can opt into AI-assisted editorialization before opening a PR.
+- `/recap`: draft an Updates post from race results or club notes. By default it preserves the submitted copy verbatim in both the homepage/archive summary and post body while still using the editorial pipeline for the title, date, category, layout, links, attachments, canonical tags, and tag pages. An optional `polish` input also allows AI-assisted rewriting of the public copy.
 - `/event`: draft or update a Calendar event from upcoming race, group run, meet, deadline, or team-date details. This always uses the calendar-event prompt and writes `_events/` files only.
 - If the initial `/recap` or `/event` text is too thin, the Worker opens a clarification modal instead of creating a low-context PR.
 - If the text appears to use shorthand or incomplete member names, such as `Dave O`, `Ashby`, or first-name-only mentions, the Worker asks for full names before creating a PR.
@@ -391,7 +391,7 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
       },
       {
         "name": "polish",
-        "description": "Set true to have Copilot polish and structure your recap.",
+        "description": "Polish body wording; metadata and tags are always normalized.",
         "type": 5,
         "required": false
       },
@@ -469,11 +469,11 @@ Discord Worker behavior:
 4. If an inline `/recap` is very short and has no obvious result, race/date, or source link, opens the recap modal with the original text prefilled.
 5. If an inline `/event` has no recognizable date, opens the event modal with the original text prefilled.
 6. If the text uses likely shorthand for member names, asks for full names before continuing.
-7. Defaults `/recap` to `editorial_mode: "verbatim"`; if `polish` is set (inline or modal), uses `editorial_mode: "agentic"`.
+7. Defaults `/recap` to `editorial_mode: "verbatim"`, preserving the submitted copy in both the homepage/archive summary and post body while still normalizing metadata and tags; if `polish` is set (inline or modal), uses `editorial_mode: "agentic"` and may rewrite the public copy.
 8. Forces `/event` to `editorial_mode: "agentic"` so the calendar prompt can map details into structured front matter.
 9. Extracts URLs from submitted text and optional `links` input so copied links survive Discord paste quirks.
 10. For `/recap`, optionally accepts a `recap_file` attachment (`.txt`, `.md`, `.markdown`, or `.eml`, up to 256 KB) and uses that file as the recap body.
-11. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload.
+11. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload. The generator deterministically adds every accepted image to the post even if the model omits it, then gives retained files content-specific names and safe alt text; this applies in both verbatim and polished modes.
 12. For inline submissions with images or `recap_file`, defers the Discord response immediately, processes downloads in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.
 13. Stages a payload with `source: "discord"`, `command`, `submitted_by`, `editorial_mode`, `body`, and `links`.
 14. Triggers `race-report-email` for `/recap` or `calendar-event-email` for `/event`.
