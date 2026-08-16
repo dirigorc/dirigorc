@@ -93,7 +93,7 @@ create_commands() {
       },
       {
         "name": "polish",
-        "description": "Set true to have Copilot polish and structure your recap.",
+        "description": "Polish body wording; metadata and tags are always normalized.",
         "type": 5,
         "required": false
       },

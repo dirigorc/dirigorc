@@ -35,6 +35,13 @@ The site uses:
    - Do not over-explain why normal club activity matters.
    - Never include internal development or changelog wording in public copy (for example: "rename agentic option", "backward compatibility", implementation notes, or tooling references).
 
+   Verbatim mode (`editorial_mode: verbatim`) preserves the submitter's visible copy without bypassing the editorial workflow.
+   - Use the submitted recap word-for-word for both the homepage/archive `summary` and the post body. Do not smooth, rewrite, expand, or shorten either surface. The generator enforces this after model output.
+   - Still create a content-specific title, event date, `category`, supported `layout_style`, structured links, and useful tags.
+   - Include tags for the race or event and every named Dirigo athlete. Reuse the exact canonical spelling from existing tag pages and recent posts when one exists.
+   - Return exactly one `_posts/` file for a new verbatim recap. If it duplicates an existing story, report the duplicate instead of overwriting an existing post.
+   - Apply normal duplicate checking, attachment handling, safety cleanup, schema normalization, and tag-page creation.
+
 4. Balance coverage.
    - Avoid gender imbalance when the source includes women, men, youth, masters, roads, track, and trail.
    - Lead with the strongest news value, then make room for notable breadth.
@@ -108,6 +115,8 @@ tags:
 Do not include a `status` field.
 
 ## Tag Pages
+
+Every generated post must include a non-empty `tags:` list. Tags are structural metadata, not prose polishing, so this requirement also applies in verbatim mode. Prefer the canonical spelling already used by an existing tag page.
 
 Every new post tag should have a tag page:
 

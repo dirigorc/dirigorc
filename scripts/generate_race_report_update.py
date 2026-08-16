@@ -82,8 +82,7 @@ def slugify(value: str) -> str:
 
 
 def yaml_double_quoted(value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+    return json.dumps(value, ensure_ascii=False)
 
 
 def yaml_quote_if_plain(value: str) -> str:
@@ -504,6 +503,19 @@ def ensure_tag_pages(files: list[dict[str, str]]) -> list[dict[str, str]]:
     return additions
 
 
+def validate_post_tags(files: list[dict[str, str]]) -> None:
+    missing = [
+        item.get("path", "")
+        for item in files
+        if item.get("path", "").startswith("_posts/")
+        and not extract_tags_from_post(item.get("content", ""))
+    ]
+    if missing:
+        raise ValueError(
+            "Every generated post must include at least one tag: " + ", ".join(missing)
+        )
+
+
 def normalize_front_matter(content: str) -> str:
     match = re.match(r"\A---\s*\n(.*?)\n---(\s*\n.*)?\Z", content, flags=re.DOTALL)
     if not match:
@@ -876,47 +888,36 @@ def derive_pr_title(result: dict[str, Any], files: list[dict[str, str]], email: 
     return str(email.get("subject") or "Race report update")
 
 
-def discord_verbatim_result(email: dict[str, Any], today: str) -> dict[str, Any]:
-    slug = slugify(email.get("subject") or "discord-recap") or "discord-recap"
-    base_path = f"_posts/{today}-{slug}"
-    path = f"{base_path}.md"
-    counter = 2
-    while (ROOT / path).exists():
-        path = f"{base_path}-{counter}.md"
-        counter += 1
-    title = yaml_double_quoted(str(email.get("subject") or "Discord recap"))
-    links = email.get("links") or []
-    links_block = ""
-    if links:
-        links_lines = ["links:"]
-        for url in links:
-            links_lines.append("  - label: Source")
-            links_lines.append(f"    url: {url}")
-        links_block = "\n" + "\n".join(links_lines)
+def enforce_discord_verbatim_copy(files: list[dict[str, str]], email: dict[str, Any]) -> None:
+    if email.get("source") != "discord" or email.get("editorial_mode") != "verbatim":
+        return
 
-    content = (
-        "---\n"
-        f"title: {title}\n"
-        f"date: {today}\n"
-        "layout: post\n"
-        f"{links_block}\n"
-        "---\n\n"
-        f"{email['text']}"
-    )
-    if not content.endswith("\n"):
-        content += "\n"
-    return {
-        "files": [
-            {
-                "path": path,
-                "content": content,
-            }
-        ],
-        "summary": "Created a verbatim Discord /recap update without AI editorialization.",
-        "assumptions": [],
-        "skipped_duplicates": [],
-        "missing": [],
-    }
+    posts = [item for item in files if item.get("path", "").startswith("_posts/")]
+    if len(posts) != 1:
+        raise ValueError(
+            "A new verbatim Discord recap must generate exactly one post; "
+            f"received {len(posts)}."
+        )
+
+    content = posts[0].get("content", "")
+    match = re.match(r"\A---\s*\n(.*?)\n---(?:\s*\n.*)?\Z", content, flags=re.DOTALL)
+    if not match:
+        raise ValueError("The verbatim Discord recap post must contain valid front matter.")
+
+    body = str(email.get("text") or "").strip()
+    front_matter = match.group(1)
+    summary = f"summary: {yaml_double_quoted(body)}"
+    if re.search(r"^summary:\s*.*$", front_matter, flags=re.MULTILINE):
+        front_matter = re.sub(
+            r"^summary:\s*.*$",
+            lambda _match: summary,
+            front_matter,
+            count=1,
+            flags=re.MULTILINE,
+        )
+    else:
+        front_matter = front_matter.rstrip() + f"\n{summary}"
+    posts[0]["content"] = f"---\n{front_matter}\n---\n\n{body}\n"
 
 
 def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str], mode: str) -> None:
@@ -1002,11 +1003,9 @@ def main() -> int:
     today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
     staged_attachments = stage_email_attachments(email, today)
 
-    use_agentic = args.mode == "calendar-event" or email.get("source") != "discord" or email.get("editorial_mode") == "agentic"
-    if use_agentic:
-        skill_prompt = read_text(PROMPT_PATHS[args.mode])
-        context = collect_recent_context()
-        prompt = f"""
+    skill_prompt = read_text(PROMPT_PATHS[args.mode])
+    context = collect_recent_context()
+    prompt = f"""
 Current date: {today}
 
 Content mode: {args.mode}
@@ -1033,12 +1032,12 @@ Subject: {email['subject']}
 
 {email['text']}
 """
-        result = call_openai(prompt, args.model)
-    else:
-        result = discord_verbatim_result(email, today)
+    result = call_openai(prompt, args.model)
     files = result.get("files", [])
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")
+    enforce_discord_verbatim_copy(files, email)
+    validate_post_tags(files)
     files.extend(ensure_tag_pages(files))
     ensure_attached_images_used(staged_attachments, files, result)
     sanitize_public_body_text(files, result)
