@@ -868,6 +868,25 @@ def front_matter_title(content: str) -> str:
     return ""
 
 
+def replace_front_matter_field(front_matter: str, key: str, value: str) -> str:
+    lines = front_matter.splitlines()
+    field_start = next(
+        (index for index, line in enumerate(lines) if re.match(rf"^{re.escape(key)}:\s*", line)),
+        None,
+    )
+    replacement = f"{key}: {value}"
+    if field_start is None:
+        return front_matter.rstrip() + f"\n{replacement}"
+
+    field_end = field_start + 1
+    while field_end < len(lines):
+        if re.match(r"^[A-Za-z_][\w-]*:\s*", lines[field_end]):
+            break
+        field_end += 1
+    lines[field_start:field_end] = [replacement]
+    return "\n".join(lines)
+
+
 def derive_pr_title(result: dict[str, Any], files: list[dict[str, str]], email: dict[str, Any]) -> str:
     for item in files:
         if not item.get("path", "").startswith(("_posts/", "_events/")):
@@ -906,17 +925,11 @@ def enforce_discord_verbatim_copy(files: list[dict[str, str]], email: dict[str, 
 
     body = str(email.get("text") or "").strip()
     front_matter = match.group(1)
-    summary = f"summary: {yaml_double_quoted(body)}"
-    if re.search(r"^summary:\s*.*$", front_matter, flags=re.MULTILINE):
-        front_matter = re.sub(
-            r"^summary:\s*.*$",
-            lambda _match: summary,
-            front_matter,
-            count=1,
-            flags=re.MULTILINE,
-        )
-    else:
-        front_matter = front_matter.rstrip() + f"\n{summary}"
+    front_matter = replace_front_matter_field(
+        front_matter,
+        "summary",
+        yaml_double_quoted(body),
+    )
     posts[0]["content"] = f"---\n{front_matter}\n---\n\n{body}\n"
 
 

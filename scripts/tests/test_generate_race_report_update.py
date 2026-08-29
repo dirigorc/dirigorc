@@ -46,6 +46,44 @@ class VerbatimRecapTests(unittest.TestCase):
         self.assertNotIn("summary: Karley Piers won in Old Orchard Beach.", files[0]["content"])
         self.assertIn("tags:\n  - Karley Piers\n  - Breakaway 5K", files[0]["content"])
 
+    def test_verbatim_mode_removes_malformed_summary_continuation_lines(self):
+        body = (
+            "The Weekly Back Cove Series ended on Wednesday.\n\n"
+            "Nick Denari took the overall men's win.\n\n"
+            "Enzo Giampaolo won the summer's final race."
+        )
+        files = [
+            {
+                "path": "_posts/2026-08-26-weekly-back-cove-season-finale.md",
+                "content": (
+                    "---\n"
+                    'title: "Weekly Back Cove Series season finale"\n'
+                    "date: 2026-08-26\n"
+                    'summary: "The Weekly Back Cove Series ended on Wednesday.\\n\\nNick Denari took the overall men\'s win."\n'
+                    "\n"
+                    "Nick Denari took the overall men's win.\n"
+                    "\n"
+                    "Enzo Giampaolo won the summer's final race.\"\n"
+                    "tags:\n"
+                    '  - "Nick Denari"\n'
+                    '  - "Enzo Giampaolo"\n'
+                    "---\n\n"
+                    "Smoothed replacement copy.\n"
+                ),
+            }
+        ]
+
+        GENERATOR.enforce_discord_verbatim_copy(
+            files,
+            {"source": "discord", "editorial_mode": "verbatim", "text": body},
+        )
+
+        content = files[0]["content"]
+        self.assertIn(f"summary: {GENERATOR.yaml_double_quoted(body)}", content)
+        self.assertIn('tags:\n  - "Nick Denari"\n  - "Enzo Giampaolo"', content)
+        self.assertNotIn("\nNick Denari took the overall men's win.\n", content.split("---", 2)[1])
+        self.assertTrue(content.endswith(f"---\n\n{body}\n"))
+
     def test_generated_posts_require_tags(self):
         files = [
             {
