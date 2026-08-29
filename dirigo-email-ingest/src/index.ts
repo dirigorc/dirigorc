@@ -521,6 +521,41 @@ async function discordFollowup(interaction: DiscordInteraction, content: string)
 	}
 }
 
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+export async function runDiscordBackgroundTask(
+	interaction: DiscordInteraction,
+	command: "recap" | "event",
+	task: () => Promise<void>,
+): Promise<void> {
+	try {
+		await task();
+	} catch (error) {
+		const message = errorMessage(error);
+		console.error(JSON.stringify({
+			message: "Discord background submission failed",
+			command,
+			error: message,
+		}));
+
+		const submission = command === "event" ? "event details" : "recap text";
+		try {
+			await discordFollowup(
+				interaction,
+				`I received the ${submission}, but the background update failed: ${message}\n\nPlease retry /${command}.`,
+			);
+		} catch (followupError) {
+			console.error(JSON.stringify({
+				message: "Discord failure follow-up failed",
+				command,
+				error: errorMessage(followupError),
+			}));
+		}
+	}
+}
+
 async function processDiscordCommandSubmission(env: WorkerEnv, interaction: DiscordInteraction, body: string, command: "recap" | "event" = "recap"): Promise<void> {
 	const attachmentSummary = await discordAttachments(interaction);
 	const editorialMode = command === "event" ? "agentic" : discordEditorialMode(interaction);
@@ -746,7 +781,7 @@ async function handleDiscordInteraction(
 			discord_application_id: interaction.application_id || "",
 			discord_interaction_token: interaction.token || "",
 		};
-		ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
+		ctx.waitUntil(runDiscordBackgroundTask(interaction, "recap", () => dispatchToGitHub(env, email)));
 		if (polish) return discordAck("Got it. I started an AI-edited website update PR for review.");
 		return discordAck("Got it. I started a verbatim-copy website update PR with normalized metadata and tags for review.");
 	}
@@ -773,7 +808,7 @@ async function handleDiscordInteraction(
 			discord_application_id: interaction.application_id || "",
 			discord_interaction_token: interaction.token || "",
 		};
-		ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
+		ctx.waitUntil(runDiscordBackgroundTask(interaction, "event", () => dispatchToGitHub(env, email)));
 		return discordAck("Got it. I started a calendar event PR for review.");
 	}
 
@@ -792,10 +827,7 @@ async function handleDiscordInteraction(
 		}
 		if (hasRecapFile) {
 			ctx.waitUntil(
-				processDiscordRecapFileSubmission(env, interaction).catch((error: Error) => (
-					discordFollowup(interaction, `I received the recap file, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
-						.catch((followupError: Error) => console.error(followupError))
-				)),
+				runDiscordBackgroundTask(interaction, "recap", () => processDiscordRecapFileSubmission(env, interaction)),
 			);
 			return discordDeferredAck();
 		}
@@ -811,10 +843,7 @@ async function handleDiscordInteraction(
 
 	if (hasRecapFile) {
 		ctx.waitUntil(
-			processDiscordRecapFileSubmission(env, interaction, body).catch((error: Error) => (
-				discordFollowup(interaction, `I received the recap file, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
-					.catch((followupError: Error) => console.error(followupError))
-			)),
+			runDiscordBackgroundTask(interaction, "recap", () => processDiscordRecapFileSubmission(env, interaction, body)),
 		);
 		return discordDeferredAck();
 	}
@@ -830,10 +859,7 @@ async function handleDiscordInteraction(
 
 	if (requestedAttachments > 0) {
 		ctx.waitUntil(
-			processDiscordCommandSubmission(env, interaction, body, command).catch((error: Error) => (
-				discordFollowup(interaction, `I received the ${command === "event" ? "event details" : "recap text"}, but the background update failed: ${error.message}\n\n${DISCORD_FALLBACK_MESSAGE}`)
-					.catch((followupError: Error) => console.error(followupError))
-			)),
+			runDiscordBackgroundTask(interaction, command, () => processDiscordCommandSubmission(env, interaction, body, command)),
 		);
 		return discordDeferredAck();
 	}
@@ -858,7 +884,7 @@ async function handleDiscordInteraction(
 		discord_interaction_token: interaction.token || "",
 	};
 
-	ctx.waitUntil(Promise.resolve().then(() => dispatchToGitHub(env, email)));
+	ctx.waitUntil(runDiscordBackgroundTask(interaction, command, () => dispatchToGitHub(env, email)));
 	return discordAck(discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 

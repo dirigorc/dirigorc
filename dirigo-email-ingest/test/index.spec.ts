@@ -5,7 +5,7 @@ import {
 	SELF,
 } from "cloudflare:test";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import worker, { discordAttachments } from "../src/index";
+import worker, { discordAttachments, runDiscordBackgroundTask } from "../src/index";
 
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
@@ -78,5 +78,33 @@ describe("Dirigo email ingest worker", () => {
 				},
 			],
 		});
+	});
+
+	it("reports a failed Discord background submission", async () => {
+		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+		const consoleMock = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const failure = new Error("GitHub dispatch failed: 403 Resource not accessible by personal access token");
+
+		await runDiscordBackgroundTask(
+			{ application_id: "discord-app", token: "interaction-token" },
+			"event",
+			() => Promise.reject(failure),
+		);
+
+		expect(consoleMock).toHaveBeenCalledWith(JSON.stringify({
+			message: "Discord background submission failed",
+			command: "event",
+			error: failure.message,
+		}));
+		expect(fetchMock).toHaveBeenCalledWith(
+			"https://discord.com/api/v10/webhooks/discord-app/interaction-token",
+			expect.objectContaining({
+				method: "POST",
+				body: JSON.stringify({
+					content: `I received the event details, but the background update failed: ${failure.message}\n\nPlease retry /event.`,
+					flags: 64,
+				}),
+			}),
+		);
 	});
 });
