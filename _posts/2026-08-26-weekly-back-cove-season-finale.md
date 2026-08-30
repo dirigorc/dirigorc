@@ -1,6 +1,6 @@
 ---
 title: "Weekly Back Cove Series season finale"
-date: 2026-08-30
+date: 2026-08-26
 category: "Results"
 layout_style: "image-row"
 image:
