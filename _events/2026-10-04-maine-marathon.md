@@ -8,6 +8,8 @@ summary: Maine Track Club's fall marathon, half marathon, and relay through Port
 team_note: A major local fall race and a regular place to spot Dirigo blue over longer distances.
 event_url: https://mainemarathon.com/
 registration_url: https://runsignup.com/Race/ME/Portland/MaineMarathon
+results_url: https://mainemarathon.com/races/results/
+related_update: /results/2026/10/04/maine-half-full-relay-recap.html
 tags:
   - Maine Marathon
   - Maine Half Marathon

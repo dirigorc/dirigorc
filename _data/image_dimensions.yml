@@ -623,3 +623,21 @@
 - src: "assets/images/web-app-manifest-512x512.png"
   width: 512
   height: 512
+- src: "assets/images/mainemarathon/maine-half-2026-dirigo-course-action.jpeg"
+  width: 1170
+  height: 695
+- src: "assets/images/mainemarathon/maine-half-2026-finish-line.jpeg"
+  width: 1170
+  height: 848
+- src: "assets/images/mainemarathon/maine-half-2026-pardi-postrace.jpeg"
+  width: 1170
+  height: 1888
+- src: "assets/images/mainemarathon/maine-half-2026-race-and-medal-collage.jpeg"
+  width: 1170
+  height: 1924
+- src: "assets/images/mainemarathon/maine-marathon-2026-dirigo-finish-group.jpeg"
+  width: 1170
+  height: 855
+- src: "assets/images/mainemarathon/maine-marathon-2026-masters-relay-awards.jpeg"
+  width: 480
+  height: 640
