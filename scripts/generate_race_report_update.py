@@ -85,6 +85,16 @@ def yaml_double_quoted(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def unquote_yaml_scalar(value: str) -> str:
+    raw = value.strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in {'"', "'"}:
+        try:
+            return json.loads(raw) if raw[0] == '"' else raw[1:-1]
+        except json.JSONDecodeError:
+            return raw[1:-1]
+    return raw
+
+
 def yaml_quote_if_plain(value: str) -> str:
     stripped = value.strip()
     if not stripped:
@@ -635,18 +645,18 @@ def front_matter_images(front_matter: str) -> list[dict[str, str]]:
     seen: set[str] = set()
 
     for index, line in enumerate(lines):
-        match = re.match(r"^\s*src:\s+(.+?)\s*$", line)
+        match = re.match(r"^\s*-?\s*src:\s+(.+?)\s*$", line)
         if not match:
             continue
-        path = match.group(1).strip().strip("\"'")
+        path = unquote_yaml_scalar(match.group(1))
         if not path or path in seen:
             continue
 
         alt = "Dirigo race photo."
         for candidate in lines[index + 1:index + 4]:
-            alt_match = re.match(r"^\s*alt:\s+(.+?)\s*$", candidate)
+            alt_match = re.match(r"^\s*-?\s*alt:\s+(.+?)\s*$", candidate)
             if alt_match:
-                alt = alt_match.group(1).strip().strip("\"'")
+                alt = unquote_yaml_scalar(alt_match.group(1))
                 break
         images.append({"path": path, "alt": alt})
         seen.add(path)
@@ -861,11 +871,199 @@ def headline_from_text(text: str, limit: int = 100) -> str:
 def front_matter_title(content: str) -> str:
     match = re.search(r"^title:\s*(.+)$", content, flags=re.MULTILINE)
     if match:
-        raw = match.group(1).strip()
-        if raw.startswith('"') and raw.endswith('"'):
-            raw = raw[1:-1]
-        return raw.strip()
+        return unquote_yaml_scalar(match.group(1))
     return ""
+
+
+def split_front_matter(content: str) -> tuple[str, str] | None:
+    match = re.match(r"\A---\s*\n(.*?)\n---(?:\s*\n(.*))?\Z", content, flags=re.DOTALL)
+    if not match:
+        return None
+    return match.group(1), (match.group(2) or "").strip()
+
+
+def front_matter_scalar(front_matter: str, key: str) -> str:
+    match = re.search(rf"^{re.escape(key)}:\s*(.+?)\s*$", front_matter, flags=re.MULTILINE)
+    if not match:
+        return ""
+    return unquote_yaml_scalar(match.group(1))
+
+
+def front_matter_list_maps(front_matter: str, key: str, fields: tuple[str, ...]) -> list[dict[str, str]]:
+    lines = front_matter.splitlines()
+    items: list[dict[str, str]] = []
+    in_block = False
+    current: dict[str, str] | None = None
+
+    for line in lines:
+        if re.match(rf"^{re.escape(key)}:\s*$", line):
+            in_block = True
+            current = None
+            continue
+        if not in_block:
+            continue
+        if re.match(r"^[A-Za-z_][\w-]*:", line):
+            break
+        item_start = re.match(r"^\s*-\s+([A-Za-z_][\w-]*):\s*(.+?)\s*$", line)
+        if item_start:
+            if current:
+                items.append(current)
+            current = {}
+            if item_start.group(1) in fields:
+                current[item_start.group(1)] = unquote_yaml_scalar(item_start.group(2))
+            continue
+        if current is None:
+            continue
+        field_match = re.match(r"^\s+([A-Za-z_][\w-]*):\s*(.+?)\s*$", line)
+        if field_match and field_match.group(1) in fields:
+            current[field_match.group(1)] = unquote_yaml_scalar(field_match.group(2))
+
+    if current:
+        items.append(current)
+    return [item for item in items if any(item.get(field) for field in fields)]
+
+
+def format_display_date(value: str) -> str:
+    raw = value.strip().strip("\"'")
+    if not raw:
+        return ""
+    try:
+        return dt.date.fromisoformat(raw[:10]).strftime("%b %-d, %Y")
+    except ValueError:
+        return raw
+
+
+def github_asset_url(path: str) -> str:
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    branch = (
+        os.environ.get("PR_BRANCH", "").strip()
+        or os.environ.get("GITHUB_HEAD_REF", "").strip()
+        or os.environ.get("GITHUB_REF_NAME", "").strip()
+    )
+    if not repo or not branch:
+        return path
+    return f"https://raw.githubusercontent.com/{repo}/{branch}/{path.lstrip('/')}"
+
+
+def content_files_for_preview(written: list[str]) -> list[str]:
+    return [path for path in written if path.startswith(("_posts/", "_events/"))]
+
+
+def render_post_preview(path: str, front_matter: str, body: str) -> list[str]:
+    title = front_matter_scalar(front_matter, "title") or Path(path).stem
+    category = front_matter_scalar(front_matter, "category") or "Update"
+    summary = front_matter_scalar(front_matter, "summary")
+    stat = front_matter_scalar(front_matter, "stat")
+    date_text = format_display_date(front_matter_scalar(front_matter, "date"))
+    images = front_matter_images(front_matter)
+    links = front_matter_list_maps(front_matter, "links", ("label", "url"))
+
+    sections = [
+        f"_{category}_",
+        "",
+        f"# {title}",
+        "",
+    ]
+    if summary:
+        sections.extend([summary, ""])
+    meta_bits = [category]
+    if date_text:
+        meta_bits.append(date_text)
+    sections.extend([" · ".join(meta_bits), ""])
+    if stat:
+        sections.extend([f"**{stat}**", ""])
+    for image in images:
+        src = image.get("path") or image.get("src") or ""
+        if not src:
+            continue
+        alt = image.get("alt") or "Dirigo race photo."
+        sections.extend([f"![{alt}]({github_asset_url(src)})", ""])
+    if body and body.strip() != summary.strip():
+        sections.extend([body.strip(), ""])
+    if links:
+        link_bits = []
+        for link in links:
+            label = link.get("label") or "Link"
+            url = link.get("url") or ""
+            if url:
+                link_bits.append(f"[{label}]({url})")
+        if link_bits:
+            sections.extend([" · ".join(link_bits), ""])
+    return sections
+
+
+def render_event_preview(path: str, front_matter: str, body: str) -> list[str]:
+    title = front_matter_scalar(front_matter, "title") or Path(path).stem
+    event_type = front_matter_scalar(front_matter, "type") or "Event"
+    summary = front_matter_scalar(front_matter, "summary")
+    team_note = front_matter_scalar(front_matter, "team_note")
+    date_text = format_display_date(front_matter_scalar(front_matter, "date"))
+    time_text = front_matter_scalar(front_matter, "time")
+    location = front_matter_scalar(front_matter, "location")
+    recurrence = front_matter_scalar(front_matter, "recurrence")
+    images = front_matter_images(front_matter)
+    links = front_matter_list_maps(front_matter, "links", ("label", "url"))
+
+    sections = [
+        f"_{event_type}_",
+        "",
+        f"# {title}",
+        "",
+    ]
+    if summary:
+        sections.extend([summary, ""])
+    for image in images:
+        src = image.get("path") or image.get("src") or ""
+        if not src:
+            continue
+        alt = image.get("alt") or "Dirigo race photo."
+        sections.extend([f"![{alt}]({github_asset_url(src)})", ""])
+
+    details: list[str] = []
+    if date_text:
+        details.append(f"- **Date:** {date_text}")
+    if time_text:
+        details.append(f"- **Time:** {time_text}")
+    if location:
+        details.append(f"- **Location:** {location}")
+    if recurrence:
+        details.append(f"- **Repeats:** {recurrence}")
+    if details:
+        sections.extend(details + [""])
+    if team_note:
+        sections.extend([f"> {team_note}", ""])
+    if body and body.strip() not in {summary.strip(), team_note.strip()}:
+        sections.extend([body.strip(), ""])
+
+    link_bits: list[str] = []
+    for key, label in [
+        ("event_url", "Event details"),
+        ("registration_url", "Register"),
+        ("results_url", "Results"),
+        ("related_update", "Related update"),
+    ]:
+        url = front_matter_scalar(front_matter, key)
+        if url:
+            link_bits.append(f"[{label}]({url})")
+    for link in links:
+        label = link.get("label") or "Link"
+        url = link.get("url") or ""
+        if url:
+            link_bits.append(f"[{label}]({url})")
+    if link_bits:
+        sections.extend([" · ".join(link_bits), ""])
+    return sections
+
+
+def render_site_preview(path: str) -> list[str]:
+    content = (ROOT / path).read_text(encoding="utf-8")
+    split = split_front_matter(content)
+    if not split:
+        return [f"### `{path}`", "", content.strip(), ""]
+    front_matter, body = split
+    if path.startswith("_events/"):
+        return render_event_preview(path, front_matter, body)
+    return render_post_preview(path, front_matter, body)
 
 
 def replace_front_matter_field(front_matter: str, key: str, value: str) -> str:
@@ -935,31 +1133,53 @@ def enforce_discord_verbatim_copy(files: list[dict[str, str]], email: dict[str, 
 
 def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str], mode: str) -> None:
     PR_BODY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    sections = [
-        f"## {content_label(mode)}",
-        "",
-        result.get("summary", f"Generated {content_label(mode).lower()} content from a submitted note."),
-        "",
+    sections: list[str] = []
+
+    preview_paths = content_files_for_preview(written)
+    if preview_paths:
+        sections.extend(
+            [
+                "## Site preview",
+                "",
+                "_Roughly how this will appear on the public site._",
+                "",
+            ]
+        )
+        for index, path in enumerate(preview_paths):
+            if index:
+                sections.extend(["---", ""])
+            sections.extend(render_site_preview(path))
+    else:
+        sections.extend(
+            [
+                f"## {content_label(mode)}",
+                "",
+                str(result.get("summary") or f"Generated {content_label(mode).lower()} content from a submitted note."),
+                "",
+            ]
+        )
+
+    notes: list[str] = [
         source_line(email, mode),
         "",
-        "## Files Changed",
+        "### Files Changed",
     ]
     if written:
-        sections.extend(f"- `{path}`" for path in written)
+        notes.extend(f"- `{path}`" for path in written)
     else:
-        sections.append("- No file changes generated.")
+        notes.append("- No file changes generated.")
 
     if staged:
-        sections.extend(["", "## Email Attachments"])
+        notes.extend(["", "### Email Attachments"])
         if kept:
-            sections.extend(f"- Used `{path}`" for path in kept)
+            notes.extend(f"- Used `{path}`" for path in kept)
         unused = [
             item["path"]
             for item in staged
             if item["path"] not in kept and item.get("renamed_path") not in kept
         ]
         if unused:
-            sections.extend(f"- Not used `{path}`" for path in unused)
+            notes.extend(f"- Not used `{path}`" for path in unused)
 
     for key, heading in [
         ("assumptions", "Assumptions"),
@@ -968,16 +1188,34 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, A
     ]:
         values = [v for v in result.get(key, []) if v]
         if values:
-            sections.extend(["", f"## {heading}"])
-            sections.extend(f"- {value}" for value in values)
+            notes.extend(["", f"### {heading}"])
+            notes.extend(f"- {value}" for value in values)
 
-    sections.extend(
+    summary = str(result.get("summary") or "").strip()
+    if summary and preview_paths:
+        notes.extend(["", "### Generator summary", "", summary])
+
+    notes.extend(
         [
             "",
             f"_Generated by the {content_label(mode).lower()} automation. Please review names, dates, links, and tone before merging._",
         ]
     )
-    PR_BODY_PATH.write_text("\n".join(sections) + "\n", encoding="utf-8")
+
+    sections.extend(
+        [
+            "---",
+            "",
+            "<details>",
+            "<summary>Automation notes</summary>",
+            "",
+            *notes,
+            "",
+            "</details>",
+            "",
+        ]
+    )
+    PR_BODY_PATH.write_text("\n".join(sections).rstrip() + "\n", encoding="utf-8")
 
 
 def write_pr_title(title: str) -> None:
