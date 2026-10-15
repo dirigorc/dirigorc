@@ -11,4 +11,7 @@ tags:
   - Bug Light
   - Group Run
   - South Portland
+links:
+  - label: Parking lot map
+    url: https://maps.app.goo.gl/m2KUMXULjApSXZYM6
 ---
