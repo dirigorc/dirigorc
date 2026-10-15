@@ -10,6 +10,7 @@ recurrence: Saturdays
 skip_dates:
   - 2026-08-01
   - 2026-08-08
+  - 2026-10-17
 team_note: Dave Ouellette leads the weekly run. Meet at the Inlet Road Parking Lot for whatever distance fits the day; occasional location changes are announced on Discord, Instagram stories, and club email.
 tags:
   - Saturday Long Run
