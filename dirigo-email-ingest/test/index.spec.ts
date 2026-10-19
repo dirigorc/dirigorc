@@ -495,6 +495,49 @@ describe("Dirigo email ingest worker", () => {
 		expect(reviewUpdate(calls).components).toEqual([]);
 	});
 
+	it("lets Crow publish when the approver var is unset", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41", "459385898992140288"), {
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.method === "PUT" && call.url.endsWith("/pulls/41/merge"))).toBe(true);
+	});
+
+	it("tells the other reviewer when Seth publishes", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick("pr_publish:41:777:888", "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+
+		const sibling = calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"));
+		const body = JSON.parse(sibling?.body || "{}") as { content?: string; components?: unknown[] };
+		expect(body.content).toContain("Seth Crockett published this.");
+		expect(body.content).toContain("https://github.com/dirigorc/dirigorc/pull/41");
+		expect(body.components).toEqual([]);
+		expect(reviewUpdate(calls).content).toContain("Published **Beach to Beacon**");
+	});
+
+	it("leaves the other reviewer's buttons alone when GitHub rejects the merge", async () => {
+		const calls = mockReviewFetch(reviewPull(), 405, "At least 1 approving review is required.");
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick("pr_publish:41:777:888", "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.url.includes("/channels/777/messages/888") && call.method === "PATCH")).toBe(false);
+	});
+
 	it("leaves the buttons in place when GitHub rejects the merge", async () => {
 		const calls = mockReviewFetch(reviewPull(), 405, "At least 1 approving review is required.");
 		const ctx = createExecutionContext();

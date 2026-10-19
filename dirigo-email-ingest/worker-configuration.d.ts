@@ -3,7 +3,7 @@
 // Runtime types generated with workerd@1.20260701.1 2026-07-04 nodejs_compat
 interface __BaseEnv_Env {
 	GITHUB_REPO: "dirigorc/dirigorc";
-	DISCORD_PR_APPROVER_IDS: "1227055686295359519";
+	DISCORD_PR_APPROVER_IDS: "1227055686295359519,459385898992140288";
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

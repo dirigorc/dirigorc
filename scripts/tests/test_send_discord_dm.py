@@ -124,9 +124,10 @@ class DiscordDmTests(unittest.TestCase):
 
         NOTIFIER.deliver_pr_review(
             "bot-token",
-            approver_id="1227055686295359519",
+            approver_ids=["1227055686295359519"],
             dm_user_id="999",
             channel_id="",
+            pr_number="41",
             review_message={"content": "review", "components": [{"type": 1}]},
             notice="Diri created a PR for review: Title\nhttps://github.com/example/pr/1",
             opener=opener,
@@ -155,9 +156,10 @@ class DiscordDmTests(unittest.TestCase):
 
         NOTIFIER.deliver_pr_review(
             "bot-token",
-            approver_id="1227055686295359519",
-            dm_user_id="1227055686295359519",
+            approver_ids=["1227055686295359519", "459385898992140288"],
+            dm_user_id="459385898992140288",
             channel_id="555",
+            pr_number="41",
             review_message={"content": "review"},
             notice="plain",
             opener=opener,
@@ -165,6 +167,46 @@ class DiscordDmTests(unittest.TestCase):
 
         self.assertEqual(len(requests), 1)
         self.assertTrue(requests[0].full_url.endswith("/channels/555/messages"))
+
+    def test_review_dms_cross_link_the_other_reviewer(self):
+        requests = []
+        message_ids = {
+            "1227055686295359519": "111",
+            "459385898992140288": "222",
+        }
+
+        def opener(request, timeout):
+            requests.append(request)
+            if request.full_url.endswith("/users/@me/channels"):
+                recipient = json.loads(request.data)["recipient_id"]
+                return FakeResponse({"id": recipient})
+            if request.get_method() == "POST":
+                channel = request.full_url.rstrip("/").rsplit("/", 2)[-2]
+                return FakeResponse({"id": message_ids[channel]})
+            return FakeResponse({"id": "patched"})
+
+        NOTIFIER.deliver_pr_review(
+            "bot-token",
+            approver_ids=["1227055686295359519", "459385898992140288"],
+            dm_user_id="459385898992140288",
+            channel_id="",
+            pr_number="41",
+            review_message={"content": "review", "embeds": [{"title": "Beach to Beacon"}]},
+            notice="plain",
+            opener=opener,
+        )
+
+        posts = [request for request in requests if request.get_method() == "POST" and request.full_url.endswith("/messages")]
+        patches = [request for request in requests if request.get_method() == "PATCH"]
+        self.assertEqual(len(posts), 2)
+        self.assertEqual(len(patches), 2)
+        self.assertNotIn("components", json.loads(posts[0].data))
+        seth_buttons = json.loads(patches[0].data)["components"][0]["components"]
+        crow_buttons = json.loads(patches[1].data)["components"][0]["components"]
+        self.assertEqual(seth_buttons[0]["custom_id"], "pr_publish:41:459385898992140288:222")
+        self.assertEqual(seth_buttons[1]["custom_id"], "pr_hold:41:459385898992140288:222")
+        self.assertEqual(crow_buttons[0]["custom_id"], "pr_publish:41:1227055686295359519:111")
+        self.assertFalse(any(b"plain" in request.data for request in requests))
 
 
 if __name__ == "__main__":

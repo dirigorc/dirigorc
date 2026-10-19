@@ -14,7 +14,8 @@
  * Optional vars:
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
  * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
- * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish or hold a draft. Defaults to Seth Crockett.
+ * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish or hold a draft. Defaults to Seth Crockett and Crow Norlander.
+ * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold.
  */
 
 const DISPATCH_EVENT_TYPES = {
@@ -30,7 +31,7 @@ const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
 const DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE = 5;
 const DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE = 6;
 const DISCORD_RESPONSE_MODAL = 9;
-const DEFAULT_PR_APPROVER_ID = "1227055686295359519";
+const DEFAULT_PR_APPROVER_IDS = ["1227055686295359519", "459385898992140288"];
 const AUTOMATION_PR_HEAD = /^automation\/(?:race-report|calendar-event)-\d+$/;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
@@ -86,6 +87,7 @@ interface WorkerEnv {
 	ALLOWED_FROM?: string;
 	DISCORD_PUBLIC_KEY?: string;
 	DISCORD_PR_APPROVER_IDS?: string;
+	DISCORD_BOT_TOKEN?: string;
 }
 
 interface EmailPayload {
@@ -1390,9 +1392,19 @@ function openRecapPartModal(control: RecapControl): Response {
 
 type PrReviewAction = "publish" | "hold";
 
+type PrReviewKind = "published" | "held" | "already" | "closed" | "ignored";
+
+interface PrReviewActionRequest {
+	action: PrReviewAction;
+	pullNumber: number;
+	siblingChannelId?: string;
+	siblingMessageId?: string;
+}
+
 interface PrReviewOutcome {
 	content: string;
 	clearButtons: boolean;
+	kind?: PrReviewKind;
 }
 
 interface GitHubPull {
@@ -1405,10 +1417,15 @@ interface GitHubPull {
 	labels?: Array<{ name?: string }>;
 }
 
-function parsePrReviewAction(customId: string): { action: PrReviewAction; pullNumber: number } | null {
-	const match = /^(pr_publish|pr_hold):(\d+)$/.exec(customId);
+function parsePrReviewAction(customId: string): PrReviewActionRequest | null {
+	const match = /^(pr_publish|pr_hold):(\d+)(?::(\d+):(\d+))?$/.exec(customId);
 	if (!match) return null;
-	return { action: match[1] === "pr_publish" ? "publish" : "hold", pullNumber: Number(match[2]) };
+	return {
+		action: match[1] === "pr_publish" ? "publish" : "hold",
+		pullNumber: Number(match[2]),
+		siblingChannelId: match[3],
+		siblingMessageId: match[4],
+	};
 }
 
 function prApproverIds(env: WorkerEnv): Set<string> {
@@ -1416,7 +1433,30 @@ function prApproverIds(env: WorkerEnv): Set<string> {
 		.split(",")
 		.map((value) => value.trim())
 		.filter((value) => /^\d+$/.test(value));
-	return new Set(configured.length > 0 ? configured : [DEFAULT_PR_APPROVER_ID]);
+	return new Set(configured.length > 0 ? configured : DEFAULT_PR_APPROVER_IDS);
+}
+
+function discordDisplayName(interaction: DiscordInteraction): string {
+	const user = discordUser(interaction);
+	return user.global_name || user.username || "The other reviewer";
+}
+
+function siblingNotice(actor: string, outcome: PrReviewOutcome): string | null {
+	if (!outcome.clearButtons || !outcome.kind) return null;
+	const url = outcome.content.match(/\n(https:\/\/\S+)$/)?.[1];
+	const suffix = url ? `\n${url}` : "";
+	switch (outcome.kind) {
+		case "published":
+			return clipDiscordContent(`${actor} published this. It will show up on the site after the next deploy.${suffix}`);
+		case "held":
+			return clipDiscordContent(`${actor} held this. The draft stays open.${suffix}`);
+		case "already":
+			return clipDiscordContent(`This is already on the site.${suffix}`);
+		case "closed":
+			return clipDiscordContent(`This draft is already closed.${suffix}`);
+		case "ignored":
+			return clipDiscordContent(`That pull request was left alone. Discord can only publish recap and calendar drafts.${suffix}`);
+	}
 }
 
 function clipDiscordContent(value: string): string {
@@ -1472,13 +1512,14 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 		return {
 			content: clipDiscordContent(`I left that pull request alone. Discord can only publish recap and calendar drafts.${suffix}`),
 			clearButtons: true,
+			kind: "ignored",
 		};
 	}
 	if (pull.merged) {
-		return { content: clipDiscordContent(`This is already on the site.${suffix}`), clearButtons: true };
+		return { content: clipDiscordContent(`This is already on the site.${suffix}`), clearButtons: true, kind: "already" };
 	}
 	if (pull.state === "closed") {
-		return { content: clipDiscordContent(`This draft is already closed.${suffix}`), clearButtons: true };
+		return { content: clipDiscordContent(`This draft is already closed.${suffix}`), clearButtons: true, kind: "closed" };
 	}
 
 	if (action === "hold") {
@@ -1492,7 +1533,7 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 				clearButtons: false,
 			};
 		}
-		return { content: clipDiscordContent(`Held. The draft stays open.${suffix}`), clearButtons: true };
+		return { content: clipDiscordContent(`Held. The draft stays open.${suffix}`), clearButtons: true, kind: "held" };
 	}
 
 	const mergeBody: Record<string, string> = { merge_method: "merge" };
@@ -1511,7 +1552,7 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 	const published = title
 		? `Published **${title}**. It will show up on the site after the next deploy.`
 		: "Published. It will show up on the site after the next deploy.";
-	return { content: clipDiscordContent(`${published}${suffix}`), clearButtons: true };
+	return { content: clipDiscordContent(`${published}${suffix}`), clearButtons: true, kind: "published" };
 }
 
 async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrReviewOutcome): Promise<void> {
@@ -1533,21 +1574,67 @@ async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrR
 	}
 }
 
+async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messageId: string, content: string): Promise<void> {
+	if (!env.DISCORD_BOT_TOKEN) {
+		console.error(JSON.stringify({
+			message: "Discord sibling review update skipped",
+			reason: "DISCORD_BOT_TOKEN is not configured.",
+		}));
+		return;
+	}
+	const messageUrl = `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
+	const headers = {
+		Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
+		"Content-Type": "application/json",
+	};
+	let embeds: unknown[] = [];
+	const existing = await fetch(messageUrl, { headers });
+	if (existing.ok) {
+		try {
+			const body = await existing.json() as { embeds?: unknown };
+			if (Array.isArray(body.embeds)) embeds = body.embeds;
+		} catch {
+			embeds = [];
+		}
+	}
+	const response = await fetch(messageUrl, {
+		method: "PATCH",
+		headers,
+		body: JSON.stringify({ content, components: [], embeds }),
+	});
+	if (!response.ok) {
+		throw new Error(`Discord sibling review update failed: ${response.status} ${await response.text()}`);
+	}
+}
+
 function startPrReview(
 	interaction: DiscordInteraction,
 	env: WorkerEnv,
 	ctx: ExecutionContext,
-	review: { action: PrReviewAction; pullNumber: number },
+	review: PrReviewActionRequest,
 ): Response {
 	const userId = discordUser(interaction).id || "";
 	if (!prApproverIds(env).has(userId)) {
 		return discordAck("You can't publish or hold this draft.");
 	}
 	const actor = discordSubmittedBy(interaction).slice(0, 120);
+	const actorName = discordDisplayName(interaction);
 	ctx.waitUntil((async () => {
 		try {
 			const outcome = await reviewPullRequest(env, review.action, review.pullNumber, actor);
 			await editPrReviewMessage(interaction, outcome);
+			const notice = siblingNotice(actorName, outcome);
+			if (notice && review.siblingChannelId && review.siblingMessageId) {
+				try {
+					await editSiblingReviewMessage(env, review.siblingChannelId, review.siblingMessageId, notice);
+				} catch (error) {
+					console.error(JSON.stringify({
+						message: "Discord sibling review update failed",
+						pullNumber: review.pullNumber,
+						error: errorMessage(error),
+					}));
+				}
+			}
 		} catch (error) {
 			console.error(JSON.stringify({
 				message: "Discord pull request review failed",
