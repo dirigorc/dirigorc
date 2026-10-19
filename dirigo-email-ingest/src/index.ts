@@ -22,6 +22,7 @@ const DISPATCH_EVENT_TYPES = {
 } as const;
 const DISCORD_INTERACTION_PING = 1;
 const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
+const DISCORD_INTERACTION_MESSAGE_COMPONENT = 3;
 const DISCORD_INTERACTION_MODAL_SUBMIT = 5;
 const DISCORD_RESPONSE_PONG = 1;
 const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
@@ -37,7 +38,7 @@ const DISCORD_TEXT_ATTACHMENT_OPTION_NAME = "recap_file";
 const DISCORD_MODAL_BODY_MAX = 4000;
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
 const DISCORD_EVENT_MODAL_ID = "event_modal_v1";
-const DISCORD_LONG_RECAP_MESSAGE = "For long recaps, save the text as a .txt or .md file and rerun /recap with recap_file attached. Discord text boxes can reject long pasted reports before the Worker receives them.";
+const DISCORD_LONG_RECAP_MESSAGE = "Run /recap with an empty body and continue in the form when a box fills. To send a file instead, attach a .txt or .md file with recap_file.";
 const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, submit the recap text first, attach a .txt/.md file with recap_file, or use the HTTP test endpoint in the README.";
 const DATEISH_PATTERN = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|today|tomorrow|tonight|next\s+week|this\s+weekend|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
 const RESULTISH_PATTERN = /\b(?:\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?|\d+(?:\.\d+)?\s?(?:k|mile|miler|marathon|half|meters?|m|place|overall|oa|win|winner|won|pr|pb|course record|age group|ag)|results?)\b/i;
@@ -320,16 +321,18 @@ function discordLinks(interaction: DiscordInteraction, body: string): string[] {
 	return unique;
 }
 
-function discordModalInput(interaction: DiscordInteraction, customId: string): string {
+function discordModalField(interaction: DiscordInteraction, customId: string): string {
 	const rows = interaction.data?.components || [];
 	for (const row of rows) {
 		for (const component of row.components || []) {
-			if (component.custom_id === customId) {
-				return String(component.value || "").trim();
-			}
+			if (component.custom_id === customId) return String(component.value || "");
 		}
 	}
 	return "";
+}
+
+function discordModalInput(interaction: DiscordInteraction, customId: string): string {
+	return discordModalField(interaction, customId).trim();
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -504,7 +507,7 @@ function discordSubmissionAck(editorialMode: string, attachmentSummary: DiscordA
 	return `Got it. I started a ${mode} website update PR for review.${details.length ? `\n\n${details.join("\n")}` : ""}`;
 }
 
-async function discordFollowup(interaction: DiscordInteraction, content: string): Promise<void> {
+async function discordFollowup(interaction: DiscordInteraction, content: string, components?: unknown[]): Promise<void> {
 	const applicationId = interaction.application_id;
 	const token = interaction.token;
 	if (!applicationId || !token) return;
@@ -514,6 +517,7 @@ async function discordFollowup(interaction: DiscordInteraction, content: string)
 		body: JSON.stringify({
 			content,
 			flags: DISCORD_MESSAGE_EPHEMERAL,
+			...(components ? { components } : {}),
 		}),
 	});
 	if (!response.ok) {
@@ -599,12 +603,12 @@ async function processDiscordRecapFileSubmission(env: WorkerEnv, interaction: Di
 	await processDiscordCommandSubmission(env, interaction, body, "recap");
 }
 
-function discordOpenRecapModal(defaultPolish: boolean, body = "", links = "", reason = ""): Response {
+function discordOpenRecapModal(defaultPolish: boolean, body = "", links = "", reason = "", customId = DISCORD_RECAP_MODAL_ID): Response {
 	return new Response(
 		JSON.stringify({
 			type: DISCORD_RESPONSE_MODAL,
 			data: {
-				custom_id: DISCORD_RECAP_MODAL_ID,
+				custom_id: customId,
 				title: reason ? "Clarify Dirigo recap" : "Create Dirigo recap",
 				components: [
 					...(reason ? [
@@ -734,6 +738,647 @@ function discordOpenEventModal(body = "", links = "", reason = ""): Response {
 	);
 }
 
+type RecapDraftStatus = "open" | "dispatching" | "dispatched";
+
+type RecapStoredAttachment = {
+	filename: string;
+	content_type: string;
+	sha: string;
+};
+
+type RecapDraft = {
+	id: string;
+	branch: string;
+	source: "discord";
+	command: "recap";
+	editorial_mode: "verbatim" | "agentic";
+	reason: string;
+	links: string;
+	parts: string[];
+	attachments: RecapStoredAttachment[];
+	status: RecapDraftStatus;
+	application_id: string;
+	interaction_token: string;
+};
+
+type RecapEvent =
+	| {
+			type: "savePart";
+			index: number;
+			text: string;
+			reason: string;
+			links: string;
+			editorial_mode: "verbatim" | "agentic";
+			application_id: string;
+			interaction_token: string;
+	  }
+	| {
+			type: "finish";
+			application_id: string;
+			interaction_token: string;
+	  }
+	| { type: "dispatchResult"; ok: boolean };
+
+type RecapOutcome = "saved" | "unchanged" | "dispatch" | "already-sending" | "already-dispatched" | "dispatched" | "reopened";
+
+type RecapApplyResult = {
+	draft: RecapDraft;
+	changed: boolean;
+	outcome: RecapOutcome;
+};
+
+type RecapControl =
+	| { action: "modal" }
+	| { action: "write"; id: string; polish: boolean }
+	| { action: "part"; id: string; index: number }
+	| { action: "more"; id: string; index: number; placeholder: string }
+	| { action: "done"; id: string };
+
+const RECAP_WRITE_ATTEMPTS = 3;
+const GITHUB_CONTENTS_MAX_BYTES = 1_000_000;
+
+function ingestBranchName(id: string): string {
+	return `automation/email-ingest-${id}`;
+}
+
+function recapDraftPath(id: string): string {
+	return `tmp/email-ingest/${id}/draft.json`;
+}
+
+function recapPayloadPath(id: string): string {
+	return `tmp/email-ingest/${id}/payload.json`;
+}
+
+function recapAttachmentPath(id: string, name: string): string {
+	return `tmp/email-ingest/${id}/attachments/${name}.json`;
+}
+
+function attachmentStorageName(filename: string, index: number): string {
+	const cleaned = filename.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+	return `${index + 1}-${cleaned || "image"}`;
+}
+
+function parseRecapControl(customId: string): RecapControl | null {
+	if (customId === DISCORD_RECAP_MODAL_ID) return { action: "modal" };
+	const write = /^recap_write:([a-z0-9-]+)(?::([av]))?$/.exec(customId);
+	if (write) return { action: "write", id: write[1], polish: write[2] === "a" };
+	const part = /^recap_part:([a-z0-9-]+):(\d+)$/.exec(customId);
+	if (part) return { action: "part", id: part[1], index: Number(part[2]) };
+	const more = /^recap_more:([a-z0-9-]+):(\d+)(?::([A-Za-z0-9_-]*))?$/.exec(customId);
+	if (more) return { action: "more", id: more[1], index: Number(more[2]), placeholder: more[3] ? decodeTail(more[3]) : "" };
+	const done = /^recap_done:([a-z0-9-]+)$/.exec(customId);
+	if (done) return { action: "done", id: done[1] };
+	return null;
+}
+
+function tailToken(text: string): string {
+	const tail = text.slice(-24);
+	if (!tail) return "";
+	return bytesToBase64(new TextEncoder().encode(tail)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeTail(token: string): string {
+	try {
+		const pad = token.length % 4 === 0 ? "" : "=".repeat(4 - (token.length % 4));
+		const binary = atob(token.replace(/-/g, "+").replace(/_/g, "/") + pad);
+		const bytes = new Uint8Array(binary.length);
+		for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+		return new TextDecoder().decode(bytes);
+	} catch {
+		return "";
+	}
+}
+
+function applyRecapEvent(draft: RecapDraft, event: RecapEvent): RecapApplyResult {
+	if (event.type === "savePart") {
+		if (draft.status === "dispatched") return { draft, changed: false, outcome: "unchanged" };
+		if (draft.status !== "open" && draft.status !== "dispatching") return { draft, changed: false, outcome: "unchanged" };
+		const text = event.text.slice(0, DISCORD_MODAL_BODY_MAX);
+		if (draft.parts[event.index] !== undefined) {
+			const sameInteraction = draft.application_id === event.application_id && draft.interaction_token === event.interaction_token;
+			if (sameInteraction) return { draft, changed: false, outcome: "unchanged" };
+			return {
+				draft: { ...draft, application_id: event.application_id, interaction_token: event.interaction_token },
+				changed: true,
+				outcome: "unchanged",
+			};
+		}
+		const parts = draft.parts.slice();
+		parts[event.index] = text;
+		return {
+			draft: {
+				...draft,
+				parts,
+				reason: event.index === 0 ? event.reason : draft.reason,
+				links: event.index === 0 ? event.links : draft.links,
+				editorial_mode: event.index === 0 ? event.editorial_mode : draft.editorial_mode,
+				application_id: event.application_id,
+				interaction_token: event.interaction_token,
+			},
+			changed: true,
+			outcome: "saved",
+		};
+	}
+
+	if (event.type === "finish") {
+		if (draft.status === "dispatched") return { draft, changed: false, outcome: "already-dispatched" };
+		if (draft.status === "dispatching") return { draft, changed: false, outcome: "already-sending" };
+		return {
+			draft: {
+				...draft,
+				status: "dispatching",
+				application_id: event.application_id,
+				interaction_token: event.interaction_token,
+			},
+			changed: true,
+			outcome: "dispatch",
+		};
+	}
+
+	if (draft.status !== "dispatching") return { draft, changed: false, outcome: "unchanged" };
+	if (event.ok) return { draft: { ...draft, status: "dispatched" }, changed: true, outcome: "dispatched" };
+	return { draft: { ...draft, status: "open" }, changed: true, outcome: "reopened" };
+}
+
+function parseRecapDraft(text: string): RecapDraft {
+	const draft = JSON.parse(text) as RecapDraft;
+	if (!draft?.id || !Array.isArray(draft.parts)) throw new Error("Recap draft is unreadable.");
+	if (!Array.isArray(draft.attachments)) draft.attachments = [];
+	if (draft.status !== "open" && draft.status !== "dispatching" && draft.status !== "dispatched") {
+		throw new Error("Recap draft is unreadable.");
+	}
+	return draft;
+}
+
+function newRecapDraft(interaction: DiscordInteraction): RecapDraft {
+	const id = `${Date.now()}-${safeId("discord-recap")}`;
+	const polish = discordEditorialMode(interaction) === "agentic";
+	return {
+		id,
+		branch: ingestBranchName(id),
+		source: "discord",
+		command: "recap",
+		editorial_mode: polish ? "agentic" : "verbatim",
+		reason: "",
+		links: String(discordOption(interaction, "links") || ""),
+		parts: [],
+		attachments: [],
+		status: "open",
+		application_id: interaction.application_id || "",
+		interaction_token: interaction.token || "",
+	};
+}
+
+function savePartEvent(interaction: DiscordInteraction, index: number, text: string): RecapEvent {
+	const polish = parsePolish(discordModalInput(interaction, "polish"), parsePolish(discordModalInput(interaction, "agentic"), false));
+	return {
+		type: "savePart",
+		index,
+		text,
+		reason: discordModalInput(interaction, "reason"),
+		links: discordModalInput(interaction, "links"),
+		editorial_mode: polish ? "agentic" : "verbatim",
+		application_id: interaction.application_id || "",
+		interaction_token: interaction.token || "",
+	};
+}
+
+function base64ToText(value: string): string {
+	const binary = atob(value.replace(/\s/g, ""));
+	const bytes = new Uint8Array(binary.length);
+	for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+	return new TextDecoder().decode(bytes);
+}
+
+function uniqueUrls(texts: string[]): string[] {
+	const unique: string[] = [];
+	const seen = new Set<string>();
+	for (const text of texts) {
+		for (const url of extractUrls(text)) {
+			if (seen.has(url)) continue;
+			seen.add(url);
+			unique.push(url);
+		}
+	}
+	return unique;
+}
+
+function writeRecapComponents(id: string, polish: boolean): unknown[] {
+	const mode = polish ? "a" : "v";
+	return [
+		{
+			type: 1,
+			components: [{ type: 2, style: 1, label: "Write recap", custom_id: `recap_write:${id}:${mode}` }],
+		},
+	];
+}
+
+function continueRecapComponents(id: string, nextIndex: number, previousText: string): unknown[] {
+	const token = tailToken(previousText);
+	const moreId = token ? `recap_more:${id}:${nextIndex}:${token}` : `recap_more:${id}:${nextIndex}`;
+	return [
+		{
+			type: 1,
+			components: [
+				{ type: 2, style: 1, label: "Add more", custom_id: moreId },
+				{ type: 2, style: 3, label: "Finish", custom_id: `recap_done:${id}` },
+			],
+		},
+	];
+}
+
+function recapContinueNote(text: string, firstFullBox: boolean): string {
+	if (text.length >= DISCORD_MODAL_BODY_MAX) {
+		const ending = firstFullBox ? " A shorter box ends the recap." : "";
+		return `Saved this part because the box is full.${ending} Click Add more to paste the next slice, or click Finish.`;
+	}
+	return "Saved this part. Click Add more to paste the next slice, or click Finish.";
+}
+
+function photosSavedNote(summary: DiscordAttachmentSummary): string {
+	const saved = summary.attachments.length;
+	const noun = saved === 1 ? "photo" : "photos";
+	const lines = [`Saved ${saved} ${noun}. Click Write recap to start the recap.`];
+	if (summary.skipped.length > 0) lines.push(`Skipped: ${summary.skipped.slice(0, 3).join("; ")}.`);
+	return lines.join("\n\n");
+}
+
+function discordOpenRecapSliceModal(id: string, index: number, placeholder: string): Response {
+	return new Response(
+		JSON.stringify({
+			type: DISCORD_RESPONSE_MODAL,
+			data: {
+				custom_id: `recap_part:${id}:${index}`,
+				title: "Continue Dirigo recap",
+				components: [
+					{
+						type: 1,
+						components: [
+							{
+								type: 4,
+								custom_id: "body",
+								label: "Recap text",
+								style: 2,
+								required: true,
+								max_length: DISCORD_MODAL_BODY_MAX,
+								...(placeholder ? { placeholder } : {}),
+							},
+						],
+					},
+				],
+			},
+		}),
+		{ headers: { "content-type": "application/json" } },
+	);
+}
+
+async function githubFetch(env: WorkerEnv, path: string, options: RequestInit = {}): Promise<{ status: number; text: string }> {
+	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
+	const response = await fetch(`https://api.github.com/repos/${repo}${path}`, {
+		...options,
+		headers: {
+			Accept: "application/vnd.github+json",
+			Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+			"Content-Type": "application/json",
+			"User-Agent": "dirigorc-race-report-worker",
+			"X-GitHub-Api-Version": "2022-11-28",
+			...(options.headers || {}),
+		},
+	});
+	return { status: response.status, text: await response.text() };
+}
+
+async function getGithubContent(env: WorkerEnv, branch: string, path: string): Promise<{ sha: string; text: string } | null> {
+	const result = await githubFetch(env, `/contents/${path}?ref=${encodeURIComponent(branch)}`);
+	if (result.status === 404) return null;
+	if (result.status < 200 || result.status >= 300) {
+		throw new Error(`GitHub API failed: ${result.status} ${result.text}`);
+	}
+	const parsed = JSON.parse(result.text) as { sha?: string; content?: string };
+	if (!parsed.content || !parsed.sha) throw new Error(`GitHub API failed: missing content for ${path}`);
+	return { sha: parsed.sha, text: base64ToText(parsed.content) };
+}
+
+async function putGithubContent(
+	env: WorkerEnv,
+	branch: string,
+	path: string,
+	content: string,
+	sha: string | null,
+	message: string,
+): Promise<{ conflict: true } | { conflict: false; sha: string }> {
+	const body: Record<string, string> = {
+		message,
+		branch,
+		content: textToBase64(content),
+	};
+	if (sha) body.sha = sha;
+	const result = await githubFetch(env, `/contents/${path}`, {
+		method: "PUT",
+		body: JSON.stringify(body),
+	});
+	if (result.status === 409) return { conflict: true };
+	if (result.status < 200 || result.status >= 300) {
+		throw new Error(`GitHub API failed: ${result.status} ${result.text}`);
+	}
+	const parsed = JSON.parse(result.text) as { content?: { sha?: string } };
+	return { conflict: false, sha: parsed.content?.sha || "" };
+}
+
+async function commitRecapEvent(env: WorkerEnv, id: string, event: RecapEvent): Promise<RecapApplyResult> {
+	const path = recapDraftPath(id);
+	let branch = ingestBranchName(id);
+	let loaded = await getGithubContent(env, branch, path);
+	if (!loaded) throw new Error("Recap draft not found.");
+	for (let attempt = 0; attempt < RECAP_WRITE_ATTEMPTS; attempt++) {
+		const draft = parseRecapDraft(loaded.text);
+		branch = draft.branch || branch;
+		const applied = applyRecapEvent(draft, event);
+		if (!applied.changed) return applied;
+		const put = await putGithubContent(env, branch, path, JSON.stringify(applied.draft, null, 2), loaded.sha, `Update recap draft ${id}`);
+		if (!put.conflict) return applied;
+		const again = await getGithubContent(env, branch, path);
+		if (!again) throw new Error("Recap draft not found.");
+		loaded = again;
+	}
+	throw new Error(`GitHub API failed: 409 recap draft ${id}`);
+}
+
+async function createIngestBranch(env: WorkerEnv, branch: string): Promise<void> {
+	const baseBranch = env.GITHUB_REF || "main";
+	const baseRef = (await githubRequest(env, `/git/ref/heads/${baseBranch}`)) as { object: { sha: string } };
+	await githubRequest(env, "/git/refs", {
+		method: "POST",
+		body: JSON.stringify({
+			ref: `refs/heads/${branch}`,
+			sha: baseRef.object.sha,
+		}),
+	});
+}
+
+function utf8Base64(value: string): string {
+	return bytesToBase64(new TextEncoder().encode(value));
+}
+
+async function createGitBlob(env: WorkerEnv, base64: string): Promise<string> {
+	const result = await githubFetch(env, "/git/blobs", {
+		method: "POST",
+		body: JSON.stringify({ content: base64, encoding: "base64" }),
+	});
+	if (result.status < 200 || result.status >= 300) {
+		throw new Error(`GitHub API failed: ${result.status} ${result.text}`);
+	}
+	const parsed = JSON.parse(result.text) as { sha?: string };
+	if (!parsed.sha) throw new Error("GitHub API failed: missing blob sha");
+	return parsed.sha;
+}
+
+async function readGitBlob(env: WorkerEnv, sha: string): Promise<Uint8Array> {
+	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
+	const response = await fetch(`https://api.github.com/repos/${repo}/git/blobs/${sha}`, {
+		headers: {
+			Accept: "application/vnd.github.raw",
+			Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+			"User-Agent": "dirigorc-race-report-worker",
+			"X-GitHub-Api-Version": "2022-11-28",
+		},
+	});
+	if (!response.ok) throw new Error(`GitHub API failed: ${response.status} ${await response.text()}`);
+	return new Uint8Array(await response.arrayBuffer());
+}
+
+async function commitTree(
+	env: WorkerEnv,
+	branch: string,
+	entries: Array<{ path: string; sha: string }>,
+	message: string,
+): Promise<void> {
+	const ref = (await githubRequest(env, `/git/ref/heads/${branch}`)) as { object: { sha: string } };
+	const parent = (await githubRequest(env, `/git/commits/${ref.object.sha}`)) as { tree: { sha: string } };
+	const tree = (await githubRequest(env, "/git/trees", {
+		method: "POST",
+		body: JSON.stringify({
+			base_tree: parent.tree.sha,
+			tree: entries.map((entry) => ({ path: entry.path, mode: "100644", type: "blob", sha: entry.sha })),
+		}),
+	})) as { sha: string };
+	const commit = (await githubRequest(env, "/git/commits", {
+		method: "POST",
+		body: JSON.stringify({ message, tree: tree.sha, parents: [ref.object.sha] }),
+	})) as { sha: string };
+	await githubRequest(env, `/git/refs/heads/${branch}`, {
+		method: "PATCH",
+		body: JSON.stringify({ sha: commit.sha }),
+	});
+}
+
+async function beginRecapDraftFromImages(env: WorkerEnv, interaction: DiscordInteraction): Promise<void> {
+	const summary = await discordAttachments(interaction);
+	const draft = newRecapDraft(interaction);
+	await createIngestBranch(env, draft.branch);
+	const entries: Array<{ path: string; sha: string }> = [];
+	for (let index = 0; index < summary.attachments.length; index++) {
+		const attachment = summary.attachments[index];
+		const name = attachmentStorageName(attachment.filename, index);
+		// The contents API drops file bodies over 1 MB. A race photo's base64 crosses that line.
+		const sha = await createGitBlob(env, attachment.data);
+		draft.attachments.push({ filename: attachment.filename, content_type: attachment.content_type, sha });
+		entries.push({ path: recapAttachmentPath(draft.id, name), sha });
+	}
+	const draftText = JSON.stringify(draft, null, 2);
+	entries.push({ path: recapDraftPath(draft.id), sha: await createGitBlob(env, utf8Base64(draftText)) });
+	await commitTree(env, draft.branch, entries, `Stage recap draft ${draft.id}`);
+	await discordFollowup(interaction, photosSavedNote(summary), writeRecapComponents(draft.id, draft.editorial_mode === "agentic"));
+}
+
+async function beginRecapDraftFromFullModal(env: WorkerEnv, interaction: DiscordInteraction, body: string): Promise<void> {
+	const draft = newRecapDraft(interaction);
+	const event = savePartEvent(interaction, 0, body);
+	const applied = applyRecapEvent(draft, event);
+	await createIngestBranch(env, applied.draft.branch);
+	const put = await putGithubContent(
+		env,
+		applied.draft.branch,
+		recapDraftPath(applied.draft.id),
+		JSON.stringify(applied.draft, null, 2),
+		null,
+		`Stage recap draft ${applied.draft.id}`,
+	);
+	if (put.conflict) await commitRecapEvent(env, applied.draft.id, event);
+	await discordFollowup(interaction, recapContinueNote(body, true), continueRecapComponents(applied.draft.id, 1, body));
+}
+
+async function saveRecapPart(env: WorkerEnv, interaction: DiscordInteraction, id: string, index: number, body: string): Promise<void> {
+	const applied = await commitRecapEvent(env, id, savePartEvent(interaction, index, body));
+	if (applied.outcome === "saved") {
+		await discordFollowup(interaction, recapContinueNote(body, false), continueRecapComponents(id, index + 1, body));
+		return;
+	}
+	if (applied.draft.status === "dispatched") {
+		await discordFollowup(interaction, "This recap is already in review.");
+		return;
+	}
+	if (applied.draft.status === "dispatching") {
+		await discordFollowup(interaction, "This recap is already sending.");
+		return;
+	}
+	const note = "This part is already saved. Click Add more to paste the next slice, or click Finish.";
+	await discordFollowup(interaction, note, continueRecapComponents(id, index + 1, body));
+}
+
+async function buildRecapEmail(env: WorkerEnv, draft: RecapDraft, interaction: DiscordInteraction): Promise<EmailPayload> {
+	const attachments: EmailAttachment[] = [];
+	for (const attachment of draft.attachments) {
+		const bytes = await readGitBlob(env, attachment.sha);
+		attachments.push({
+			filename: attachment.filename,
+			content_type: attachment.content_type,
+			data: bytesToBase64(bytes),
+		});
+	}
+	const text = draft.parts.join("");
+	const submittedBy = discordSubmittedBy(interaction);
+	return {
+		source: "discord",
+		command: "recap",
+		editorial_mode: draft.editorial_mode,
+		submitted_by: submittedBy,
+		from: submittedBy,
+		subject: "Discord /recap",
+		text,
+		body: text,
+		raw: "",
+		attachments,
+		links: uniqueUrls([text, draft.links]),
+		discord_application_id: interaction.application_id || draft.application_id,
+		discord_interaction_token: interaction.token || draft.interaction_token,
+	};
+}
+
+async function stageRecapPayload(env: WorkerEnv, draft: RecapDraft, interaction: DiscordInteraction): Promise<EmailPayload> {
+	const email = await buildRecapEmail(env, draft, interaction);
+	const path = recapPayloadPath(draft.id);
+	const content = JSON.stringify({ email }, null, 2);
+	const message = `Stage race report payload: ${email.subject}`;
+	if (new TextEncoder().encode(content).length > GITHUB_CONTENTS_MAX_BYTES) {
+		const sha = await createGitBlob(env, utf8Base64(content));
+		await commitTree(env, draft.branch, [{ path, sha }], message);
+		return email;
+	}
+	let existing = await getGithubContent(env, draft.branch, path);
+	for (let attempt = 0; attempt < RECAP_WRITE_ATTEMPTS; attempt++) {
+		const put = await putGithubContent(env, draft.branch, path, content, existing?.sha || null, message);
+		if (!put.conflict) return email;
+		existing = await getGithubContent(env, draft.branch, path);
+	}
+	throw new Error(`GitHub API failed: 409 recap payload ${draft.id}`);
+}
+
+function recapSentPath(id: string): string {
+	return `tmp/email-ingest/${id}/sent.json`;
+}
+
+async function githubPathExists(env: WorkerEnv, branch: string, path: string): Promise<boolean> {
+	const result = await githubFetch(env, `/contents/${path}?ref=${encodeURIComponent(branch)}`);
+	return result.status >= 200 && result.status < 300;
+}
+
+async function loadRecapDraft(env: WorkerEnv, id: string): Promise<RecapDraft> {
+	const loaded = await getGithubContent(env, ingestBranchName(id), recapDraftPath(id));
+	if (!loaded) throw new Error("Recap draft not found.");
+	return parseRecapDraft(loaded.text);
+}
+
+async function finishRecapDraft(env: WorkerEnv, interaction: DiscordInteraction, id: string): Promise<void> {
+	const applied = await commitRecapEvent(env, id, {
+		type: "finish",
+		application_id: interaction.application_id || "",
+		interaction_token: interaction.token || "",
+	});
+	if (applied.outcome === "already-dispatched") {
+		await discordFollowup(interaction, "This recap is already in review.");
+		return;
+	}
+	if (applied.outcome === "already-sending") {
+		const pending = await loadRecapDraft(env, id);
+		if (await githubPathExists(env, pending.branch, recapSentPath(pending.id))) {
+			try {
+				await commitRecapEvent(env, id, { type: "dispatchResult", ok: true });
+			} catch (error) {
+				console.error(JSON.stringify({ message: "Recap draft status update failed", error: errorMessage(error) }));
+			}
+			await discordFollowup(interaction, "This recap was already sent for review.");
+			return;
+		}
+	} else if (applied.outcome !== "dispatch") {
+		await discordFollowup(interaction, "This recap is already in review.");
+		return;
+	}
+
+	const draft = await loadRecapDraft(env, id);
+	let email: EmailPayload;
+	try {
+		email = await stageRecapPayload(env, draft, interaction);
+		const reason = clarificationReason("recap", email.body || "", draft.attachments.length);
+		if (reason) {
+			await commitRecapEvent(env, id, { type: "dispatchResult", ok: false });
+			await discordFollowup(interaction, `${reason}\n\nAdd the missing detail with Add more, then click Finish.`);
+			return;
+		}
+		await dispatchToGitHub(env, email, {
+			includeBody: false,
+			ingest: {
+				branch: draft.branch,
+				path: recapPayloadPath(draft.id),
+				subject: email.subject || "Discord /recap",
+				from: email.from,
+			},
+		});
+	} catch (error) {
+		try {
+			await commitRecapEvent(env, id, { type: "dispatchResult", ok: false });
+		} catch (revertError) {
+			console.error(JSON.stringify({
+				message: "Recap draft revert failed",
+				error: errorMessage(revertError),
+			}));
+		}
+		console.error(JSON.stringify({
+			message: "Discord background submission failed",
+			command: "recap",
+			error: errorMessage(error),
+		}));
+		await discordFollowup(interaction, `I received the recap text, but the background update failed: ${errorMessage(error)}\n\nClick Finish to try again.`);
+		return;
+	}
+
+	try {
+		await putGithubContent(env, draft.branch, recapSentPath(draft.id), JSON.stringify({ sent: true }), null, `Mark recap dispatch sent ${draft.id}`);
+	} catch (error) {
+		console.error(JSON.stringify({ message: "Recap dispatch marker failed", error: errorMessage(error) }));
+	}
+	try {
+		await commitRecapEvent(env, id, { type: "dispatchResult", ok: true });
+	} catch (error) {
+		console.error(JSON.stringify({ message: "Recap draft status update failed", error: errorMessage(error) }));
+	}
+	const attachments = email.attachments || [];
+	await discordFollowup(
+		interaction,
+		discordSubmissionAck(draft.editorial_mode, { attachments, skipped: [], requested: attachments.length }),
+	);
+}
+
+function openRecapPartModal(control: RecapControl): Response {
+	if (control.action === "write") {
+		return discordOpenRecapModal(control.polish, "", "", "", `recap_part:${control.id}:0`);
+	}
+	if (control.action === "more") {
+		return discordOpenRecapSliceModal(control.id, control.index, control.placeholder);
+	}
+	return discordAck("Unknown command.");
+}
+
 async function handleDiscordInteraction(
 	request: Request,
 	env: WorkerEnv,
@@ -752,14 +1397,39 @@ async function handleDiscordInteraction(
 		return new Response("Invalid interaction payload\n", { status: 400 });
 	}
 
+	return routeDiscordInteraction(interaction, env, ctx);
+}
+
+export async function routeDiscordInteraction(
+	interaction: DiscordInteraction,
+	env: WorkerEnv,
+	ctx: ExecutionContext,
+): Promise<Response> {
 	if (interaction.type === DISCORD_INTERACTION_PING) {
 		return new Response(JSON.stringify({ type: DISCORD_RESPONSE_PONG }), {
 			headers: { "content-type": "application/json" },
 		});
 	}
 
-	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && interaction.data?.custom_id === DISCORD_RECAP_MODAL_ID) {
-		const body = discordModalInput(interaction, "body");
+	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT) {
+		const control = parseRecapControl(interaction.data?.custom_id || "");
+		if (control?.action === "part") {
+			const raw = discordModalField(interaction, "body");
+			if (!raw.trim()) return discordAck("Please include recap text.");
+			const part = control;
+			ctx.waitUntil(runDiscordBackgroundTask(interaction, "recap", () => saveRecapPart(env, interaction, part.id, part.index, raw.slice(0, DISCORD_MODAL_BODY_MAX))));
+			return discordDeferredAck();
+		}
+	}
+
+	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && parseRecapControl(interaction.data?.custom_id || "")?.action === "modal") {
+		const raw = discordModalField(interaction, "body");
+		// Discord counts whitespace toward the 4,000 character cap, so a trimmed length would miss a full paste.
+		if (raw.length >= DISCORD_MODAL_BODY_MAX) {
+			ctx.waitUntil(runDiscordBackgroundTask(interaction, "recap", () => beginRecapDraftFromFullModal(env, interaction, raw.slice(0, DISCORD_MODAL_BODY_MAX))));
+			return discordDeferredAck();
+		}
+		const body = raw.trim();
 		if (!body) return discordAck("Please include recap text.");
 		const reason = clarificationReason("recap", body, 0);
 		if (reason) return discordAck(`${reason}\n\nPlease rerun /recap with the full names in the body.`);
@@ -812,6 +1482,17 @@ async function handleDiscordInteraction(
 		return discordAck("Got it. I started a calendar event PR for review.");
 	}
 
+	if (interaction.type === DISCORD_INTERACTION_MESSAGE_COMPONENT) {
+		const control = parseRecapControl(interaction.data?.custom_id || "");
+		if (control?.action === "write" || control?.action === "more") return openRecapPartModal(control);
+		if (control?.action === "done") {
+			const done = control;
+			ctx.waitUntil(runDiscordBackgroundTask(interaction, "recap", () => finishRecapDraft(env, interaction, done.id)));
+			return discordDeferredAck();
+		}
+		return discordAck("Unknown command.");
+	}
+
 	if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || !["recap", "event"].includes(interaction.data?.name || "")) {
 		return discordAck("Unknown command.");
 	}
@@ -832,7 +1513,8 @@ async function handleDiscordInteraction(
 			return discordDeferredAck();
 		}
 		if (requestedAttachments > 0) {
-			return discordAck(`Please include recap text in the inline body option when submitting image attachments. Discord modals cannot carry slash-command attachments.\n\n${DISCORD_FALLBACK_MESSAGE}`);
+			ctx.waitUntil(runDiscordBackgroundTask(interaction, "recap", () => beginRecapDraftFromImages(env, interaction)));
+			return discordDeferredAck();
 		}
 		return discordOpenRecapModal(discordEditorialMode(interaction) === "agentic");
 	}
@@ -888,9 +1570,13 @@ async function handleDiscordInteraction(
 	return discordAck(discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
-async function dispatchToGitHub(env: WorkerEnv, email: EmailPayload): Promise<void> {
+async function dispatchToGitHub(
+	env: WorkerEnv,
+	email: EmailPayload,
+	options: { ingest?: Record<string, string>; includeBody?: boolean } = {},
+): Promise<void> {
 	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-	const ingest = await createIngestPayload(env, email);
+	const ingest = options.ingest || (await createIngestPayload(env, email));
 	const command = normalizeCommand(email.command || email.content_type);
 	const eventType = DISPATCH_EVENT_TYPES[command] || DISPATCH_EVENT_TYPES.recap;
 	const clientPayload: Record<string, unknown> = { ingest };
@@ -899,7 +1585,7 @@ async function dispatchToGitHub(env: WorkerEnv, email: EmailPayload): Promise<vo
 		clientPayload.command = command;
 		clientPayload.editorial_mode = email.editorial_mode || "verbatim";
 		clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
-		clientPayload.body = email.body || email.text || "";
+		if (options.includeBody !== false) clientPayload.body = email.body || email.text || "";
 		clientPayload.links = email.links || [];
 		clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
 		if (email.discord_application_id && email.discord_interaction_token) {
@@ -931,26 +1617,12 @@ async function dispatchToGitHub(env: WorkerEnv, email: EmailPayload): Promise<vo
 }
 
 async function githubRequest(env: WorkerEnv, path: string, options: RequestInit = {}): Promise<unknown> {
-	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-	const response = await fetch(`https://api.github.com/repos/${repo}${path}`, {
-		...options,
-		headers: {
-			"Accept": "application/vnd.github+json",
-			"Authorization": `Bearer ${env.GITHUB_TOKEN}`,
-			"Content-Type": "application/json",
-			"User-Agent": "dirigorc-race-report-worker",
-			"X-GitHub-Api-Version": "2022-11-28",
-			...(options.headers || {}),
-		},
-	});
-
-	if (!response.ok) {
-		const detail = await response.text();
-		throw new Error(`GitHub API failed: ${response.status} ${detail}`);
+	const result = await githubFetch(env, path, options);
+	if (result.status === 204) return null;
+	if (result.status < 200 || result.status >= 300) {
+		throw new Error(`GitHub API failed: ${result.status} ${result.text}`);
 	}
-
-	if (response.status === 204) return null;
-	return response.json();
+	return result.text ? JSON.parse(result.text) : null;
 }
 
 function textToBase64(value: string): string {
@@ -967,20 +1639,12 @@ function safeId(value: string): string {
 }
 
 async function createIngestPayload(env: WorkerEnv, email: EmailPayload): Promise<Record<string, string>> {
-	const baseBranch = env.GITHUB_REF || "main";
 	const command = normalizeCommand(email.command || email.content_type);
 	const id = `${Date.now()}-${safeId(email.subject || command || "race-report")}`;
-	const branch = `automation/email-ingest-${id}`;
+	const branch = ingestBranchName(id);
 	const path = `tmp/email-ingest/${id}/payload.json`;
 
-	const baseRef = (await githubRequest(env, `/git/ref/heads/${baseBranch}`)) as { object: { sha: string } };
-	await githubRequest(env, "/git/refs", {
-		method: "POST",
-		body: JSON.stringify({
-			ref: `refs/heads/${branch}`,
-			sha: baseRef.object.sha,
-		}),
-	});
+	await createIngestBranch(env, branch);
 
 	await githubRequest(env, `/contents/${path}`, {
 		method: "PUT",
