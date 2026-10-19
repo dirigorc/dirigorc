@@ -421,6 +421,133 @@ describe("Dirigo email ingest worker", () => {
 			expect.objectContaining({ filename: "karley-finish.jpg", data: "/9j/2Q==" }),
 		]);
 	});
+
+	it("refuses a publish click from anyone except the approver", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(reviewClick("pr_publish:41", "1"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({
+			type: 4,
+			data: { content: "You can't publish or hold this draft.", flags: 64 },
+		});
+		expect(calls).toEqual([]);
+	});
+
+	it("merges an automation recap when Seth presses Publish", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(reviewClick("pr_publish:41", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({ type: 6 });
+		const merge = calls.find((call) => call.url.endsWith("/pulls/41/merge"));
+		expect(merge).toMatchObject({ method: "PUT", body: JSON.stringify({ merge_method: "merge", sha: "abc123" }) });
+		const update = reviewUpdate(calls);
+		expect(update.content).toContain("Published **Beach to Beacon**");
+		expect(update.components).toEqual([]);
+		expect(update.embeds).toEqual([{ title: "Beach to Beacon" }]);
+	});
+
+	it("merges a calendar draft and still allows Seth when the approver var is unset", async () => {
+		const calls = mockReviewFetch(reviewPull({
+			head: { ref: "automation/calendar-event-5", sha: "def456" },
+			labels: [{ name: "automated calendar" }],
+		}));
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41", "1227055686295359519"), {
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, ctx);
+		await waitOnExecutionContext(ctx);
+
+		const merge = calls.find((call) => call.url.endsWith("/pulls/41/merge"));
+		expect(JSON.parse(merge?.body || "{}")).toEqual({ merge_method: "merge", sha: "def456" });
+	});
+
+	it("does not merge a pull request the automation did not open", async () => {
+		const calls = mockReviewFetch(reviewPull({
+			head: { ref: "cursor/discord-pr-approval", sha: "nope" },
+			labels: [{ name: "automated update" }],
+		}));
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+		expect(reviewUpdate(calls).content).toContain("left that pull request alone");
+		expect(reviewUpdate(calls).components).toEqual([]);
+	});
+
+	it("holds a draft with a GitHub comment and leaves it open", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_hold:41", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+		const comment = calls.find((call) => call.url.endsWith("/issues/41/comments"));
+		expect(JSON.parse(comment?.body || "{}")).toEqual({
+			body: "Held in Discord by Seth Crockett (1227055686295359519).",
+		});
+		expect(reviewUpdate(calls).content).toContain("Held. The draft stays open.");
+		expect(reviewUpdate(calls).components).toEqual([]);
+	});
+
+	it("lets Crow publish when the approver var is unset", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41", "459385898992140288"), {
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.method === "PUT" && call.url.endsWith("/pulls/41/merge"))).toBe(true);
+	});
+
+	it("tells the other reviewer when Seth publishes", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick("pr_publish:41:777:888", "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+
+		const sibling = calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"));
+		const body = JSON.parse(sibling?.body || "{}") as { content?: string; components?: unknown[] };
+		expect(body.content).toContain("Seth Crockett published this.");
+		expect(body.content).toContain("https://github.com/dirigorc/dirigorc/pull/41");
+		expect(body.components).toEqual([]);
+		expect(reviewUpdate(calls).content).toContain("Published **Beach to Beacon**");
+	});
+
+	it("leaves the other reviewer's buttons alone when GitHub rejects the merge", async () => {
+		const calls = mockReviewFetch(reviewPull(), 405, "At least 1 approving review is required.");
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick("pr_publish:41:777:888", "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.url.includes("/channels/777/messages/888") && call.method === "PATCH")).toBe(false);
+	});
+
+	it("leaves the buttons in place when GitHub rejects the merge", async () => {
+		const calls = mockReviewFetch(reviewPull(), 405, "At least 1 approving review is required.");
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const update = reviewUpdate(calls);
+		expect(update.content).toContain("At least 1 approving review is required.");
+		expect(update.components).toEqual([{ type: 1 }]);
+	});
 });
 
 type FetchCall = { url: string; method: string; body?: string };
@@ -618,4 +745,61 @@ function contentsPath(url: string): string {
 	const pathname = new URL(url).pathname;
 	const marker = "/contents/";
 	return decodeURIComponent(pathname.slice(pathname.indexOf(marker) + marker.length));
+}
+
+function reviewEnv() {
+	return {
+		GITHUB_TOKEN: "github-token",
+		GITHUB_REPO: "dirigorc/dirigorc",
+		DISCORD_PR_APPROVER_IDS: "1227055686295359519",
+	};
+}
+
+function reviewPull(overrides: Record<string, unknown> = {}) {
+	return {
+		number: 41,
+		state: "open",
+		merged: false,
+		title: "Beach to Beacon",
+		html_url: "https://github.com/dirigorc/dirigorc/pull/41",
+		base: { ref: "main" },
+		head: { ref: "automation/race-report-99", sha: "abc123" },
+		labels: [{ name: "automated update" }, { name: "content" }],
+		...overrides,
+	};
+}
+
+function reviewClick(customId: string, userId: string) {
+	return {
+		type: 3,
+		application_id: "discord-app",
+		token: "review-token",
+		data: { custom_id: customId },
+		user: { id: userId, username: "seth", global_name: "Seth Crockett" },
+		message: { embeds: [{ title: "Beach to Beacon" }], components: [{ type: 1 }] },
+	};
+}
+
+function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged") {
+	const calls: FetchCall[] = [];
+	vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url = requestUrl(input);
+		const method = (init?.method || "GET").toUpperCase();
+		const body = typeof init?.body === "string" ? init.body : undefined;
+		calls.push({ url, method, body });
+		if (url.includes("/pulls/41/merge")) {
+			return Response.json({ message: mergeMessage, merged: mergeStatus < 300 }, { status: mergeStatus });
+		}
+		if (url.includes("/issues/41/comments")) return Response.json({ id: 1 }, { status: 201 });
+		if (url.includes("discord.com")) return new Response(null, { status: 200 });
+		if (url.endsWith("/pulls/41")) return Response.json(pull, { status: 200 });
+		return new Response("missing", { status: 404 });
+	});
+	return calls;
+}
+
+function reviewUpdate(calls: FetchCall[]): { content?: string; components?: unknown[]; embeds?: unknown[] } {
+	const update = calls.find((call) => call.method === "PATCH" && call.url.includes("/messages/@original"));
+	if (!update?.body) throw new Error("missing Discord review update");
+	return JSON.parse(update.body) as { content?: string; components?: unknown[]; embeds?: unknown[] };
 }

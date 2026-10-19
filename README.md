@@ -305,18 +305,21 @@ GitHub setup:
 8. Make sure Actions can create pull requests under repository settings.
 9. Make sure the intended reviewers have GitHub email notifications enabled for review requests. The workflow can request review, but GitHub account notification settings control whether that becomes an email.
 10. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) and [.github/prompts/calendar-event-to-jekyll.md](.github/prompts/calendar-event-to-jekyll.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
-11. Optional Diri direct messages: keep the existing repository secret `DISCORD_BOT_TOKEN` and add repository variable `DISCORD_PR_DM_USER_ID` with the numeric Discord user ID that should receive every newly created race-report or calendar-event PR. Notification failures do not block PR creation.
+11. Discord review: keep the repository secret `DISCORD_BOT_TOKEN`. When a recap or calendar pull request opens, Diri messages Seth Crockett (`1227055686295359519`) and Crow Norlander (`459385898992140288`) with the site preview and **Publish** / **Hold** buttons. Either of them can publish or hold. When one does, Diri updates the other's message and removes the buttons. Publish merges that draft, and the site deploys from `main`. Hold leaves the pull request open. Another Discord user cannot use those buttons. Optional repository variable `DISCORD_PR_APPROVER_USER_ID` is a comma-separated list of who receives the message. Optional `DISCORD_PR_REVIEW_CHANNEL_ID` posts one shared message in a channel instead of direct messages. Optional `DISCORD_PR_DM_USER_ID` still sends a plain link to someone who is not already an approver. Notification failures do not block pull request creation.
+12. Let the Worker GitHub token merge these drafts without a separate approving review. Publish only succeeds for open pull requests whose head branch is `automation/race-report-*` or `automation/calendar-event-*`, whose base is `main`, and whose labels include `automated update` or `automated calendar`. The button handler lives in `dirigo-email-ingest` and goes out with the Worker deploy.
 
 Cloudflare setup:
 
 1. Create a Worker from `automation/cloudflare-race-report-worker.js`.
 2. Add Worker secret `GITHUB_TOKEN`.
-   Use a fine-grained GitHub token for `dirigorc/dirigorc` with Contents write access.
-3. Add Worker variable `GITHUB_REPO=dirigorc/dirigorc`.
-4. Add Worker secret `INGEST_TOKEN` for HTTP webhook authentication.
-5. Optional: add Worker variable `ALLOWED_FROM` as a comma-separated sender allowlist.
-6. Optional for Discord: add Worker secret `DISCORD_PUBLIC_KEY`.
-7. Attach the Worker to a Cloudflare Email Routing address, configure it as a Discord interaction endpoint, or call it with an authenticated HTTP POST.
+   Use a fine-grained GitHub token for `dirigorc/dirigorc` with Contents write and Pull requests write. The token has to be allowed to merge the automation drafts onto `main`.
+3. The Worker variable `DISCORD_PR_APPROVER_IDS` lists who may press Publish or Hold. It defaults to Seth Crockett (`1227055686295359519`) and Crow Norlander (`459385898992140288`).
+4. Add Worker secret `DISCORD_BOT_TOKEN` with the same bot token used by GitHub Actions. Diri uses it to update the other reviewer's message after Publish or Hold.
+5. Add Worker variable `GITHUB_REPO=dirigorc/dirigorc`.
+6. Add Worker secret `INGEST_TOKEN` for HTTP webhook authentication.
+7. Optional: add Worker variable `ALLOWED_FROM` as a comma-separated sender allowlist.
+8. Optional for Discord: add Worker secret `DISCORD_PUBLIC_KEY`.
+9. Attach the Worker to a Cloudflare Email Routing address, configure it as a Discord interaction endpoint, or call it with an authenticated HTTP POST.
 
 HTTP test:
 
