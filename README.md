@@ -348,7 +348,28 @@ The Discord path uses the same Worker and review-ready PR pattern for two comman
 - `/event`: draft or update a Calendar event from upcoming race, group run, meet, deadline, or team-date details. This always uses the calendar-event prompt and writes `_events/` files only.
 - If the initial `/recap` or `/event` text is too thin, the Worker opens a clarification modal instead of creating a low-context PR.
 - If the text appears to use shorthand or incomplete member names, such as `Dave O`, `Ashby`, or first-name-only mentions, the Worker asks for full names before creating a PR.
-- Long recaps should use `/recap recap_file` with a `.txt` or `.md` attachment. Discord can reject long pasted slash-command text before the Worker receives it, and Discord modals are capped at 4,000 characters.
+- For a longer recap, see [Submit a long recap](#submit-a-long-recap).
+
+#### Submit a long recap
+
+Paste a short recap into the `/recap` `body` field, or into one form box shorter than 4,000 characters. That submission opens a review pull request.
+
+To submit a longer recap in Discord:
+
+1. Run `/recap`.
+2. Leave `body` empty.
+3. Attach photos on that command when you have them.
+4. Leave `recap_file` empty.
+5. If you attached photos, click **Write recap** when the note says the photos are saved. With no photos, `/recap` opens the form.
+6. If the words you submit should be the post, leave `polish` off.
+7. Paste the recap into the box. The box holds 4,000 characters. Discord keeps the first 4,000 characters of a longer paste.
+8. Submit the form. A full box is saved and offers **Add more** and **Finish**. A first box shorter than 4,000 characters, with no saved photos, opens the review pull request.
+9. Click **Add more**, paste the next slice, and submit. Repeat until the recap is in. You can continue past five boxes. When a later box is short, click **Finish**.
+10. Click **Finish**.
+
+Finish opens the review pull request. The post is the parts in order, with nothing added between them.
+
+To send a file instead, run `/recap` and attach a `.txt` or `.md` file with `recap_file`.
 
 Create the Discord application:
 
@@ -379,14 +400,14 @@ curl -X POST "https://discord.com/api/v10/applications/$DISCORD_APPLICATION_ID/g
     "options": [
       {
         "name": "body",
-        "description": "Optional short recap text. Use recap_file for long reports.",
+        "description": "Optional short recap text. Leave empty for a longer recap.",
         "type": 3,
         "required": false,
         "max_length": 3900
       },
       {
         "name": "recap_file",
-        "description": "Optional .txt/.md recap file for long race reports.",
+        "description": "Optional .txt or .md file when you want to send the recap as a file.",
         "type": 11,
         "required": false
       },
@@ -465,7 +486,7 @@ Guild commands are usually available quickly while testing. A global command use
 Discord Worker behavior:
 
 1. Verifies `x-signature-ed25519` and `x-signature-timestamp` using `DISCORD_PUBLIC_KEY`.
-2. For `/recap`, if `body` and `recap_file` are omitted, opens a modal for recap text, links, and a polish toggle.
+2. For `/recap`, if `body` and `recap_file` are omitted and no images are attached, opens a modal for recap text, links, and a polish toggle. If `body` is empty and images are attached, defers, saves the photos, and follows up with **Write recap**.
 3. For `/event`, if `body` is omitted, opens a modal for event details and source links.
 4. If an inline `/recap` is very short and has no obvious result, race/date, or source link, opens the recap modal with the original text prefilled.
 5. If an inline `/event` has no recognizable date, opens the event modal with the original text prefilled.
@@ -475,18 +496,17 @@ Discord Worker behavior:
 9. Extracts URLs from submitted text and optional `links` input so copied links survive Discord paste quirks.
 10. For `/recap`, optionally accepts a `recap_file` attachment (`.txt`, `.md`, `.markdown`, or `.eml`, up to 256 KB) and uses that file as the recap body.
 11. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload. The generator deterministically adds every accepted image to the post even if the model omits it, then gives retained files content-specific names and safe alt text; this applies in both verbatim and polished modes.
-12. For inline submissions with images or `recap_file`, defers the Discord response immediately, processes downloads in the background, and then posts an ephemeral follow-up with accepted/skipped image counts.
-13. Stages a payload with `source: "discord"`, `command`, `submitted_by`, `editorial_mode`, `body`, and `links`.
+12. For inline submissions with images or `recap_file`, defers the Discord response immediately and processes downloads in the background. A filled `/recap` then posts an ephemeral follow-up with accepted and skipped image counts. An empty `/recap` with images follows up with **Write recap**.
+13. Stages a payload with `source: "discord"`, `command`, `submitted_by`, `editorial_mode`, `body`, and `links`. A recap finished from several boxes omits `body` from the dispatch. The staged file holds the joined text.
 14. Triggers `race-report-email` for `/recap` or `calendar-event-email` for `/event`.
 15. GitHub Actions creates a PR ready for review and posts the PR link back to the original interaction as an ephemeral follow-up.
 
 Discord safe-submission notes:
 
 - Discord can reject a slash command before the Worker receives it, especially when several large attachments are uploaded. If that happens, the Worker cannot recover the typed text.
-- Safest path for long recaps: save the recap as `race-report.txt` or `race-report.md`, then run `/recap recap_file: race-report.txt`. Use the inline `body` only for a short note or leave it blank.
-- Safest path for calendar events: run `/event` with no inline body, paste the event name, date, time, location, and details into the modal, then add registration, race, or image-credit URLs in `links`.
-- Safest path for image-heavy recaps: attach the recap as `recap_file`, add up to five images using `image1` through `image5`, and keep a local copy of the text until the bot confirms the PR.
-- If Discord does deliver an inline command with images, the Worker now acknowledges it immediately and processes image downloads in the background to avoid interaction timeouts.
+- For a long recap, or a recap with photos, follow [Submit a long recap](#submit-a-long-recap).
+- For a calendar event, run `/event` with no inline body. Paste the event name, date, time, location, and details into the form. Add registration, race, or image-credit URLs in `links`.
+- If Discord delivers an inline command with images, the Worker acknowledges it immediately and processes image downloads in the background.
 - Inline image attachments are limited to JPEG, PNG, GIF, WebP, or AVIF, up to 8 MB each. The Worker will now report how many images were accepted and which ones were skipped when Discord does deliver the command.
 - When in doubt, keep a copy of the recap text before attaching multiple images in Discord's old slash-command UI.
 
