@@ -7,13 +7,14 @@
  * - HTTP POST webhook: send JSON or plain text to the Worker URL.
  *
  * Required Worker secrets/vars:
- * - GITHUB_TOKEN: Fine-grained GitHub token with Contents: write on dirigorc/dirigorc.
+ * - GITHUB_TOKEN: Fine-grained GitHub token with Contents: write and Pull requests: write on dirigorc/dirigorc.
  * - GITHUB_REPO: "dirigorc/dirigorc"
  * - INGEST_TOKEN: Shared bearer token for HTTP POSTs.
  *
  * Optional vars:
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
  * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
+ * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish or hold a draft. Defaults to Seth Crockett.
  */
 
 const DISPATCH_EVENT_TYPES = {
@@ -27,7 +28,10 @@ const DISCORD_INTERACTION_MODAL_SUBMIT = 5;
 const DISCORD_RESPONSE_PONG = 1;
 const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
 const DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE = 5;
+const DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE = 6;
 const DISCORD_RESPONSE_MODAL = 9;
+const DEFAULT_PR_APPROVER_ID = "1227055686295359519";
+const AUTOMATION_PR_HEAD = /^automation\/(?:race-report|calendar-event)-\d+$/;
 const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 const DISCORD_TEXT_CONTENT_TYPES = new Set(["text/plain", "text/markdown", "message/rfc822", "application/octet-stream"]);
@@ -81,6 +85,7 @@ interface WorkerEnv {
 	INGEST_TOKEN?: string;
 	ALLOWED_FROM?: string;
 	DISCORD_PUBLIC_KEY?: string;
+	DISCORD_PR_APPROVER_IDS?: string;
 }
 
 interface EmailPayload {
@@ -211,6 +216,10 @@ interface DiscordInteraction {
 		user?: DiscordUser;
 	};
 	user?: DiscordUser;
+	message?: {
+		embeds?: unknown[];
+		components?: unknown[];
+	};
 }
 
 function discordUser(interaction: DiscordInteraction): DiscordUser {
@@ -1379,6 +1388,179 @@ function openRecapPartModal(control: RecapControl): Response {
 	return discordAck("Unknown command.");
 }
 
+type PrReviewAction = "publish" | "hold";
+
+interface PrReviewOutcome {
+	content: string;
+	clearButtons: boolean;
+}
+
+interface GitHubPull {
+	state?: string;
+	merged?: boolean;
+	title?: string;
+	html_url?: string;
+	base?: { ref?: string };
+	head?: { ref?: string; sha?: string };
+	labels?: Array<{ name?: string }>;
+}
+
+function parsePrReviewAction(customId: string): { action: PrReviewAction; pullNumber: number } | null {
+	const match = /^(pr_publish|pr_hold):(\d+)$/.exec(customId);
+	if (!match) return null;
+	return { action: match[1] === "pr_publish" ? "publish" : "hold", pullNumber: Number(match[2]) };
+}
+
+function prApproverIds(env: WorkerEnv): Set<string> {
+	const configured = (env.DISCORD_PR_APPROVER_IDS || "")
+		.split(",")
+		.map((value) => value.trim())
+		.filter((value) => /^\d+$/.test(value));
+	return new Set(configured.length > 0 ? configured : [DEFAULT_PR_APPROVER_ID]);
+}
+
+function clipDiscordContent(value: string): string {
+	if (value.length <= 2000) return value;
+	return `${value.slice(0, 1999)}…`;
+}
+
+function githubErrorMessage(text: string, status: number): string {
+	if (!text) return `GitHub returned ${status}.`;
+	try {
+		const parsed = JSON.parse(text) as { message?: unknown };
+		if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message.trim();
+	} catch {
+		return text.slice(0, 300);
+	}
+	return text.slice(0, 300);
+}
+
+function asGitHubPull(text: string): GitHubPull | null {
+	try {
+		const parsed = JSON.parse(text) as unknown;
+		if (!parsed || typeof parsed !== "object") return null;
+		return parsed as GitHubPull;
+	} catch {
+		return null;
+	}
+}
+
+function isAutomationDraft(pull: GitHubPull, baseBranch: string): boolean {
+	const labels = new Set((pull.labels || []).map((label) => label.name || ""));
+	const labeled = labels.has("automated update") || labels.has("automated calendar");
+	return AUTOMATION_PR_HEAD.test(pull.head?.ref || "") && pull.base?.ref === baseBranch && labeled;
+}
+
+async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNumber: number, actor: string): Promise<PrReviewOutcome> {
+	if (!env.GITHUB_TOKEN) {
+		return { content: "The site bot is missing a GitHub token, so I left the draft open.", clearButtons: false };
+	}
+	const loaded = await githubFetch(env, `/pulls/${pullNumber}`);
+	if (loaded.status < 200 || loaded.status >= 300) {
+		return {
+			content: `I could not open the draft: ${githubErrorMessage(loaded.text, loaded.status)}`,
+			clearButtons: false,
+		};
+	}
+	const pull = asGitHubPull(loaded.text);
+	if (!pull) {
+		return { content: "I could not read the draft from GitHub, so I left it open.", clearButtons: false };
+	}
+	const url = typeof pull.html_url === "string" ? pull.html_url : "";
+	const suffix = url ? `\n${url}` : "";
+	if (!isAutomationDraft(pull, env.GITHUB_REF || "main")) {
+		return {
+			content: clipDiscordContent(`I left that pull request alone. Discord can only publish recap and calendar drafts.${suffix}`),
+			clearButtons: true,
+		};
+	}
+	if (pull.merged) {
+		return { content: clipDiscordContent(`This is already on the site.${suffix}`), clearButtons: true };
+	}
+	if (pull.state === "closed") {
+		return { content: clipDiscordContent(`This draft is already closed.${suffix}`), clearButtons: true };
+	}
+
+	if (action === "hold") {
+		const comment = await githubFetch(env, `/issues/${pullNumber}/comments`, {
+			method: "POST",
+			body: JSON.stringify({ body: `Held in Discord by ${actor}.` }),
+		});
+		if (comment.status < 200 || comment.status >= 300) {
+			return {
+				content: `I could not hold the draft: ${githubErrorMessage(comment.text, comment.status)}`,
+				clearButtons: false,
+			};
+		}
+		return { content: clipDiscordContent(`Held. The draft stays open.${suffix}`), clearButtons: true };
+	}
+
+	const mergeBody: Record<string, string> = { merge_method: "merge" };
+	if (pull.head?.sha) mergeBody.sha = pull.head.sha;
+	const merged = await githubFetch(env, `/pulls/${pullNumber}/merge`, {
+		method: "PUT",
+		body: JSON.stringify(mergeBody),
+	});
+	if (merged.status < 200 || merged.status >= 300) {
+		return {
+			content: clipDiscordContent(`GitHub would not publish it: ${githubErrorMessage(merged.text, merged.status)}`),
+			clearButtons: false,
+		};
+	}
+	const title = pull.title?.trim();
+	const published = title
+		? `Published **${title}**. It will show up on the site after the next deploy.`
+		: "Published. It will show up on the site after the next deploy.";
+	return { content: clipDiscordContent(`${published}${suffix}`), clearButtons: true };
+}
+
+async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrReviewOutcome): Promise<void> {
+	const applicationId = interaction.application_id;
+	const token = interaction.token;
+	if (!applicationId || !token) return;
+	const payload: Record<string, unknown> = {
+		content: outcome.content,
+		embeds: interaction.message?.embeds || [],
+		components: outcome.clearButtons ? [] : interaction.message?.components || [],
+	};
+	const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+	});
+	if (!response.ok) {
+		throw new Error(`Discord review update failed: ${response.status} ${await response.text()}`);
+	}
+}
+
+function startPrReview(
+	interaction: DiscordInteraction,
+	env: WorkerEnv,
+	ctx: ExecutionContext,
+	review: { action: PrReviewAction; pullNumber: number },
+): Response {
+	const userId = discordUser(interaction).id || "";
+	if (!prApproverIds(env).has(userId)) {
+		return discordAck("You can't publish or hold this draft.");
+	}
+	const actor = discordSubmittedBy(interaction).slice(0, 120);
+	ctx.waitUntil((async () => {
+		try {
+			const outcome = await reviewPullRequest(env, review.action, review.pullNumber, actor);
+			await editPrReviewMessage(interaction, outcome);
+		} catch (error) {
+			console.error(JSON.stringify({
+				message: "Discord pull request review failed",
+				pullNumber: review.pullNumber,
+				error: errorMessage(error),
+			}));
+		}
+	})());
+	return new Response(JSON.stringify({ type: DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE }), {
+		headers: { "content-type": "application/json" },
+	});
+}
+
 async function handleDiscordInteraction(
 	request: Request,
 	env: WorkerEnv,
@@ -1483,7 +1665,10 @@ export async function routeDiscordInteraction(
 	}
 
 	if (interaction.type === DISCORD_INTERACTION_MESSAGE_COMPONENT) {
-		const control = parseRecapControl(interaction.data?.custom_id || "");
+		const customId = interaction.data?.custom_id || "";
+		const review = parsePrReviewAction(customId);
+		if (review) return startPrReview(interaction, env, ctx, review);
+		const control = parseRecapControl(customId);
 		if (control?.action === "write" || control?.action === "more") return openRecapPartModal(control);
 		if (control?.action === "done") {
 			const done = control;

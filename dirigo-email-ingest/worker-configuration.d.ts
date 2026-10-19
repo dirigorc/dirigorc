@@ -3,6 +3,7 @@
 // Runtime types generated with workerd@1.20260701.1 2026-07-04 nodejs_compat
 interface __BaseEnv_Env {
 	GITHUB_REPO: "dirigorc/dirigorc";
+	DISCORD_PR_APPROVER_IDS: "1227055686295359519";
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -15,7 +16,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "GITHUB_REPO">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "GITHUB_REPO" | "DISCORD_PR_APPROVER_IDS">> {}
 }
 
 // Begin runtime types
