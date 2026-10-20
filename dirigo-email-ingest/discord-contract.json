@@ -1,0 +1,155 @@
+{
+  "commands": [
+    {
+      "name": "recap",
+      "dispatch": "race-report-email",
+      "ingestAliases": [],
+      "registration": {
+    "name": "recap",
+    "description": "Draft a Dirigo website update from recap text.",
+    "type": 1,
+    "options": [
+      {
+        "name": "body",
+        "description": "Optional short recap text. Use recap_file for long reports.",
+        "type": 3,
+        "required": false,
+        "max_length": 3900
+      },
+      {
+        "name": "recap_file",
+        "description": "Optional .txt/.md recap file for long race reports.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "polish",
+        "description": "Polish body wording; metadata and tags are always normalized.",
+        "type": 5,
+        "required": false
+      },
+      {
+        "name": "links",
+        "description": "Optional source URLs separated by spaces or new lines.",
+        "type": 3,
+        "required": false
+      },
+      {
+        "name": "image1",
+        "description": "Optional race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image2",
+        "description": "Optional second race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image3",
+        "description": "Optional third race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image4",
+        "description": "Optional fourth race image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image5",
+        "description": "Optional fifth race image attachment.",
+        "type": 11,
+        "required": false
+      }
+    ]
+}
+    },
+    {
+      "name": "event",
+      "dispatch": "calendar-event-email",
+      "ingestAliases": ["calendar", "calendar-event", "calendar_event"],
+      "registration": {
+    "name": "event",
+    "description": "Draft a Dirigo calendar event from upcoming-event details.",
+    "type": 1,
+    "options": [
+      {
+        "name": "body",
+        "description": "Optional event details (leave empty to use modal).",
+        "type": 3,
+        "required": false
+      },
+      {
+        "name": "links",
+        "description": "Optional event, registration, results, or photo URLs.",
+        "type": 3,
+        "required": false
+      },
+      {
+        "name": "image1",
+        "description": "Optional event image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image2",
+        "description": "Optional second event image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image3",
+        "description": "Optional third event image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image4",
+        "description": "Optional fourth event image attachment.",
+        "type": 11,
+        "required": false
+      },
+      {
+        "name": "image5",
+        "description": "Optional fifth event image attachment.",
+        "type": 11,
+        "required": false
+      }
+    ]
+}
+    },
+    {
+      "name": "revise",
+      "dispatch": null,
+      "ingestAliases": [],
+      "registration": {
+  "name": "revise",
+  "description": "Correct a post or calendar event that is already on the site.",
+  "type": 1,
+  "options": [
+    {
+      "name": "page",
+      "description": "Update link, calendar link, YYYY-MM-DD-slug, or pull request URL.",
+      "type": 3,
+      "required": true
+    },
+    {
+      "name": "change",
+      "description": "What to correct. One instruction, not a new recap.",
+      "type": 3,
+      "required": true,
+      "max_length": 1000
+    }
+  ]
+}
+    }
+  ],
+  "reviewActions": [
+    { "action": "publish", "label": "Publish", "style": 3, "customIdPrefix": "pr_publish" },
+    { "action": "hold", "label": "Hold", "style": 2, "customIdPrefix": "pr_hold" },
+    { "action": "revise", "label": "Revise", "style": 1, "customIdPrefix": "pr_revise", "modalPrefix": "rv" }
+  ]
+}
