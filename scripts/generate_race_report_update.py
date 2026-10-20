@@ -17,6 +17,7 @@ import json
 import mimetypes
 import os
 import re
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -1131,7 +1132,7 @@ def enforce_discord_verbatim_copy(files: list[dict[str, str]], email: dict[str, 
     posts[0]["content"] = f"---\n{front_matter}\n---\n\n{body}\n"
 
 
-def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str], mode: str) -> None:
+def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str], mode: str, marker: str = "") -> None:
     PR_BODY_PATH.parent.mkdir(parents=True, exist_ok=True)
     sections: list[str] = []
 
@@ -1215,7 +1216,10 @@ def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, A
             "",
         ]
     )
-    PR_BODY_PATH.write_text("\n".join(sections).rstrip() + "\n", encoding="utf-8")
+    text = "\n".join(sections).rstrip() + "\n"
+    if marker:
+        text = text.rstrip() + "\n\n" + marker + "\n"
+    PR_BODY_PATH.write_text(text, encoding="utf-8")
 
 
 def write_pr_title(title: str) -> None:
@@ -1235,6 +1239,116 @@ def write_generated_files_manifest(written: list[str]) -> None:
     GENERATED_FILES_PATH.write_text("\n".join(unique) + ("\n" if unique else ""), encoding="utf-8")
 
 
+def correction_wire(payload: dict) -> dict[str, Any] | None:
+    email = payload.get("email")
+    if not isinstance(email, dict):
+        return None
+    correction = email.get("correction")
+    if correction is None:
+        return None
+    if not isinstance(correction, dict):
+        raise ValueError("email.correction must be an object.")
+    required = ("instruction", "instructionHash", "marker", "branch", "path", "readFrom", "reviewMessages", "mode")
+    missing = [key for key in required if key not in correction]
+    if missing:
+        raise ValueError(f"email.correction is missing {', '.join(missing)}.")
+    return correction
+
+
+def git_text(branch: str, path: str) -> str:
+    ref = f"origin/{branch}:{path}"
+    try:
+        return subprocess.check_output(["git", "show", ref], text=True, cwd=ROOT, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError:
+        subprocess.check_call(["git", "fetch", "origin", f"{branch}:refs/remotes/origin/{branch}"], cwd=ROOT)
+        return subprocess.check_output(["git", "show", ref], text=True, cwd=ROOT)
+
+
+def branch_content_paths(branch: str) -> list[str]:
+    ref = f"origin/{branch}"
+    try:
+        output = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", ref], text=True, cwd=ROOT, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError:
+        subprocess.check_call(["git", "fetch", "origin", f"{branch}:refs/remotes/origin/{branch}"], cwd=ROOT)
+        output = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", ref], text=True, cwd=ROOT)
+    return [
+        line for line in output.splitlines()
+        if line.startswith(("_posts/", "_events/")) and line.endswith(".md")
+    ]
+
+
+def current_texts(wire: dict[str, Any]) -> dict[str, str]:
+    if wire["path"] == "*":
+        if wire["readFrom"] == "main":
+            paths = []
+            for folder in ("_posts", "_events"):
+                base = ROOT / folder
+                if base.is_dir():
+                    paths.extend(item.relative_to(ROOT).as_posix() for item in sorted(base.glob("*.md")))
+        else:
+            paths = branch_content_paths(str(wire["branch"]))
+    else:
+        paths = [str(wire["path"])]
+    texts: dict[str, str] = {}
+    for path in paths:
+        if wire["readFrom"] == "branch":
+            texts[path] = git_text(str(wire["branch"]), path)
+        else:
+            texts[path] = (ROOT / path).read_text(encoding="utf-8")
+    return texts
+
+
+def front_matter_fences(content: str) -> int:
+    return sum(1 for line in content.splitlines() if line.strip() == "---")
+
+
+def date_line(content: str) -> str | None:
+    lines = content.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        if line.startswith("date:"):
+            return line
+    return None
+
+
+def edit_existing(wire: dict[str, Any], texts: dict[str, str]) -> list[dict[str, str]]:
+    if not texts:
+        raise ValueError("There is no existing file to correct.")
+    blocks = [f"## {path}\n\n{content}" for path, content in texts.items()]
+    prompt = f"""
+Change only the files below. Apply this instruction and return each full file:
+
+{wire["instruction"]}
+
+Do not create a file. Do not change a date: line. Keep exactly one front-matter pair of --- fences.
+
+{chr(10).join(blocks)}
+"""
+    result = call_openai(prompt, os.environ.get("OPENAI_MODEL", "gpt-5-mini"))
+    files = result.get("files", [])
+    if not isinstance(files, list):
+        raise ValueError("Model returned invalid files list.")
+    edited: list[dict[str, str]] = []
+    for item in files:
+        if not isinstance(item, dict):
+            raise ValueError("Model returned an invalid file.")
+        path = str(item.get("path") or "")
+        content = item.get("content")
+        if path not in texts:
+            raise ValueError(f"Correction tried to write {path}, which is not an existing file.")
+        if not isinstance(content, str):
+            raise ValueError(f"Correction returned no text for {path}.")
+        if front_matter_fences(content) != 2:
+            raise ValueError(f"{path} does not contain exactly one front-matter pair.")
+        if date_line(content) != date_line(texts[path]):
+            raise ValueError(f"{path} changes the date: line.")
+        edited.append({"path": path, "content": content})
+    return edited
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event-path", default=os.environ.get("GITHUB_EVENT_PATH"))
@@ -1251,6 +1365,23 @@ def main() -> int:
         raise RuntimeError("--event-path or GITHUB_EVENT_PATH is required.")
 
     email = normalize_email_payload(payload)
+    wire = correction_wire(payload)
+    if wire is not None:
+        if wire["mode"] != args.mode:
+            raise SystemExit(f"correction.mode {wire['mode']} does not match {args.mode}")
+        texts = current_texts(wire)
+        files = edit_existing(wire, texts)
+        written = write_files(files)
+        pr_title = derive_pr_title({"summary": str(wire["instruction"])}, files, email)
+        write_pr_title(pr_title)
+        write_generated_files_manifest(written)
+        write_pr_body({"summary": str(wire["instruction"])}, written, email, [], [], args.mode, marker=str(wire["marker"]))
+        print(f"Wrote {len(written)} file(s).")
+        print(f"PR title: {pr_title}")
+        for path in written:
+            print(path)
+        return 0
+
     today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
     staged_attachments = stage_email_attachments(email, today)
 

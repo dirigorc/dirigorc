@@ -1,7 +1,9 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -107,6 +109,7 @@ class DiscordDmTests(unittest.TestCase):
                     "components": [
                         {"type": 2, "style": 3, "label": "Publish", "custom_id": "pr_publish:41"},
                         {"type": 2, "style": 2, "label": "Hold", "custom_id": "pr_hold:41"},
+                        {"type": 2, "style": 1, "label": "Revise", "custom_id": "pr_revise:41"},
                     ],
                 }
             ],
@@ -205,8 +208,40 @@ class DiscordDmTests(unittest.TestCase):
         crow_buttons = json.loads(patches[1].data)["components"][0]["components"]
         self.assertEqual(seth_buttons[0]["custom_id"], "pr_publish:41:459385898992140288:222")
         self.assertEqual(seth_buttons[1]["custom_id"], "pr_hold:41:459385898992140288:222")
+        self.assertEqual(seth_buttons[2]["custom_id"], "pr_revise:41:459385898992140288:222")
         self.assertEqual(crow_buttons[0]["custom_id"], "pr_publish:41:1227055686295359519:111")
         self.assertFalse(any(b"plain" in request.data for request in requests))
+
+    def test_refreshes_captured_review_messages_instead_of_sending_a_new_row(self):
+        requests = []
+
+        def opener(request, timeout):
+            requests.append(request)
+            return FakeResponse({"id": "1"})
+
+        with mock.patch.dict(os.environ, {
+            "DISCORD_BOT_TOKEN": "bot-token",
+            "PR_URL": "https://github.com/dirigorc/dirigorc/pull/41",
+            "PR_TITLE": "Beach to Beacon",
+            "PR_NUMBER": "41",
+            "REVIEW_MESSAGE_REFS": json.dumps([
+                {"channelId": "111", "messageId": "222"},
+                {"channelId": "333", "messageId": "444"},
+            ]),
+        }, clear=False), mock.patch.object(NOTIFIER.urllib.request, "urlopen", opener):
+            self.assertEqual(NOTIFIER.main(), 0)
+
+        self.assertEqual([request.get_method() for request in requests], ["PATCH", "PATCH"])
+        self.assertTrue(requests[0].full_url.endswith("/channels/111/messages/222"))
+        self.assertTrue(requests[1].full_url.endswith("/channels/333/messages/444"))
+        first = json.loads(requests[0].data)["components"][0]["components"]
+        self.assertEqual([button["label"] for button in first], ["Publish", "Hold", "Revise"])
+        self.assertEqual(first[0]["custom_id"], "pr_publish:41:333:444")
+
+    def test_refuses_a_review_custom_id_over_100_characters(self):
+        snowflake = "1" * 50
+        with self.assertRaisesRegex(ValueError, "100"):
+            NOTIFIER.review_components("41", (snowflake, snowflake))
 
 
 if __name__ == "__main__":

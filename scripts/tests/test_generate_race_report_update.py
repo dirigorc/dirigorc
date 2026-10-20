@@ -307,5 +307,73 @@ class PrBodyPreviewTests(unittest.TestCase):
         self.assertIn("[Register](https://runsignup.com/Race/ME/Portland/MaineMarathon)", body)
 
 
+class CorrectionEditTests(unittest.TestCase):
+    def test_edit_existing_refuses_a_changed_date_line(self):
+        source = "---\ndate: 2026-01-02\n---\n\nHi\n"
+        changed = "---\ndate: 2026-01-03\n---\n\nHi\n"
+        with mock.patch.object(GENERATOR, "call_openai", return_value=self.model(changed)):
+            with self.assertRaisesRegex(ValueError, "date:"):
+                GENERATOR.edit_existing(self.wire(), {"_posts/2026-01-02-a.md": source})
+
+    def test_edit_existing_refuses_a_broken_front_matter_fence(self):
+        source = "---\ndate: 2026-01-02\n---\n\nHi\n"
+        broken = "---\ndate: 2026-01-02\n---\n\n---\nHi\n"
+        with mock.patch.object(GENERATOR, "call_openai", return_value=self.model(broken)):
+            with self.assertRaisesRegex(ValueError, "front-matter"):
+                GENERATOR.edit_existing(self.wire(), {"_posts/2026-01-02-a.md": source})
+
+    def test_edit_existing_refuses_a_new_file(self):
+        source = "---\ndate: 2026-01-02\n---\n\nHi\n"
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [{"path": "_posts/2026-01-02-new.md", "content": source}],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }):
+            with self.assertRaisesRegex(ValueError, "not an existing file"):
+                GENERATOR.edit_existing(self.wire(), {"_posts/2026-01-02-a.md": source})
+
+    def test_edit_existing_returns_the_existing_file(self):
+        source = "---\ndate: 2026-01-02\n---\n\nHi\n"
+        updated = "---\ndate: 2026-01-02\n---\n\nHello\n"
+        with mock.patch.object(GENERATOR, "call_openai", return_value=self.model(updated)):
+            files = GENERATOR.edit_existing(self.wire(), {"_posts/2026-01-02-a.md": source})
+        self.assertEqual(files, [{"path": "_posts/2026-01-02-a.md", "content": updated}])
+
+    def test_write_pr_body_appends_the_correction_marker(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            GENERATOR, "PR_BODY_PATH", Path(directory) / "body.md"
+        ):
+            GENERATOR.write_pr_body(
+                {"summary": "Corrected the time."},
+                [],
+                {"source": "discord", "command": "recap", "from": "Jonah", "subject": "Correction"},
+                [],
+                [],
+                "race-report",
+                marker="<!-- dirigo-correction: _posts/2026-01-02-a.md abc -->",
+            )
+            body = GENERATOR.PR_BODY_PATH.read_text(encoding="utf-8")
+        self.assertTrue(body.rstrip().endswith("<!-- dirigo-correction: _posts/2026-01-02-a.md abc -->"))
+
+    def wire(self):
+        return {
+            "instruction": "Say hello.",
+            "path": "_posts/2026-01-02-a.md",
+            "readFrom": "main",
+            "mode": "race-report",
+        }
+
+    def model(self, content):
+        return {
+            "files": [{"path": "_posts/2026-01-02-a.md", "content": content}],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }
+
+
 if __name__ == "__main__":
     unittest.main()
