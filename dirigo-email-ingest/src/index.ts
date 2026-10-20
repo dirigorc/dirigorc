@@ -3,7 +3,7 @@
  *
  * Supports two entry points:
  * - Email Routing Worker: attach this Worker to an address such as updates@dirigorc.com.
- * - Discord interactions endpoint for the /recap and /event slash commands.
+ * - Discord interactions endpoint for the /recap, /event, and /revise slash commands.
  * - HTTP POST webhook: send JSON or plain text to the Worker URL.
  *
  * Required Worker secrets/vars:
@@ -14,26 +14,43 @@
  * Optional vars:
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
  * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
- * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish or hold a draft. Defaults to Seth Crockett and Crow Norlander.
+ * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish, hold, or revise a draft. Defaults to Seth Crockett and Crow Norlander.
  * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold.
  */
 
-const DISPATCH_EVENT_TYPES = {
-	recap: "race-report-email",
-	event: "calendar-event-email",
-} as const;
-const DISCORD_INTERACTION_PING = 1;
-const DISCORD_INTERACTION_APPLICATION_COMMAND = 2;
-const DISCORD_INTERACTION_MESSAGE_COMPONENT = 3;
-const DISCORD_INTERACTION_MODAL_SUBMIT = 5;
-const DISCORD_RESPONSE_PONG = 1;
-const DISCORD_RESPONSE_CHANNEL_MESSAGE = 4;
-const DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE = 5;
-const DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE = 6;
-const DISCORD_RESPONSE_MODAL = 9;
-const DEFAULT_PR_APPROVER_IDS = ["1227055686295359519", "459385898992140288"];
-const AUTOMATION_PR_HEAD = /^automation\/(?:race-report|calendar-event)-\d+$/;
-const DISCORD_MESSAGE_EPHEMERAL = 1 << 6;
+import { loadDiscordContract } from "./discord-contract";
+import {
+	DISCORD_INTERACTION_APPLICATION_COMMAND,
+	DISCORD_INTERACTION_MESSAGE_COMPONENT,
+	DISCORD_INTERACTION_MODAL_SUBMIT,
+	DISCORD_INTERACTION_PING,
+	DISCORD_RESPONSE_PONG,
+	type DiscordInteraction,
+	discordAck,
+	discordDeferredAck,
+	discordFollowup,
+	discordModalField,
+	discordModalInput,
+	discordOption,
+	discordSubmittedBy,
+} from "./discord-reply";
+import {
+	CorrectionIngestError,
+	type EmailAttachment,
+	type EmailPayload,
+	type WorkerEnv,
+	base64ToText,
+	createIngestBranch,
+	dispatchToGitHub,
+	githubFetch,
+	githubRequest,
+	ingestBranchName,
+	safeId,
+	textToBase64,
+} from "./dispatch";
+import { handleReviewInteraction } from "./review";
+
+loadDiscordContract();
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 const DISCORD_TEXT_CONTENT_TYPES = new Set(["text/plain", "text/markdown", "message/rfc822", "application/octet-stream"]);
 const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -72,40 +89,6 @@ const INCOMPLETE_MEMBER_NAMES = [
 	{ pattern: /\bLaurel\b/i, replacements: ["Laurel Manville", "Laurel Driscoll"] },
 	{ pattern: /\bJustin\b/i, replacements: ["Justin Freeman", "Justin Tomison"] },
 ];
-
-interface EmailAttachment {
-	filename: string;
-	content_type: string;
-	data: string;
-}
-
-interface WorkerEnv {
-	GITHUB_TOKEN?: string;
-	GITHUB_REPO?: string;
-	GITHUB_REF?: string;
-	INGEST_TOKEN?: string;
-	ALLOWED_FROM?: string;
-	DISCORD_PUBLIC_KEY?: string;
-	DISCORD_PR_APPROVER_IDS?: string;
-	DISCORD_BOT_TOKEN?: string;
-}
-
-interface EmailPayload {
-	from: string;
-	subject: string;
-	text: string;
-	raw: string;
-	source?: string;
-	command?: string;
-	content_type?: string;
-	submitted_by?: string;
-	body?: string;
-	editorial_mode?: string;
-	attachments?: EmailAttachment[];
-	links?: string[];
-	discord_application_id?: string;
-	discord_interaction_token?: string;
-}
 
 interface DiscordAttachmentSummary {
 	attachments: EmailAttachment[];
@@ -175,68 +158,12 @@ async function verifyDiscordRequest(request: Request, rawBody: Uint8Array, env: 
 	return crypto.subtle.verify(key.algorithm, key, signature, messageBytes);
 }
 
-interface DiscordUser {
-	id?: string;
-	username?: string;
-	global_name?: string;
-}
-
-interface DiscordOption {
-	name?: string;
-	value?: string | number | boolean;
-}
-
 interface DiscordResolvedAttachment {
 	id?: string;
 	filename?: string;
 	content_type?: string;
 	size?: number;
 	url?: string;
-}
-
-interface DiscordInteraction {
-	type?: number;
-	application_id?: string;
-	token?: string;
-	data?: {
-		name?: string;
-		custom_id?: string;
-		options?: DiscordOption[];
-		components?: Array<{
-			type?: number;
-			components?: Array<{
-				type?: number;
-				custom_id?: string;
-				value?: string;
-			}>;
-		}>;
-		resolved?: {
-			attachments?: Record<string, DiscordResolvedAttachment>;
-		};
-	};
-	member?: {
-		user?: DiscordUser;
-	};
-	user?: DiscordUser;
-	message?: {
-		embeds?: unknown[];
-		components?: unknown[];
-	};
-}
-
-function discordUser(interaction: DiscordInteraction): DiscordUser {
-	return interaction.member?.user || interaction.user || {};
-}
-
-function discordSubmittedBy(interaction: DiscordInteraction): string {
-	const user = discordUser(interaction);
-	const name = user.global_name || user.username || "Unknown Discord user";
-	return user.id ? `${name} (${user.id})` : name;
-}
-
-function discordOption(interaction: DiscordInteraction, name: string): string | number | boolean | "" {
-	const options = interaction.data?.options || [];
-	return options.find((option) => option.name === name)?.value || "";
 }
 
 function discordPolishEnabled(interaction: DiscordInteraction): boolean {
@@ -251,12 +178,6 @@ function parsePolish(value: string, fallback = false): boolean {
 	const normalized = value.trim().toLowerCase();
 	if (!normalized) return fallback;
 	return ["1", "true", "yes", "y", "polish", "agentic", "on"].includes(normalized);
-}
-
-function normalizeCommand(value: unknown): "recap" | "event" {
-	const normalized = String(value || "").trim().toLowerCase();
-	if (["event", "calendar", "calendar-event", "calendar_event"].includes(normalized)) return "event";
-	return "recap";
 }
 
 function extractUrls(text: string): string[] {
@@ -330,20 +251,6 @@ function discordLinks(interaction: DiscordInteraction, body: string): string[] {
 		unique.push(url);
 	}
 	return unique;
-}
-
-function discordModalField(interaction: DiscordInteraction, customId: string): string {
-	const rows = interaction.data?.components || [];
-	for (const row of rows) {
-		for (const component of row.components || []) {
-			if (component.custom_id === customId) return String(component.value || "");
-		}
-	}
-	return "";
-}
-
-function discordModalInput(interaction: DiscordInteraction, customId: string): string {
-	return discordModalField(interaction, customId).trim();
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -476,31 +383,6 @@ async function discordTextAttachment(interaction: DiscordInteraction): Promise<D
 	};
 }
 
-function discordAck(content: string): Response {
-	return new Response(
-		JSON.stringify({
-			type: DISCORD_RESPONSE_CHANNEL_MESSAGE,
-			data: {
-				content,
-				flags: DISCORD_MESSAGE_EPHEMERAL,
-			},
-		}),
-		{ headers: { "content-type": "application/json" } },
-	);
-}
-
-function discordDeferredAck(): Response {
-	return new Response(
-		JSON.stringify({
-			type: DISCORD_RESPONSE_DEFERRED_CHANNEL_MESSAGE,
-			data: {
-				flags: DISCORD_MESSAGE_EPHEMERAL,
-			},
-		}),
-		{ headers: { "content-type": "application/json" } },
-	);
-}
-
 function discordSubmissionAck(editorialMode: string, attachmentSummary: DiscordAttachmentSummary): string {
 	const mode = editorialMode === "agentic" ? "AI-edited" : "verbatim-copy";
 	const details: string[] = [];
@@ -516,24 +398,6 @@ function discordSubmissionAck(editorialMode: string, attachmentSummary: DiscordA
 	}
 
 	return `Got it. I started a ${mode} website update PR for review.${details.length ? `\n\n${details.join("\n")}` : ""}`;
-}
-
-async function discordFollowup(interaction: DiscordInteraction, content: string, components?: unknown[]): Promise<void> {
-	const applicationId = interaction.application_id;
-	const token = interaction.token;
-	if (!applicationId || !token) return;
-	const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${token}`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			content,
-			flags: DISCORD_MESSAGE_EPHEMERAL,
-			...(components ? { components } : {}),
-		}),
-	});
-	if (!response.ok) {
-		throw new Error(`Discord follow-up failed: ${response.status} ${await response.text()}`);
-	}
 }
 
 function errorMessage(error: unknown): string {
@@ -808,10 +672,6 @@ type RecapControl =
 const RECAP_WRITE_ATTEMPTS = 3;
 const GITHUB_CONTENTS_MAX_BYTES = 1_000_000;
 
-function ingestBranchName(id: string): string {
-	return `automation/email-ingest-${id}`;
-}
-
 function recapDraftPath(id: string): string {
 	return `tmp/email-ingest/${id}/draft.json`;
 }
@@ -954,13 +814,6 @@ function savePartEvent(interaction: DiscordInteraction, index: number, text: str
 	};
 }
 
-function base64ToText(value: string): string {
-	const binary = atob(value.replace(/\s/g, ""));
-	const bytes = new Uint8Array(binary.length);
-	for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-	return new TextDecoder().decode(bytes);
-}
-
 function uniqueUrls(texts: string[]): string[] {
 	const unique: string[] = [];
 	const seen = new Set<string>();
@@ -1043,22 +896,6 @@ function discordOpenRecapSliceModal(id: string, index: number, placeholder: stri
 	);
 }
 
-async function githubFetch(env: WorkerEnv, path: string, options: RequestInit = {}): Promise<{ status: number; text: string }> {
-	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-	const response = await fetch(`https://api.github.com/repos/${repo}${path}`, {
-		...options,
-		headers: {
-			Accept: "application/vnd.github+json",
-			Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-			"Content-Type": "application/json",
-			"User-Agent": "dirigorc-race-report-worker",
-			"X-GitHub-Api-Version": "2022-11-28",
-			...(options.headers || {}),
-		},
-	});
-	return { status: response.status, text: await response.text() };
-}
-
 async function getGithubContent(env: WorkerEnv, branch: string, path: string): Promise<{ sha: string; text: string } | null> {
 	const result = await githubFetch(env, `/contents/${path}?ref=${encodeURIComponent(branch)}`);
 	if (result.status === 404) return null;
@@ -1113,18 +950,6 @@ async function commitRecapEvent(env: WorkerEnv, id: string, event: RecapEvent): 
 		loaded = again;
 	}
 	throw new Error(`GitHub API failed: 409 recap draft ${id}`);
-}
-
-async function createIngestBranch(env: WorkerEnv, branch: string): Promise<void> {
-	const baseBranch = env.GITHUB_REF || "main";
-	const baseRef = (await githubRequest(env, `/git/ref/heads/${baseBranch}`)) as { object: { sha: string } };
-	await githubRequest(env, "/git/refs", {
-		method: "POST",
-		body: JSON.stringify({
-			ref: `refs/heads/${branch}`,
-			sha: baseRef.object.sha,
-		}),
-	});
 }
 
 function utf8Base64(value: string): string {
@@ -1390,264 +1215,6 @@ function openRecapPartModal(control: RecapControl): Response {
 	return discordAck("Unknown command.");
 }
 
-type PrReviewAction = "publish" | "hold";
-
-type PrReviewKind = "published" | "held" | "already" | "closed" | "ignored";
-
-interface PrReviewActionRequest {
-	action: PrReviewAction;
-	pullNumber: number;
-	siblingChannelId?: string;
-	siblingMessageId?: string;
-}
-
-interface PrReviewOutcome {
-	content: string;
-	clearButtons: boolean;
-	kind?: PrReviewKind;
-}
-
-interface GitHubPull {
-	state?: string;
-	merged?: boolean;
-	title?: string;
-	html_url?: string;
-	base?: { ref?: string };
-	head?: { ref?: string; sha?: string };
-	labels?: Array<{ name?: string }>;
-}
-
-function parsePrReviewAction(customId: string): PrReviewActionRequest | null {
-	const match = /^(pr_publish|pr_hold):(\d+)(?::(\d+):(\d+))?$/.exec(customId);
-	if (!match) return null;
-	return {
-		action: match[1] === "pr_publish" ? "publish" : "hold",
-		pullNumber: Number(match[2]),
-		siblingChannelId: match[3],
-		siblingMessageId: match[4],
-	};
-}
-
-function prApproverIds(env: WorkerEnv): Set<string> {
-	const configured = (env.DISCORD_PR_APPROVER_IDS || "")
-		.split(",")
-		.map((value) => value.trim())
-		.filter((value) => /^\d+$/.test(value));
-	return new Set(configured.length > 0 ? configured : DEFAULT_PR_APPROVER_IDS);
-}
-
-function discordDisplayName(interaction: DiscordInteraction): string {
-	const user = discordUser(interaction);
-	return user.global_name || user.username || "The other reviewer";
-}
-
-function siblingNotice(actor: string, outcome: PrReviewOutcome): string | null {
-	if (!outcome.clearButtons || !outcome.kind) return null;
-	const url = outcome.content.match(/\n(https:\/\/\S+)$/)?.[1];
-	const suffix = url ? `\n${url}` : "";
-	switch (outcome.kind) {
-		case "published":
-			return clipDiscordContent(`${actor} published this. It will show up on the site after the next deploy.${suffix}`);
-		case "held":
-			return clipDiscordContent(`${actor} held this. The draft stays open.${suffix}`);
-		case "already":
-			return clipDiscordContent(`This is already on the site.${suffix}`);
-		case "closed":
-			return clipDiscordContent(`This draft is already closed.${suffix}`);
-		case "ignored":
-			return clipDiscordContent(`That pull request was left alone. Discord can only publish recap and calendar drafts.${suffix}`);
-	}
-}
-
-function clipDiscordContent(value: string): string {
-	if (value.length <= 2000) return value;
-	return `${value.slice(0, 1999)}…`;
-}
-
-function githubErrorMessage(text: string, status: number): string {
-	if (!text) return `GitHub returned ${status}.`;
-	try {
-		const parsed = JSON.parse(text) as { message?: unknown };
-		if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message.trim();
-	} catch {
-		return text.slice(0, 300);
-	}
-	return text.slice(0, 300);
-}
-
-function asGitHubPull(text: string): GitHubPull | null {
-	try {
-		const parsed = JSON.parse(text) as unknown;
-		if (!parsed || typeof parsed !== "object") return null;
-		return parsed as GitHubPull;
-	} catch {
-		return null;
-	}
-}
-
-function isAutomationDraft(pull: GitHubPull, baseBranch: string): boolean {
-	const labels = new Set((pull.labels || []).map((label) => label.name || ""));
-	const labeled = labels.has("automated update") || labels.has("automated calendar");
-	return AUTOMATION_PR_HEAD.test(pull.head?.ref || "") && pull.base?.ref === baseBranch && labeled;
-}
-
-async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNumber: number, actor: string): Promise<PrReviewOutcome> {
-	if (!env.GITHUB_TOKEN) {
-		return { content: "The site bot is missing a GitHub token, so I left the draft open.", clearButtons: false };
-	}
-	const loaded = await githubFetch(env, `/pulls/${pullNumber}`);
-	if (loaded.status < 200 || loaded.status >= 300) {
-		return {
-			content: `I could not open the draft: ${githubErrorMessage(loaded.text, loaded.status)}`,
-			clearButtons: false,
-		};
-	}
-	const pull = asGitHubPull(loaded.text);
-	if (!pull) {
-		return { content: "I could not read the draft from GitHub, so I left it open.", clearButtons: false };
-	}
-	const url = typeof pull.html_url === "string" ? pull.html_url : "";
-	const suffix = url ? `\n${url}` : "";
-	if (!isAutomationDraft(pull, env.GITHUB_REF || "main")) {
-		return {
-			content: clipDiscordContent(`I left that pull request alone. Discord can only publish recap and calendar drafts.${suffix}`),
-			clearButtons: true,
-			kind: "ignored",
-		};
-	}
-	if (pull.merged) {
-		return { content: clipDiscordContent(`This is already on the site.${suffix}`), clearButtons: true, kind: "already" };
-	}
-	if (pull.state === "closed") {
-		return { content: clipDiscordContent(`This draft is already closed.${suffix}`), clearButtons: true, kind: "closed" };
-	}
-
-	if (action === "hold") {
-		const comment = await githubFetch(env, `/issues/${pullNumber}/comments`, {
-			method: "POST",
-			body: JSON.stringify({ body: `Held in Discord by ${actor}.` }),
-		});
-		if (comment.status < 200 || comment.status >= 300) {
-			return {
-				content: `I could not hold the draft: ${githubErrorMessage(comment.text, comment.status)}`,
-				clearButtons: false,
-			};
-		}
-		return { content: clipDiscordContent(`Held. The draft stays open.${suffix}`), clearButtons: true, kind: "held" };
-	}
-
-	const mergeBody: Record<string, string> = { merge_method: "merge" };
-	if (pull.head?.sha) mergeBody.sha = pull.head.sha;
-	const merged = await githubFetch(env, `/pulls/${pullNumber}/merge`, {
-		method: "PUT",
-		body: JSON.stringify(mergeBody),
-	});
-	if (merged.status < 200 || merged.status >= 300) {
-		return {
-			content: clipDiscordContent(`GitHub would not publish it: ${githubErrorMessage(merged.text, merged.status)}`),
-			clearButtons: false,
-		};
-	}
-	const title = pull.title?.trim();
-	const published = title
-		? `Published **${title}**. It will show up on the site after the next deploy.`
-		: "Published. It will show up on the site after the next deploy.";
-	return { content: clipDiscordContent(`${published}${suffix}`), clearButtons: true, kind: "published" };
-}
-
-async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrReviewOutcome): Promise<void> {
-	const applicationId = interaction.application_id;
-	const token = interaction.token;
-	if (!applicationId || !token) return;
-	const payload: Record<string, unknown> = {
-		content: outcome.content,
-		embeds: interaction.message?.embeds || [],
-		components: outcome.clearButtons ? [] : interaction.message?.components || [],
-	};
-	const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`, {
-		method: "PATCH",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(payload),
-	});
-	if (!response.ok) {
-		throw new Error(`Discord review update failed: ${response.status} ${await response.text()}`);
-	}
-}
-
-async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messageId: string, content: string): Promise<void> {
-	if (!env.DISCORD_BOT_TOKEN) {
-		console.error(JSON.stringify({
-			message: "Discord sibling review update skipped",
-			reason: "DISCORD_BOT_TOKEN is not configured.",
-		}));
-		return;
-	}
-	const messageUrl = `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
-	const headers = {
-		Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
-		"Content-Type": "application/json",
-	};
-	let embeds: unknown[] = [];
-	const existing = await fetch(messageUrl, { headers });
-	if (existing.ok) {
-		try {
-			const body = await existing.json() as { embeds?: unknown };
-			if (Array.isArray(body.embeds)) embeds = body.embeds;
-		} catch {
-			embeds = [];
-		}
-	}
-	const response = await fetch(messageUrl, {
-		method: "PATCH",
-		headers,
-		body: JSON.stringify({ content, components: [], embeds }),
-	});
-	if (!response.ok) {
-		throw new Error(`Discord sibling review update failed: ${response.status} ${await response.text()}`);
-	}
-}
-
-function startPrReview(
-	interaction: DiscordInteraction,
-	env: WorkerEnv,
-	ctx: ExecutionContext,
-	review: PrReviewActionRequest,
-): Response {
-	const userId = discordUser(interaction).id || "";
-	if (!prApproverIds(env).has(userId)) {
-		return discordAck("You can't publish or hold this draft.");
-	}
-	const actor = discordSubmittedBy(interaction).slice(0, 120);
-	const actorName = discordDisplayName(interaction);
-	ctx.waitUntil((async () => {
-		try {
-			const outcome = await reviewPullRequest(env, review.action, review.pullNumber, actor);
-			await editPrReviewMessage(interaction, outcome);
-			const notice = siblingNotice(actorName, outcome);
-			if (notice && review.siblingChannelId && review.siblingMessageId) {
-				try {
-					await editSiblingReviewMessage(env, review.siblingChannelId, review.siblingMessageId, notice);
-				} catch (error) {
-					console.error(JSON.stringify({
-						message: "Discord sibling review update failed",
-						pullNumber: review.pullNumber,
-						error: errorMessage(error),
-					}));
-				}
-			}
-		} catch (error) {
-			console.error(JSON.stringify({
-				message: "Discord pull request review failed",
-				pullNumber: review.pullNumber,
-				error: errorMessage(error),
-			}));
-		}
-	})());
-	return new Response(JSON.stringify({ type: DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE }), {
-		headers: { "content-type": "application/json" },
-	});
-}
-
 async function handleDiscordInteraction(
 	request: Request,
 	env: WorkerEnv,
@@ -1678,6 +1245,14 @@ export async function routeDiscordInteraction(
 		return new Response(JSON.stringify({ type: DISCORD_RESPONSE_PONG }), {
 			headers: { "content-type": "application/json" },
 		});
+	}
+
+	const review = await handleReviewInteraction(interaction, env, ctx);
+	if (review) return review;
+
+	const spec = loadDiscordContract().commands.find((command) => command.name === interaction.data?.name);
+	if (interaction.type === DISCORD_INTERACTION_APPLICATION_COMMAND && (!spec || spec.dispatch === null)) {
+		return discordAck("Unknown command.");
 	}
 
 	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT) {
@@ -1753,8 +1328,6 @@ export async function routeDiscordInteraction(
 
 	if (interaction.type === DISCORD_INTERACTION_MESSAGE_COMPONENT) {
 		const customId = interaction.data?.custom_id || "";
-		const review = parsePrReviewAction(customId);
-		if (review) return startPrReview(interaction, env, ctx, review);
 		const control = parseRecapControl(customId);
 		if (control?.action === "write" || control?.action === "more") return openRecapPartModal(control);
 		if (control?.action === "done") {
@@ -1765,11 +1338,11 @@ export async function routeDiscordInteraction(
 		return discordAck("Unknown command.");
 	}
 
-	if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || !["recap", "event"].includes(interaction.data?.name || "")) {
+	if (interaction.type !== DISCORD_INTERACTION_APPLICATION_COMMAND || !spec || (spec.name !== "recap" && spec.name !== "event")) {
 		return discordAck("Unknown command.");
 	}
 
-	const command = normalizeCommand(interaction.data?.name);
+	const command = spec.name;
 	const body = String(discordOption(interaction, "body") || "").trim();
 	const linksField = String(discordOption(interaction, "links") || "").trim();
 	const requestedAttachments = discordRequestedAttachmentCount(interaction);
@@ -1842,99 +1415,6 @@ export async function routeDiscordInteraction(
 	return discordAck(discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
-async function dispatchToGitHub(
-	env: WorkerEnv,
-	email: EmailPayload,
-	options: { ingest?: Record<string, string>; includeBody?: boolean } = {},
-): Promise<void> {
-	const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-	const ingest = options.ingest || (await createIngestPayload(env, email));
-	const command = normalizeCommand(email.command || email.content_type);
-	const eventType = DISPATCH_EVENT_TYPES[command] || DISPATCH_EVENT_TYPES.recap;
-	const clientPayload: Record<string, unknown> = { ingest };
-	if (email.source === "discord") {
-		clientPayload.source = "discord";
-		clientPayload.command = command;
-		clientPayload.editorial_mode = email.editorial_mode || "verbatim";
-		clientPayload.submitted_by = email.submitted_by || email.from || "Unknown Discord user";
-		if (options.includeBody !== false) clientPayload.body = email.body || email.text || "";
-		clientPayload.links = email.links || [];
-		clientPayload.has_attachments = Array.isArray(email.attachments) && email.attachments.length > 0;
-		if (email.discord_application_id && email.discord_interaction_token) {
-			clientPayload.discord_callback = {
-				application_id: email.discord_application_id,
-				token: email.discord_interaction_token,
-			};
-		}
-	}
-	const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
-		method: "POST",
-		headers: {
-			"Accept": "application/vnd.github+json",
-			"Authorization": `Bearer ${env.GITHUB_TOKEN}`,
-			"Content-Type": "application/json",
-			"User-Agent": "dirigorc-race-report-worker",
-			"X-GitHub-Api-Version": "2022-11-28",
-		},
-		body: JSON.stringify({
-			event_type: eventType,
-			client_payload: clientPayload,
-		}),
-	});
-
-	if (!response.ok) {
-		const detail = await response.text();
-		throw new Error(`GitHub dispatch failed: ${response.status} ${detail}`);
-	}
-}
-
-async function githubRequest(env: WorkerEnv, path: string, options: RequestInit = {}): Promise<unknown> {
-	const result = await githubFetch(env, path, options);
-	if (result.status === 204) return null;
-	if (result.status < 200 || result.status >= 300) {
-		throw new Error(`GitHub API failed: ${result.status} ${result.text}`);
-	}
-	return result.text ? JSON.parse(result.text) : null;
-}
-
-function textToBase64(value: string): string {
-	const bytes = new TextEncoder().encode(value);
-	let binary = "";
-	for (let index = 0; index < bytes.length; index += 0x8000) {
-		binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
-	}
-	return btoa(binary);
-}
-
-function safeId(value: string): string {
-	return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "race-report";
-}
-
-async function createIngestPayload(env: WorkerEnv, email: EmailPayload): Promise<Record<string, string>> {
-	const command = normalizeCommand(email.command || email.content_type);
-	const id = `${Date.now()}-${safeId(email.subject || command || "race-report")}`;
-	const branch = ingestBranchName(id);
-	const path = `tmp/email-ingest/${id}/payload.json`;
-
-	await createIngestBranch(env, branch);
-
-	await githubRequest(env, `/contents/${path}`, {
-		method: "PUT",
-		body: JSON.stringify({
-			message: `Stage ${command === "event" ? "calendar event" : "race report"} payload: ${email.subject || "Dirigo update"}`,
-			branch,
-			content: textToBase64(JSON.stringify({ email }, null, 2)),
-		}),
-	});
-
-	return {
-		branch,
-		path,
-		subject: email.subject || "Race report digest",
-		from: email.from || "Unknown sender",
-	};
-}
-
 async function emailPayloadFromRequest(request: Request): Promise<EmailPayload> {
 	const contentType = request.headers.get("content-type") || "";
 	const commandHeader = request.headers.get("x-dirigo-command") || request.headers.get("x-dirigo-content-type") || "";
@@ -1942,7 +1422,7 @@ async function emailPayloadFromRequest(request: Request): Promise<EmailPayload> 
 		const body = (await request.json()) as Record<string, unknown>;
 		const attachments = Array.isArray(body.attachments) ? (body.attachments as EmailAttachment[]) : [];
 		return {
-			command: normalizeCommand(body.command || body.type || body.content_type || commandHeader),
+			command: String(body.command || body.type || body.content_type || commandHeader || ""),
 			content_type: String(body.content_type || body.type || commandHeader || ""),
 			from: String(body.from || body.sender || "HTTP webhook"),
 			subject: String(body.subject || "Race report digest"),
@@ -1954,7 +1434,7 @@ async function emailPayloadFromRequest(request: Request): Promise<EmailPayload> 
 
 	const text = await request.text();
 	return {
-		command: normalizeCommand(commandHeader),
+		command: commandHeader,
 		content_type: commandHeader,
 		from: request.headers.get("x-email-from") || "HTTP webhook",
 		subject: request.headers.get("x-email-subject") || "Race report digest",
@@ -1979,12 +1459,18 @@ export default {
 			return new Response("Unauthorized\n", { status: 401 });
 		}
 
-		const email = await emailPayloadFromRequest(request);
-		if (!email.text && !email.raw) {
-			return new Response("Missing email text/body\n", { status: 400 });
+		try {
+			const email = await emailPayloadFromRequest(request);
+			if (!email.text && !email.raw) {
+				return new Response("Missing email text/body\n", { status: 400 });
+			}
+			await dispatchToGitHub(env, email);
+		} catch (error) {
+			if (error instanceof CorrectionIngestError) {
+				return new Response("The correction command is not accepted on this endpoint.\n", { status: 400 });
+			}
+			throw error;
 		}
-
-		await dispatchToGitHub(env, email);
 		return new Response(JSON.stringify({ ok: true }), {
 			headers: { "content-type": "application/json" },
 		});

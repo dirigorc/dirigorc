@@ -58,12 +58,25 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Use the correction branch
+        if: ${{ github.event.client_payload.correction.readFrom == 'branch' }}
+        env:
+          CORRECTION_BRANCH: ${{ github.event.client_payload.correction.branch }}
+        run: |
+          git fetch origin "${CORRECTION_BRANCH}:refs/remotes/origin/${CORRECTION_BRANCH}"
+          git checkout -B "${CORRECTION_BRANCH}" "origin/${CORRECTION_BRANCH}"
+
       - name: Generate update
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5-mini' }}
-          PR_BRANCH: automation/race-report-${{ github.run_id }}
+          PR_BRANCH: ${{ github.event.client_payload.correction.branch || format('automation/race-report-{0}', github.run_id) }}
+          CORRECTION_MODE: ${{ github.event.client_payload.correction.mode }}
         run: |
+          if [ -n "${CORRECTION_MODE}" ] && [ "${CORRECTION_MODE}" != "race-report" ]; then
+            echo "correction.mode must be race-report."
+            exit 1
+          fi
           if [ -f tmp/email-ingest-payload.json ]; then
             python scripts/generate_race_report_update.py --payload-file tmp/email-ingest-payload.json
           else
@@ -161,7 +174,7 @@ jobs:
           commit-message: Generate race report update
           title: ${{ steps.generated_guard.outputs.title }}
           body-path: tmp/race-report-pr-body.md
-          branch: automation/race-report-${{ github.run_id }}
+          branch: ${{ github.event.client_payload.correction.branch || format('automation/race-report-{0}', github.run_id) }}
           delete-branch: true
           assignees: ${{ vars.RACE_REPORT_PR_ASSIGNEE || 'crowjonah' }}
           reviewers: ${{ vars.RACE_REPORT_PR_REVIEWERS || 'crowjonah' }}
@@ -201,7 +214,7 @@ jobs:
           PY
 
       - name: Ask Discord to review
-        if: ${{ steps.create_pr.outputs.pull-request-operation == 'created' && steps.create_pr.outputs.pull-request-url != '' }}
+        if: ${{ steps.create_pr.outputs.pull-request-url != '' && (steps.create_pr.outputs.pull-request-operation == 'created' || (steps.create_pr.outputs.pull-request-operation == 'updated' && github.event.client_payload.correction != null)) }}
         continue-on-error: true
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
@@ -212,6 +225,7 @@ jobs:
           PR_TITLE: ${{ steps.generated_guard.outputs.title }}
           PR_URL: ${{ steps.create_pr.outputs.pull-request-url }}
           PR_PREVIEW_PATH: tmp/race-report-pr-body.md
+          REVIEW_MESSAGE_REFS: ${{ github.event.client_payload.correction && toJson(github.event.client_payload.correction.reviewMessages) || '[]' }}
         run: python scripts/send_discord_dm.py
 
       - name: Delete staged email payload branch

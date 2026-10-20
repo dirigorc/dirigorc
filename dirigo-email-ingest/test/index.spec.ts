@@ -430,7 +430,7 @@ describe("Dirigo email ingest worker", () => {
 
 		expect(await response.json()).toEqual({
 			type: 4,
-			data: { content: "You can't publish or hold this draft.", flags: 64 },
+			data: { content: "You can't review this draft.", flags: 64 },
 		});
 		expect(calls).toEqual([]);
 	});
@@ -547,6 +547,249 @@ describe("Dirigo email ingest worker", () => {
 		const update = reviewUpdate(calls);
 		expect(update.content).toContain("At least 1 approving review is required.");
 		expect(update.components).toEqual([{ type: 1 }]);
+	});
+
+	it("does not turn an unknown slash command into a recap", async () => {
+		const github = mockGithub();
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction({
+			type: 2,
+			application_id: "discord-app",
+			token: "slash-token",
+			data: { name: "nope", options: [{ name: "body", value: "Seth Crockett won the Beach to Beacon 10K in 42:10 on Saturday." }] },
+			member: { user: { id: "7", username: "seth" } },
+		}, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({
+			type: 4,
+			data: { content: "Unknown command.", flags: 64 },
+		});
+		expect(github.calls.filter(isGithubDispatch)).toEqual([]);
+	});
+
+	it("lets a guild member revise a live results page", async () => {
+		const path = "_posts/2026-10-20-eric-sofen-bay-state-christie-barnes-mdi-marathon.md";
+		const github = mockCorrection({
+			files: { [`main:${path}`]: "---\ndate: 2026-10-20\n---\n\nChristie Barnes\n" },
+		});
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(reviseCommand(
+			"https://dirigorc.com/results/2026/10/20/eric-sofen-bay-state-christie-barnes-mdi-marathon.html",
+			"Christie Barnes's time is 3:27:28, not 3:27:27.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({ type: 5, data: { flags: 64 } });
+		const dispatch = github.calls.find(isGithubDispatch);
+		expect(dispatch).toBeTruthy();
+		const payload = JSON.parse(dispatch?.body || "{}") as { event_type: string; client_payload: { correction: { path: string; branch: string; readFrom: string; mode: string } } };
+		expect(payload.event_type).toBe("race-report-email");
+		expect(payload.client_payload.correction.path).toBe(path);
+		expect(payload.client_payload.correction.branch).toMatch(/^automation\/race-report-\d{15}$/);
+		expect(payload.client_payload.correction.readFrom).toBe("main");
+		expect(payload.client_payload.correction.mode).toBe("race-report");
+		const staged = decodedPut(github.calls.find((call) => call.method === "PUT" && call.url.includes("/payload.json"))!).content as { email: { correction: { path: string } } };
+		expect(staged.email.correction.path).toBe(path);
+		const followup = discordMessages(github.calls).at(-1);
+		expect(followup?.content).toBe("Correction sent for review.");
+	});
+
+	it("uses one stable branch for a known live post", async () => {
+		const path = "_posts/2026-09-26-seth-crockett-wins-wilmington-fall-fest-5k.md";
+		const github = mockCorrection({
+			files: { [`main:${path}`]: "---\ndate: 2026-09-26\n---\n\nSeth Crockett\n" },
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand(
+			"https://www.dirigorc.com/2026/09/26/seth-crockett-wins-wilmington-fall-fest-5k/",
+			"Winning time is 17:53, not 17:55.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { branch: string; marker: string } } };
+		expect(payload.client_payload.correction.branch).toBe("automation/race-report-830129515404316");
+		expect(payload.client_payload.correction.marker).toBe("<!-- dirigo-correction: _posts/2026-09-26-seth-crockett-wins-wilmington-fall-fest-5k.md 43129171e1bcdd1a460e1e612488516510749feada6ea0ead6d745b5f3be55c2 -->");
+	});
+
+	it("refuses an ambiguous calendar anchor by count", async () => {
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-10-25-mayor-a.md", type: "file" },
+					{ name: "2026-10-25-mayor-b.md", type: "file" },
+				],
+			},
+			files: {
+				"main:_events/2026-10-25-mayor-a.md": "---\ntitle: Mayor's Cup Cross Country\n---\n\nA\n",
+				"main:_events/2026-10-25-mayor-b.md": "---\ntitle: Mayor's Cup Cross Country\n---\n\nB\n",
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand(
+			"https://dirigorc.com/calendar/#2026-10-25-mayor-s-cup-cross-country",
+			"Start time is 9:00 AM.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(github.calls.filter(isGithubDispatch)).toEqual([]);
+		expect(discordMessages(github.calls).at(-1)?.content).toBe("2 calendar events match that anchor.");
+	});
+
+	it("refuses a pull correction from someone who is not a reviewer", async () => {
+		const github = mockCorrection();
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand(
+			"https://github.com/dirigorc/dirigorc/pull/41",
+			"Winning time is 17:53, not 17:55.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(github.calls.filter((call) => call.url.includes("api.github.com"))).toEqual([]);
+		expect(discordMessages(github.calls).at(-1)?.content).toBe("You can't review this draft.");
+	});
+
+	it("opens one Revise field and does not edit the review message", async () => {
+		const fetchMock = vi.spyOn(globalThis, "fetch");
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction({
+			type: 3,
+			application_id: "discord-app",
+			token: "review-token",
+			channel_id: "111",
+			data: { custom_id: "pr_revise:41" },
+			user: { id: "1227055686295359519", username: "seth", global_name: "Seth Crockett" },
+			message: { id: "222", embeds: [], components: [{ type: 1 }] },
+		}, reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({
+			type: 9,
+			data: {
+				custom_id: "rv:41:111:222",
+				title: "Revise",
+				components: [{
+					type: 1,
+					components: [{
+						type: 4,
+						custom_id: "change",
+						label: "What should change?",
+						style: 2,
+						min_length: 12,
+						max_length: 1000,
+						required: true,
+					}],
+				}],
+			},
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("refuses a Revise button whose modal id would exceed 100 characters", async () => {
+		const ctx = createExecutionContext();
+		const pull = "9007199254740991";
+		const snowflake = "1".repeat(20);
+		const response = await routeDiscordInteraction({
+			type: 3,
+			application_id: "discord-app",
+			token: "review-token",
+			channel_id: snowflake,
+			data: { custom_id: `pr_revise:${pull}:${snowflake}:${"2".repeat(20)}` },
+			user: { id: "1227055686295359519", username: "seth", global_name: "Seth Crockett" },
+			message: { id: snowflake, embeds: [], components: [] },
+		}, reviewEnv(), ctx);
+
+		expect(await response.json()).toEqual({
+			type: 4,
+			data: { content: "That review button does not fit in a Discord id.", flags: 64 },
+		});
+	});
+
+	it("submits the Revise field as a correction of that draft", async () => {
+		const github = mockCorrection({
+			pull: reviewPull({ body: "old draft" }),
+			pullFiles: [{ filename: "_posts/2026-01-02-beach-to-beacon.md" }, { filename: "assets/images/email/photo.jpg" }],
+		});
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction({
+			type: 5,
+			application_id: "discord-app",
+			token: "modal-token",
+			data: {
+				custom_id: "rv:41:111:222",
+				components: [{ type: 1, components: [{ type: 4, custom_id: "change", value: "Winning time is 17:53, not 17:55." }] }],
+			},
+			member: { user: { id: "1227055686295359519", username: "seth", global_name: "Seth Crockett" } },
+		}, reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({ type: 5, data: { flags: 64 } });
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as {
+			event_type: string;
+			client_payload: {
+				correction: { path: string; readFrom: string; branch: string; reviewMessages: { channelId: string; messageId: string }[] };
+				discord_callback: { application_id: string; token: string };
+			};
+		};
+		expect(payload.event_type).toBe("race-report-email");
+		expect(payload.client_payload.correction).toMatchObject({
+			path: "_posts/2026-01-02-beach-to-beacon.md",
+			readFrom: "branch",
+			branch: "automation/race-report-99",
+			reviewMessages: [{ channelId: "111", messageId: "222" }],
+		});
+		expect(payload.client_payload.discord_callback).toEqual({ application_id: "discord-app", token: "modal-token" });
+		expect(discordMessages(github.calls).at(-1)?.content).toBe("Correction in review.\nhttps://github.com/dirigorc/dirigorc/pull/41");
+	});
+
+	it("does not dispatch the same instruction twice", async () => {
+		const marker = "<!-- dirigo-correction: _posts/2026-01-02-beach-to-beacon.md 43129171e1bcdd1a460e1e612488516510749feada6ea0ead6d745b5f3be55c2 -->";
+		const github = mockCorrection({
+			pull: reviewPull({ body: `Draft\n${marker}\n` }),
+			pullFiles: [{ filename: "_posts/2026-01-02-beach-to-beacon.md" }],
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction({
+			type: 5,
+			application_id: "discord-app",
+			token: "modal-token",
+			data: {
+				custom_id: "rv:41:111:222",
+				components: [{ type: 1, components: [{ type: 4, custom_id: "change", value: "Winning time is 17:53, not 17:55." }] }],
+			},
+			member: { user: { id: "1227055686295359519", username: "seth", global_name: "Seth Crockett" } },
+		}, reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(github.calls.filter(isGithubDispatch)).toEqual([]);
+		expect(discordMessages(github.calls).at(-1)?.content).toContain("That correction is already in review.");
+		expect(discordMessages(github.calls).at(-1)?.content).toContain("https://github.com/dirigorc/dirigorc/pull/41");
+	});
+
+	it("rejects the correction command on the HTTP webhook and still accepts an event", async () => {
+		const github = mockGithub();
+		const ctx = createExecutionContext();
+		const denied = await worker.fetch(new IncomingRequest("https://example.com/ingest", {
+			method: "POST",
+			headers: { authorization: "Bearer ingest-token", "content-type": "application/json" },
+			body: JSON.stringify({ command: "revise", text: "Winning time is 17:53, not 17:55.", from: "webhook", subject: "nope" }),
+		}), { INGEST_TOKEN: "ingest-token" }, ctx);
+		expect(denied.status).toBe(400);
+		expect(github.calls.filter(isGithubDispatch)).toEqual([]);
+
+		const accepted = await worker.fetch(new IncomingRequest("https://example.com/ingest", {
+			method: "POST",
+			headers: { authorization: "Bearer ingest-token", "content-type": "application/json" },
+			body: JSON.stringify({ command: "calendar-event", text: "Saturday long run at Payson Park.", from: "webhook", subject: "run" }),
+		}), { INGEST_TOKEN: "ingest-token" }, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(accepted.status).toBe(200);
+		const dispatch = github.calls.find(isGithubDispatch);
+		expect(JSON.parse(dispatch?.body || "{}").event_type).toBe("calendar-event-email");
 	});
 });
 
@@ -767,6 +1010,69 @@ function reviewPull(overrides: Record<string, unknown> = {}) {
 		labels: [{ name: "automated update" }, { name: "content" }],
 		...overrides,
 	};
+}
+
+function reviseCommand(page: string, change: string, userId: string) {
+	return {
+		type: 2,
+		application_id: "discord-app",
+		token: "revise-token",
+		data: {
+			name: "revise",
+			options: [
+				{ name: "page", value: page },
+				{ name: "change", value: change },
+			],
+		},
+		member: { user: { id: userId, username: "member", global_name: "Guild Member" } },
+	};
+}
+
+function mockCorrection(options: {
+	files?: Record<string, string>;
+	pull?: Record<string, unknown> | null;
+	openPulls?: Record<string, unknown>[];
+	pullFiles?: { filename: string }[];
+	directory?: Record<string, { name: string; type: string }[]>;
+} = {}) {
+	const calls: FetchCall[] = [];
+	const files = new Map<string, { sha: string; text: string }>();
+	for (const [key, text] of Object.entries(options.files || {})) files.set(key, { sha: "seed", text });
+	vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url = requestUrl(input);
+		const method = (init?.method || "GET").toUpperCase();
+		const body = typeof init?.body === "string" ? init.body : undefined;
+		calls.push({ url, method, body });
+		if (url.includes("discord.com")) return new Response(null, { status: 204 });
+		if (isGithubDispatch({ url, method, body })) return new Response(null, { status: 204 });
+		if (url.includes("/git/ref/heads/")) return Response.json({ object: { sha: "base-sha" } });
+		if (url.includes("/git/refs") && method === "POST") return Response.json({ ref: "ok" }, { status: 201 });
+		const pathname = new URL(url).pathname;
+		if (pathname.includes("/pulls/") && pathname.endsWith("/files")) return Response.json(options.pullFiles || []);
+		if (/\/pulls\/\d+$/.test(pathname)) {
+			if (!options.pull) return Response.json({ message: "Not Found" }, { status: 404 });
+			return Response.json(options.pull);
+		}
+		if (pathname.endsWith("/pulls")) return Response.json(options.openPulls || []);
+		if (pathname.includes("/contents/")) {
+			const path = contentsPath(url);
+			const ref = new URL(url).searchParams.get("ref") || "";
+			if (method === "GET") {
+				const listing = options.directory?.[path];
+				if (listing) return Response.json(listing);
+				const file = files.get(`${ref}:${path}`);
+				if (!file) return Response.json({ message: "Not Found" }, { status: 404 });
+				return Response.json({ sha: file.sha, content: btoa(file.text), encoding: "base64" });
+			}
+			if (method === "PUT") {
+				const payload = body ? JSON.parse(body) as { branch?: string; content?: string } : {};
+				files.set(`${payload.branch || ""}:${path}`, { sha: "put", text: atob(payload.content || "") });
+				return Response.json({ content: { sha: "put" } }, { status: 201 });
+			}
+		}
+		return new Response(`unexpected fetch ${method} ${url}`, { status: 500 });
+	});
+	return { calls };
 }
 
 function reviewClick(customId: string, userId: string) {

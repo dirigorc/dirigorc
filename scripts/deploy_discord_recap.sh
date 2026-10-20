@@ -8,6 +8,7 @@ set -eu
 WORKER_DIR="${DISCORD_WORKER_DIR:-dirigo-email-ingest}"
 WORKER_NAME="${DISCORD_WORKER_NAME:-dirigo-email-ingest}"
 COMMAND_SCOPE="${DISCORD_COMMAND_SCOPE:-guild}"
+CONTRACT_FILE="${DISCORD_CONTRACT_FILE:-dirigo-email-ingest/discord-contract.json}"
 LAST_COMMAND_ERROR_CODE=0
 
 # Touch this file to trigger Discord command deployment after workflow changes.
@@ -33,10 +34,16 @@ api_delete() {
 
 cleanup_dirigo_commands() {
   endpoint="$1"
-  api_get "$endpoint" | jq -r '.[] | select(.name == "recap" or .name == "event") | .id' | while IFS= read -r command_id; do
-    [ -n "$command_id" ] || continue
-    api_delete "${endpoint}/${command_id}"
+  list_file="$(mktemp)"
+  api_get "$endpoint" > "$list_file"
+  jq -r '.commands[].name' "$CONTRACT_FILE" | while IFS= read -r command_name; do
+    [ -n "$command_name" ] || continue
+    jq -r --arg name "$command_name" '.[] | select(.name == $name) | .id' "$list_file" | while IFS= read -r command_id; do
+      [ -n "$command_id" ] || continue
+      api_delete "${endpoint}/${command_id}"
+    done
   done
+  rm -f "$list_file"
 }
 
 create_command() {
@@ -69,133 +76,22 @@ create_command() {
 
 create_commands() {
   endpoint="$1"
-  recap_payload="$(mktemp)"
-  event_payload="$(mktemp)"
-
-  cat > "$recap_payload" <<'JSON'
-{
-    "name": "recap",
-    "description": "Draft a Dirigo website update from recap text.",
-    "type": 1,
-    "options": [
-      {
-        "name": "body",
-        "description": "Optional short recap text. Use recap_file for long reports.",
-        "type": 3,
-        "required": false,
-        "max_length": 3900
-      },
-      {
-        "name": "recap_file",
-        "description": "Optional .txt/.md recap file for long race reports.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "polish",
-        "description": "Polish body wording; metadata and tags are always normalized.",
-        "type": 5,
-        "required": false
-      },
-      {
-        "name": "links",
-        "description": "Optional source URLs separated by spaces or new lines.",
-        "type": 3,
-        "required": false
-      },
-      {
-        "name": "image1",
-        "description": "Optional race image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image2",
-        "description": "Optional second race image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image3",
-        "description": "Optional third race image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image4",
-        "description": "Optional fourth race image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image5",
-        "description": "Optional fifth race image attachment.",
-        "type": 11,
-        "required": false
-      }
-    ]
-}
-JSON
-
-  cat > "$event_payload" <<'JSON'
-{
-    "name": "event",
-    "description": "Draft a Dirigo calendar event from upcoming-event details.",
-    "type": 1,
-    "options": [
-      {
-        "name": "body",
-        "description": "Optional event details (leave empty to use modal).",
-        "type": 3,
-        "required": false
-      },
-      {
-        "name": "links",
-        "description": "Optional event, registration, results, or photo URLs.",
-        "type": 3,
-        "required": false
-      },
-      {
-        "name": "image1",
-        "description": "Optional event image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image2",
-        "description": "Optional second event image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image3",
-        "description": "Optional third event image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image4",
-        "description": "Optional fourth event image attachment.",
-        "type": 11,
-        "required": false
-      },
-      {
-        "name": "image5",
-        "description": "Optional fifth event image attachment.",
-        "type": 11,
-        "required": false
-      }
-    ]
-}
-JSON
-
-  if create_command "$endpoint" "$recap_payload" && create_command "$endpoint" "$event_payload"; then
-    rm -f "$recap_payload" "$event_payload"
-    return 0
-  fi
-
-  rm -f "$recap_payload" "$event_payload"
-  return 1
+  lines_file="$(mktemp)"
+  jq -c '.commands[].registration' "$CONTRACT_FILE" > "$lines_file"
+  status=0
+  while IFS= read -r registration || [ -n "$registration" ]; do
+    [ -n "$registration" ] || continue
+    payload_file="$(mktemp)"
+    printf '%s\n' "$registration" > "$payload_file"
+    if ! create_command "$endpoint" "$payload_file"; then
+      status=1
+      rm -f "$payload_file"
+      break
+    fi
+    rm -f "$payload_file"
+  done < "$lines_file"
+  rm -f "$lines_file"
+  return "$status"
 }
 
 if [ "$COMMAND_SCOPE" = "global" ]; then

@@ -305,7 +305,7 @@ GitHub setup:
 8. Make sure Actions can create pull requests under repository settings.
 9. Make sure the intended reviewers have GitHub email notifications enabled for review requests. The workflow can request review, but GitHub account notification settings control whether that becomes an email.
 10. Use the shared review rules in [.github/prompts/race-report-to-jekyll-update.md](.github/prompts/race-report-to-jekyll-update.md) and [.github/prompts/calendar-event-to-jekyll.md](.github/prompts/calendar-event-to-jekyll.md) so links and image assets are preserved as structured data, not rewritten as throwaway prose.
-11. Discord review: keep the repository secret `DISCORD_BOT_TOKEN`. When a recap or calendar pull request opens, Diri messages Seth Crockett (`1227055686295359519`) and Crow Norlander (`459385898992140288`) with the site preview and **Publish** / **Hold** buttons. Either of them can publish or hold. When one does, Diri updates the other's message and removes the buttons. Publish merges that draft, and the site deploys from `main`. Hold leaves the pull request open. Another Discord user cannot use those buttons. Optional repository variable `DISCORD_PR_APPROVER_USER_ID` is a comma-separated list of who receives the message. Optional `DISCORD_PR_REVIEW_CHANNEL_ID` posts one shared message in a channel instead of direct messages. Optional `DISCORD_PR_DM_USER_ID` still sends a plain link to someone who is not already an approver. Notification failures do not block pull request creation.
+11. Discord review: keep the repository secret `DISCORD_BOT_TOKEN`. When a recap, calendar, or correction pull request opens, Diri messages Seth Crockett (`1227055686295359519`) and Crow Norlander (`459385898992140288`) with the site preview and **Publish**, **Hold**, and **Revise** buttons. Either of them can publish, hold, or revise. When one publishes or holds, Diri updates the other's message and removes the buttons. Publish merges that draft, and the site deploys from `main`. Hold leaves the pull request open. Revise asks for one change and updates that draft. Another Discord user cannot use those buttons. Optional repository variable `DISCORD_PR_APPROVER_USER_ID` is a comma-separated list of who receives the message. Optional `DISCORD_PR_REVIEW_CHANNEL_ID` posts one shared message in a channel instead of direct messages. Optional `DISCORD_PR_DM_USER_ID` still sends a plain link to someone who is not already an approver. Notification failures do not block pull request creation. A correction of a draft that was held sends a new review message, because Hold removed the buttons.
 12. Let the Worker GitHub token merge these drafts without a separate approving review. Publish only succeeds for open pull requests whose head branch is `automation/race-report-*` or `automation/calendar-event-*`, whose base is `main`, and whose labels include `automated update` or `automated calendar`. The button handler lives in `dirigo-email-ingest` and goes out with the Worker deploy.
 
 Cloudflare setup:
@@ -313,7 +313,7 @@ Cloudflare setup:
 1. Create a Worker from `automation/cloudflare-race-report-worker.js`.
 2. Add Worker secret `GITHUB_TOKEN`.
    Use a fine-grained GitHub token for `dirigorc/dirigorc` with Contents write and Pull requests write. The token has to be allowed to merge the automation drafts onto `main`.
-3. The Worker variable `DISCORD_PR_APPROVER_IDS` lists who may press Publish or Hold. It defaults to Seth Crockett (`1227055686295359519`) and Crow Norlander (`459385898992140288`).
+3. The Worker variable `DISCORD_PR_APPROVER_IDS` lists who may press Publish, Hold, or Revise. It defaults to Seth Crockett (`1227055686295359519`) and Crow Norlander (`459385898992140288`). Any guild member can run `/revise` on a page that is already on the site. Only those reviewers can `/revise` an open draft.
 4. Add Worker secret `DISCORD_BOT_TOKEN` with the same bot token used by GitHub Actions. Diri uses it to update the other reviewer's message after Publish or Hold.
 5. Add Worker variable `GITHUB_REPO=dirigorc/dirigorc`.
 6. Add Worker secret `INGEST_TOKEN` for HTTP webhook authentication.
@@ -343,12 +343,13 @@ curl -X POST "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev" \
 
 To target the calendar-event workflow instead of the race-report workflow, include `"command": "event"` in the JSON body or send `X-Dirigo-Command: event` with a plain-text request.
 
-### Discord `/recap` and `/event`
+### Discord `/recap`, `/event`, and `/revise`
 
-The Discord path uses the same Worker and review-ready PR pattern for two commands:
+The Discord path uses the same Worker and review-ready PR pattern for three commands:
 
 - `/recap`: draft an Updates post from race results or club notes. By default it preserves the submitted copy verbatim in both the homepage/archive summary and post body while still using the editorial pipeline for the title, date, category, layout, links, attachments, canonical tags, and tag pages. An optional `polish` input also allows AI-assisted rewriting of the public copy.
 - `/event`: draft or update a Calendar event from upcoming race, group run, meet, deadline, or team-date details. This always uses the calendar-event prompt and writes `_events/` files only.
+- `/revise`: correct a post or calendar event that is already on the site, or an open automation draft. `page` is an update link (a category and `.html` are optional), a calendar anchor, a `YYYY-MM-DD-slug`, a `_posts/` or `_events/` path, or the pull request URL. `change` is one instruction. The result is an automation pull request. Publish still merges it.
 - If the initial `/recap` or `/event` text is too thin, the Worker opens a clarification modal instead of creating a low-context PR.
 - If the text appears to use shorthand or incomplete member names, such as `Dave O`, `Ashby`, or first-name-only mentions, the Worker asks for full names before creating a PR.
 - For a longer recap, see [Submit a long recap](#submit-a-long-recap).
@@ -387,7 +388,7 @@ Set the interaction endpoint:
 2. Copy the Worker URL, for example `https://dirigo-race-report.YOUR-SUBDOMAIN.workers.dev`.
 3. In the Discord application, set **Interactions Endpoint URL** to the Worker URL.
 4. Save the application. Discord will send a signed `PING`; the Worker must verify it and respond before Discord accepts the URL.
-5. If you want a repeatable rollout, run [`scripts/deploy_discord_recap.sh`](scripts/deploy_discord_recap.sh) with `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` set in the environment. The script deploys the Worker and registers both `/recap` and `/event`.
+5. If you want a repeatable rollout, run [`scripts/deploy_discord_recap.sh`](scripts/deploy_discord_recap.sh) with `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` set in the environment. The script deploys the Worker and registers `/recap`, `/event`, and `/revise` from `dirigo-email-ingest/discord-contract.json`.
 
 Create the commands manually:
 
@@ -501,7 +502,7 @@ Discord Worker behavior:
 11. Optionally accepts image attachments from `image1` through `image5` (JPEG, PNG, GIF, WebP, AVIF) in inline mode and stages them with the ingest payload. The generator deterministically adds every accepted image to the post even if the model omits it, then gives retained files content-specific names and safe alt text; this applies in both verbatim and polished modes.
 12. For inline submissions with images or `recap_file`, defers the Discord response immediately and processes downloads in the background. A filled `/recap` then posts an ephemeral follow-up with accepted and skipped image counts. An empty `/recap` with images follows up with **Write recap**.
 13. Stages a payload with `source: "discord"`, `command`, `submitted_by`, `editorial_mode`, `body`, and `links`. A recap finished from several boxes omits `body` from the dispatch. The staged file holds the joined text.
-14. Triggers `race-report-email` for `/recap` or `calendar-event-email` for `/event`.
+14. Triggers `race-report-email` for `/recap` or `calendar-event-email` for `/event`. `/revise` uses one of those same events for an existing file. An unknown slash command is refused. Email and the HTTP webhook still default to a recap, and they reject `/revise`.
 15. GitHub Actions creates a PR ready for review and posts the PR link back to the original interaction as an ephemeral follow-up.
 
 Discord safe-submission notes:
@@ -519,7 +520,7 @@ Discord safe-submission notes:
 2. Deploy the Worker from `dirigo-email-ingest/` with `npx wrangler deploy`.
 3. Register the guild slash commands with `scripts/deploy_discord_recap.sh` or the equivalent `curl` calls.
 4. Set `DISCORD_PUBLIC_KEY` on the Worker.
-5. Re-open Discord and test `/recap` with text, then `/event` with an upcoming race or group run.
+5. Re-open Discord and test `/recap` with text, `/event` with an upcoming race or group run, and `/revise` with a page that is already on the site.
 
 Manual fallback:
 
