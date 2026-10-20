@@ -15,7 +15,7 @@
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
  * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
  * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish, hold, or revise a draft. Defaults to Seth Crockett and Crow Norlander.
- * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold.
+ * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's DM after Publish or Hold. The Discord deploy stores this Worker secret.
  */
 
 import { loadDiscordContract } from "./discord-contract";

@@ -17,6 +17,8 @@ cd "$(dirname "$0")/.."
 
 cd "$WORKER_DIR"
 npx wrangler deploy --name "$WORKER_NAME"
+# Publish and Hold edit the other reviewer's DM with this token. printf avoids a trailing newline in the secret.
+printf '%s' "$DISCORD_BOT_TOKEN" | npx wrangler secret put DISCORD_BOT_TOKEN --name "$WORKER_NAME"
 
 cd ..
 

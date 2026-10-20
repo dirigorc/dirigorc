@@ -519,10 +519,77 @@ describe("Dirigo email ingest worker", () => {
 
 		const sibling = calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"));
 		const body = JSON.parse(sibling?.body || "{}") as { content?: string; components?: unknown[] };
-		expect(body.content).toContain("Seth Crockett published this.");
+		expect(body.content).toContain("Seth Crockett published **Beach to Beacon**.");
 		expect(body.content).toContain("https://github.com/dirigorc/dirigorc/pull/41");
 		expect(body.components).toEqual([]);
+		const notice = calls.find((call) => call.method === "POST" && call.url.endsWith("/channels/777/messages"));
+		expect(JSON.parse(notice?.body || "{}")).toMatchObject({
+			content: body.content,
+			message_reference: { message_id: "888", channel_id: "777" },
+			allowed_mentions: { parse: [] },
+		});
 		expect(reviewUpdate(calls).content).toContain("Published **Beach to Beacon**");
+		expect(reviewUpdate(calls).content).not.toContain("could not update");
+	});
+
+	it("tells Seth when the other reviewer's DM cannot be updated", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41:777:888", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(calls.some((call) => call.url.includes("/channels/777/messages/888"))).toBe(false);
+		expect(reviewUpdate(calls).content).toContain("Published **Beach to Beacon**");
+		expect(reviewUpdate(calls).content).toContain("I could not update the other reviewer's message.");
+	});
+
+	it("keeps the photo preview when publishing and still updates the other DM", async () => {
+		const photo = "https://raw.githubusercontent.com/dirigorc/dirigorc/automation/race-report-1/photo.jpg";
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", (url, method) => {
+			if (method === "GET" && url.endsWith("/channels/777/messages/888")) {
+				return Response.json({
+					embeds: [{
+						type: "image",
+						url: photo,
+						image: { url: photo, proxy_url: "https://images-ext.discordapp.net/photo.jpg", width: 800, height: 600 },
+					}],
+				});
+			}
+			return new Response(null, { status: 200 });
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41:777:888", "1227055686295359519", {
+			embeds: [
+				{ type: "rich", title: "Beach to Beacon", url: "https://github.com/dirigorc/dirigorc/pull/41", description: "Dirigo took the top ten.", color: 123 },
+				{ type: "image", url: photo, image: { url: photo, proxy_url: "https://images-ext.discordapp.net/photo.jpg", width: 800, height: 600 } },
+			],
+		}), { ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" }, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(reviewUpdate(calls).embeds).toEqual([
+			{ title: "Beach to Beacon", url: "https://github.com/dirigorc/dirigorc/pull/41", description: "Dirigo took the top ten." },
+			{ image: { url: photo } },
+		]);
+		const sibling = JSON.parse(calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"))?.body || "{}") as { embeds?: unknown };
+		expect(sibling.embeds).toEqual([{ image: { url: photo } }]);
+	});
+
+	it("updates Seth's DM with the bot token when the interaction edit is rejected", async () => {
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", (url, method) => {
+			if (method === "PATCH" && url.includes("/messages/@original")) return new Response("invalid embed", { status: 400 });
+			return new Response(null, { status: 200 });
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_publish:41:777:888", "1227055686295359519", {
+			channelId: "111",
+			messageId: "222",
+		}), { ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" }, ctx);
+		await waitOnExecutionContext(ctx);
+
+		const fallback = JSON.parse(calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/111/messages/222"))?.body || "{}") as { content?: string; components?: unknown[] };
+		expect(fallback.content).toContain("Published **Beach to Beacon**");
+		expect(fallback.components).toEqual([]);
+		expect(calls.some((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"))).toBe(true);
 	});
 
 	it("leaves the other reviewer's buttons alone when GitHub rejects the merge", async () => {
@@ -1075,18 +1142,32 @@ function mockCorrection(options: {
 	return { calls };
 }
 
-function reviewClick(customId: string, userId: string) {
+function reviewClick(
+	customId: string,
+	userId: string,
+	message: { channelId?: string; messageId?: string; embeds?: unknown[] } = {},
+) {
 	return {
 		type: 3,
 		application_id: "discord-app",
 		token: "review-token",
+		channel_id: message.channelId,
 		data: { custom_id: customId },
 		user: { id: userId, username: "seth", global_name: "Seth Crockett" },
-		message: { embeds: [{ title: "Beach to Beacon" }], components: [{ type: 1 }] },
+		message: {
+			id: message.messageId,
+			embeds: message.embeds || [{ title: "Beach to Beacon" }],
+			components: [{ type: 1 }],
+		},
 	};
 }
 
-function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged") {
+function mockReviewFetch(
+	pull: Record<string, unknown>,
+	mergeStatus = 200,
+	mergeMessage = "merged",
+	discord: (url: string, method: string) => Response | undefined = () => undefined,
+) {
 	const calls: FetchCall[] = [];
 	vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = requestUrl(input);
@@ -1097,7 +1178,7 @@ function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, merge
 			return Response.json({ message: mergeMessage, merged: mergeStatus < 300 }, { status: mergeStatus });
 		}
 		if (url.includes("/issues/41/comments")) return Response.json({ id: 1 }, { status: 201 });
-		if (url.includes("discord.com")) return new Response(null, { status: 200 });
+		if (url.includes("discord.com")) return discord(url, method) || new Response(null, { status: 200 });
 		if (url.endsWith("/pulls/41")) return Response.json(pull, { status: 200 });
 		return new Response("missing", { status: 404 });
 	});

@@ -91,6 +91,7 @@ interface PrReviewOutcome {
 	content: string;
 	clearButtons: boolean;
 	kind?: PrReviewKind;
+	title?: string;
 }
 
 interface GitHubPull {
@@ -752,11 +753,12 @@ function siblingNotice(actor: string, outcome: PrReviewOutcome): string | null {
 	if (!outcome.clearButtons || !outcome.kind) return null;
 	const url = outcome.content.match(/\n(https:\/\/\S+)$/)?.[1];
 	const suffix = url ? `\n${url}` : "";
+	const named = outcome.title ? ` **${outcome.title}**` : " this";
 	switch (outcome.kind) {
 		case "published":
-			return clipDiscordContent(`${actor} published this. It will show up on the site after the next deploy.${suffix}`);
+			return clipDiscordContent(`${actor} published${named}. It will show up on the site after the next deploy.${suffix}`);
 		case "held":
-			return clipDiscordContent(`${actor} held this. The draft stays open.${suffix}`);
+			return clipDiscordContent(`${actor} held${named}. The draft stays open.${suffix}`);
 		case "already":
 			return clipDiscordContent(`This is already on the site.${suffix}`);
 		case "closed":
@@ -877,7 +879,12 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 				clearButtons: false,
 			};
 		}
-		return { content: clipDiscordContent(`Held. The draft stays open.${suffix}`), clearButtons: true, kind: "held" };
+		return {
+			content: clipDiscordContent(`Held. The draft stays open.${suffix}`),
+			clearButtons: true,
+			kind: "held",
+			title: pull.title?.trim() || undefined,
+		};
 	}
 
 	const mergeBody: Record<string, string> = { merge_method: "merge" };
@@ -896,59 +903,124 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 	const published = title
 		? `Published **${title}**. It will show up on the site after the next deploy.`
 		: "Published. It will show up on the site after the next deploy.";
-	return { content: clipDiscordContent(`${published}${suffix}`), clearButtons: true, kind: "published" };
+	return {
+		content: clipDiscordContent(`${published}${suffix}`),
+		clearButtons: true,
+		kind: "published",
+		title: title || undefined,
+	};
+}
+
+function reviewMessagePayload(content: string, clearButtons: boolean, components: unknown, embeds: unknown): Record<string, unknown> {
+	const payload: Record<string, unknown> = {
+		content,
+		allowed_mentions: { parse: [] },
+		components: clearButtons ? [] : components || [],
+	};
+	const cleaned = editableEmbeds(embeds);
+	if (cleaned.length > 0) payload.embeds = cleaned;
+	return payload;
 }
 
 async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrReviewOutcome): Promise<void> {
 	const applicationId = interaction.application_id;
 	const token = interaction.token;
-	if (!applicationId || !token) return;
-	const payload: Record<string, unknown> = {
-		content: outcome.content,
-		embeds: interaction.message?.embeds || [],
-		components: outcome.clearButtons ? [] : interaction.message?.components || [],
-	};
+	if (!applicationId || !token) throw new Error("Discord interaction is missing an application id.");
 	const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`, {
 		method: "PATCH",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(payload),
+		body: JSON.stringify(reviewMessagePayload(
+			outcome.content,
+			outcome.clearButtons,
+			interaction.message?.components,
+			interaction.message?.embeds,
+		)),
 	});
 	if (!response.ok) {
 		throw new Error(`Discord review update failed: ${response.status} ${await response.text()}`);
 	}
 }
 
-async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messageId: string, content: string): Promise<void> {
-	if (!env.DISCORD_BOT_TOKEN) {
-		console.error(JSON.stringify({
-			message: "Discord sibling review update skipped",
-			reason: "DISCORD_BOT_TOKEN is not configured.",
-		}));
-		return;
-	}
+async function editChannelReviewMessage(
+	env: WorkerEnv,
+	channelId: string,
+	messageId: string,
+	content: string,
+	options: { clearButtons: boolean; embeds?: unknown; components?: unknown },
+): Promise<void> {
+	if (!env.DISCORD_BOT_TOKEN) throw new Error("DISCORD_BOT_TOKEN is not configured.");
 	const messageUrl = `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
 	const headers = {
 		Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
 		"Content-Type": "application/json",
 	};
-	let embeds: unknown[] = [];
-	const existing = await fetch(messageUrl, { headers });
-	if (existing.ok) {
-		try {
-			const body: unknown = await existing.json();
-			if (isRecord(body) && Array.isArray(body.embeds)) embeds = body.embeds;
-		} catch {
-			embeds = [];
+	let preview = options.embeds;
+	if (preview === undefined) {
+		const existing = await fetch(messageUrl, { headers });
+		if (existing.ok) {
+			try {
+				const body: unknown = await existing.json();
+				if (isRecord(body)) preview = body.embeds;
+			} catch {
+				preview = undefined;
+			}
 		}
 	}
 	const response = await fetch(messageUrl, {
 		method: "PATCH",
 		headers,
-		body: JSON.stringify({ content, components: [], embeds }),
+		body: JSON.stringify(reviewMessagePayload(content, options.clearButtons, options.components, preview)),
 	});
 	if (!response.ok) {
-		throw new Error(`Discord sibling review update failed: ${response.status} ${await response.text()}`);
+		throw new Error(`Discord review update failed: ${response.status} ${await response.text()}`);
 	}
+}
+
+async function editClickedReviewMessage(interaction: DiscordInteraction, env: WorkerEnv, outcome: PrReviewOutcome): Promise<void> {
+	try {
+		await editPrReviewMessage(interaction, outcome);
+	} catch (error) {
+		const channelId = interaction.channel_id || "";
+		const messageId = interaction.message?.id || "";
+		if (!isSnowflake(channelId) || !isSnowflake(messageId)) throw error;
+		console.error(JSON.stringify({
+			message: "Discord interaction review update failed",
+			error: errorMessage(error),
+		}));
+		await editChannelReviewMessage(env, channelId, messageId, outcome.content, {
+			clearButtons: outcome.clearButtons,
+			embeds: interaction.message?.embeds,
+			components: interaction.message?.components,
+		});
+	}
+}
+
+function editableEmbeds(embeds: unknown): Record<string, unknown>[] {
+	if (!Array.isArray(embeds)) return [];
+	const cleaned: Record<string, unknown>[] = [];
+	for (const embed of embeds) {
+		const next = editableEmbed(embed);
+		if (next) cleaned.push(next);
+	}
+	return cleaned;
+}
+
+function editableEmbed(embed: unknown): Record<string, unknown> | null {
+	if (!isRecord(embed)) return null;
+	const clean: Record<string, unknown> = {};
+	const image = httpUrl(isRecord(embed.image) ? embed.image.url : undefined) || (embed.type === "image" ? httpUrl(embed.url) : null);
+	if (typeof embed.title === "string" && embed.title.trim()) clean.title = embed.title;
+	if (typeof embed.description === "string" && embed.description.trim()) clean.description = embed.description;
+	if (embed.type !== "image") {
+		const url = httpUrl(embed.url);
+		if (url) clean.url = url;
+	}
+	if (image) clean.image = { url: image };
+	return Object.keys(clean).length > 0 ? clean : null;
+}
+
+function httpUrl(value: unknown): string | null {
+	return typeof value === "string" && /^https?:\/\//.test(value) ? value : null;
 }
 
 function startPrReview(
@@ -963,19 +1035,33 @@ function startPrReview(
 	ctx.waitUntil((async () => {
 		try {
 			const outcome = await reviewPullRequest(env, review.action, review.pullNumber, actor);
-			await editPrReviewMessage(interaction, outcome);
 			const notice = siblingNotice(actorName, outcome);
+			let siblingNote = "";
 			if (notice && review.siblingChannelId && review.siblingMessageId) {
 				try {
-					await editSiblingReviewMessage(env, review.siblingChannelId, review.siblingMessageId, notice);
+					await editChannelReviewMessage(env, review.siblingChannelId, review.siblingMessageId, notice, { clearButtons: true });
 				} catch (error) {
+					siblingNote = "\nI could not update the other reviewer's message.";
 					console.error(JSON.stringify({
 						message: "Discord sibling review update failed",
 						pullNumber: review.pullNumber,
 						error: errorMessage(error),
 					}));
 				}
+				try {
+					await postSiblingNotice(env, review.siblingChannelId, review.siblingMessageId, notice);
+				} catch (error) {
+					console.error(JSON.stringify({
+						message: "Discord sibling review notice failed",
+						pullNumber: review.pullNumber,
+						error: errorMessage(error),
+					}));
+				}
 			}
+			const shown = siblingNote
+				? { ...outcome, content: clipDiscordContent(`${outcome.content}${siblingNote}`) }
+				: outcome;
+			await editClickedReviewMessage(interaction, env, shown);
 		} catch (error) {
 			console.error(JSON.stringify({
 				message: "Discord pull request review failed",
@@ -987,6 +1073,25 @@ function startPrReview(
 	return new Response(JSON.stringify({ type: DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE }), {
 		headers: { "content-type": "application/json" },
 	});
+}
+
+async function postSiblingNotice(env: WorkerEnv, channelId: string, messageId: string, content: string): Promise<void> {
+	if (!env.DISCORD_BOT_TOKEN) throw new Error("DISCORD_BOT_TOKEN is not configured.");
+	const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			content,
+			allowed_mentions: { parse: [] },
+			message_reference: { message_id: messageId, channel_id: channelId },
+		}),
+	});
+	if (!response.ok) {
+		throw new Error(`Discord sibling review notice failed: ${response.status} ${await response.text()}`);
+	}
 }
 
 function errorMessage(error: unknown): string {
