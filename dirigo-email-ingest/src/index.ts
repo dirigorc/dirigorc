@@ -1453,8 +1453,8 @@ export default {
 		});
 	},
 
-	async scheduled(_event: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
-		ctx.waitUntil(ensureDiscordGateway(env));
+	async scheduled(_event: ScheduledController, env: WorkerEnv, _ctx: ExecutionContext): Promise<void> {
+		await ensureDiscordGateway(env);
 	},
 
 	async email(message: EmailMessage, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {

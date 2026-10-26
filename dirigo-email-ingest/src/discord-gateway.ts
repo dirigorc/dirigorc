@@ -469,7 +469,14 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 }
 
 export async function ensureDiscordGateway(env: WorkerEnv): Promise<void> {
-	if (!env.DISCORD_BOT_TOKEN || !env.DISCORD_GATEWAY) return;
+	if (!env.DISCORD_BOT_TOKEN || !env.DISCORD_GATEWAY) {
+		console.error(JSON.stringify({
+			message: "Discord recap check skipped",
+			hasToken: Boolean(env.DISCORD_BOT_TOKEN),
+			hasBinding: Boolean(env.DISCORD_GATEWAY),
+		}));
+		return;
+	}
 	const stub = env.DISCORD_GATEWAY.getByName("diri");
 	await stub.fetch("https://discord-gateway.internal/ensure");
 }
