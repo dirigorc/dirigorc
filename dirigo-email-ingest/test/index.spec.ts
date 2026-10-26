@@ -297,7 +297,9 @@ describe("Dirigo email ingest worker", () => {
 		expect(payload.client_payload.report?.inference?.notes?.join(" ")).toContain("started this recap");
 		expect(Object.keys(payload.client_payload).length).toBeLessThanOrEqual(10);
 		const reply = github.calls.find((call) => call.method === "POST" && call.url.includes("/channels/12345678901234567/messages"));
-		expect(JSON.parse(reply?.body || "{}").message_reference.message_id).toBe("12345678901234568");
+		expect(reply).toBeUndefined();
+		const ack = github.calls.find((call) => call.method === "PUT" && call.url.includes("/reactions/"));
+		expect(ack?.url).toContain(`/channels/12345678901234567/messages/12345678901234568/reactions/${encodeURIComponent("✅")}/@me`);
 	});
 
 	it("keeps a reacted message verbatim when it already names the athlete", async () => {
@@ -1329,6 +1331,51 @@ describe("reaction scan", () => {
 
 		expect(fresh.start).toEqual([]);
 		expect(stalled.start).toHaveLength(1);
+	});
+
+	it("treats Diri's own check mark as already handled", () => {
+		const message = {
+			channelId: "111111111111111111",
+			messageId: "222222222222222222",
+			reactions: [
+				{ emoji: { name: "🏁" } },
+				{ me: true, emoji: { name: "✅" } },
+			],
+		};
+		const plan = planReactionScan([message], new Map(), "🏁", now);
+
+		expect(plan.start).toEqual([]);
+		expect(plan.acknowledge).toEqual([]);
+		expect(plan.release).toEqual([]);
+	});
+
+	it("adds the check mark for a recap already recorded without one", () => {
+		const key = reactionStorageKey("111111111111111111", "222222222222222222", "🏁");
+		const plan = planReactionScan(
+			[{ channelId: "111111111111111111", messageId: "222222222222222222", reactions: [{ emoji: { name: "🏁" } }] }],
+			new Map([[key, "done"]]),
+			"🏁",
+			now,
+		);
+
+		expect(plan.start).toEqual([]);
+		expect(plan.acknowledge).toEqual([{ channelId: "111111111111111111", messageId: "222222222222222222" }]);
+	});
+
+	it("removes the check mark after the flag is gone", () => {
+		const plan = planReactionScan(
+			[{
+				channelId: "111111111111111111",
+				messageId: "222222222222222222",
+				reactions: [{ me: true, emoji: { name: "✅" } }],
+			}],
+			new Map(),
+			"🏁",
+			now,
+		);
+
+		expect(plan.start).toEqual([]);
+		expect(plan.release).toEqual([{ channelId: "111111111111111111", messageId: "222222222222222222" }]);
 	});
 });
 
