@@ -5,7 +5,6 @@ import {
 	prepareRecap,
 	recapClarificationReason,
 	recapEmojiName,
-	recapStartedMessage,
 	reporterFromUser,
 	type Reporter,
 } from "./self-report";
@@ -26,7 +25,7 @@ export interface ReactionScanMessage {
 	channelId: string;
 	messageId: string;
 	guildId?: string;
-	reactions?: { emoji?: { id?: string | null; name?: string | null } }[];
+	reactions?: { me?: boolean; emoji?: { id?: string | null; name?: string | null } }[];
 }
 
 export interface PlannedReaction {
@@ -49,9 +48,13 @@ export function pendingReactionValue(now: number): string {
 	return `${PENDING_PREFIX}${now}`;
 }
 
+export function recapAckEmoji(configured: string | undefined): string {
+	return recapEmojiName(configured) === "✅" ? "👀" : "✅";
+}
+
 export function reactionClaimable(value: string | undefined, now: number): boolean {
 	if (!value) return true;
-	if (value === "done") return false;
+	if (value === "done" || value === "asked") return false;
 	if (value.startsWith(PENDING_PREFIX)) {
 		const startedAt = Number(value.slice(PENDING_PREFIX.length));
 		return Number.isFinite(startedAt) && now - startedAt > STALE_PENDING_MS;
@@ -64,15 +67,25 @@ export function planReactionScan(
 	states: ReadonlyMap<string, string>,
 	configured: string | undefined,
 	now: number,
-): { start: PlannedReaction[]; clear: string[] } {
+): { start: PlannedReaction[]; clear: string[]; acknowledge: PlannedAck[]; release: PlannedAck[] } {
 	const start: PlannedReaction[] = [];
 	const clear: string[] = [];
+	const acknowledge: PlannedAck[] = [];
+	const release: PlannedAck[] = [];
 	const emojiName = recapEmojiName(configured);
+	const ackEmoji = recapAckEmoji(configured);
 	for (const message of messages) {
 		const key = reactionStorageKey(message.channelId, message.messageId, emojiName);
 		const reaction = (message.reactions || []).find((item) => emojiMatches(item.emoji?.name || "", configured));
+		const acknowledged = (message.reactions || []).some((item) => item.me === true && (item.emoji?.name || "") === ackEmoji);
 		if (!reaction) {
 			if (states.has(key)) clear.push(key);
+			if (acknowledged) release.push({ channelId: message.channelId, messageId: message.messageId });
+			continue;
+		}
+		if (acknowledged) continue;
+		if (states.get(key) === "done") {
+			acknowledge.push({ channelId: message.channelId, messageId: message.messageId });
 			continue;
 		}
 		if (!reactionClaimable(states.get(key), now)) continue;
@@ -86,7 +99,12 @@ export function planReactionScan(
 			key,
 		});
 	}
-	return { start, clear };
+	return { start, clear, acknowledge, release };
+}
+
+export interface PlannedAck {
+	channelId: string;
+	messageId: string;
 }
 
 interface DiscordMessage {
@@ -154,8 +172,7 @@ export async function handleRecapReaction(env: WorkerEnv, reaction: RecapReactio
 		...(prepared.inference ? { inference: prepared.inference } : {}),
 	};
 	await dispatchToGitHub(env, email);
-	const details = imageDetails(downloaded);
-	await channelReply(env, reaction, `${recapStartedMessage(prepared.editorialMode)}${details ? `\n\n${details}` : ""}`);
+	await acknowledgeRecap(env, reaction.channelId, reaction.messageId);
 	return "started";
 }
 
@@ -230,11 +247,29 @@ async function downloadImages(items: DiscordMessageAttachment[]): Promise<{ atta
 	return { attachments, skipped, requested: selected.length };
 }
 
-function imageDetails(summary: { attachments: EmailAttachment[]; skipped: string[]; requested: number }): string {
-	const details: string[] = [];
-	if (summary.requested > 0) details.push(`${summary.attachments.length}/${summary.requested} image attachment(s) accepted.`);
-	if (summary.skipped.length > 0) details.push(`Skipped: ${summary.skipped.slice(0, 3).join("; ")}.`);
-	return details.join("\n");
+export async function acknowledgeRecap(env: WorkerEnv, channelId: string, messageId: string): Promise<void> {
+	await reactAsBot(env, channelId, messageId, "PUT");
+}
+
+export async function releaseRecapAck(env: WorkerEnv, channelId: string, messageId: string): Promise<void> {
+	await reactAsBot(env, channelId, messageId, "DELETE");
+}
+
+async function reactAsBot(env: WorkerEnv, channelId: string, messageId: string, method: "PUT" | "DELETE"): Promise<void> {
+	if (!env.DISCORD_BOT_TOKEN || !snowflake(channelId) || !snowflake(messageId)) return;
+	const emoji = encodeURIComponent(recapAckEmoji(env.DISCORD_RECAP_EMOJI));
+	const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}/reactions/${emoji}/@me`, {
+		method,
+		headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}` },
+	});
+	if (!response.ok) {
+		console.error(JSON.stringify({
+			message: "Discord recap acknowledgement failed",
+			method,
+			status: response.status,
+			detail: await response.text(),
+		}));
+	}
 }
 
 function uniqueUrls(values: string[]): string[] {

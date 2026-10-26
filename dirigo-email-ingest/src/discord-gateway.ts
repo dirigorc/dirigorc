@@ -1,11 +1,13 @@
 import { DurableObject } from "cloudflare:workers";
 
 import {
+	acknowledgeRecap,
 	handleRecapReaction,
 	pendingReactionValue,
 	planReactionScan,
 	reactionClaimable,
 	reactionStorageKey,
+	releaseRecapAck,
 	type ReactionScanMessage,
 } from "./discord-reaction";
 import type { WorkerEnv } from "./dispatch";
@@ -267,7 +269,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		const member = record(payload.member);
 		const user = member ? record(member.user) : null;
 		try {
-			await handleRecapReaction(this.env, {
+			const outcome = await handleRecapReaction(this.env, {
 				channelId,
 				messageId,
 				guildId,
@@ -278,7 +280,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 					global_name: user && typeof user.global_name === "string" ? user.global_name : undefined,
 				}),
 			});
-			await this.ctx.storage.put(key, "done");
+			await this.ctx.storage.put(key, outcome === "started" ? "done" : "asked");
 		} catch (error) {
 			await this.ctx.storage.delete(key);
 			console.error(JSON.stringify({
@@ -298,6 +300,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		const messageId = typeof payload.message_id === "string" ? payload.message_id : "";
 		if (!channelId || !messageId) return;
 		await this.ctx.storage.delete(reactionStorageKey(channelId, messageId, emojiName));
+		await releaseRecapAck(this.env, channelId, messageId);
 	}
 
 	private async onClose(code: number): Promise<void> {
@@ -413,6 +416,8 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		}
 		const plan = planReactionScan(messages, states, this.env.DISCORD_RECAP_EMOJI, now);
 		for (const key of plan.clear) await this.ctx.storage.delete(key);
+		for (const item of plan.release) await releaseRecapAck(this.env, item.channelId, item.messageId);
+		for (const item of plan.acknowledge) await acknowledgeRecap(this.env, item.channelId, item.messageId);
 
 		let started = 0;
 		for (const item of plan.start) {
@@ -433,7 +438,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 					emojiName: item.emojiName,
 					reactor: reporterFromUser(reactor),
 				});
-				await this.ctx.storage.put(item.key, "done");
+				await this.ctx.storage.put(item.key, outcome === "started" ? "done" : "asked");
 				if (outcome === "started") started += 1;
 			} catch (error) {
 				await this.ctx.storage.delete(item.key);
