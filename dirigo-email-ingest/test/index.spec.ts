@@ -212,11 +212,12 @@ describe("Dirigo email ingest worker", () => {
 
 		expect(((await response.json()) as { type: number }).type).toBe(4);
 		const dispatch = github.calls.find(isGithubDispatch);
-		const payload = JSON.parse(dispatch?.body || "{}") as { client_payload: { editorial_mode?: string; inference?: { runner?: string; reported_on?: string; notes?: string[] } } };
+		const payload = JSON.parse(dispatch?.body || "{}") as { client_payload: { editorial_mode?: string; inference?: { runner?: string; reported_on?: string; notes?: string[] }; report?: { inference?: { runner?: string; reported_on?: string; notes?: string[] } } } };
 		expect(payload.client_payload.editorial_mode).toBe("self-report");
-		expect(payload.client_payload.inference?.runner).toBe("Seth Crockett");
-		expect(payload.client_payload.inference?.reported_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-		expect(payload.client_payload.inference?.notes?.join(" ")).toContain("Eastern Time");
+		expect(payload.client_payload.inference).toBeUndefined();
+		expect(payload.client_payload.report?.inference?.runner).toBe("Seth Crockett");
+		expect(payload.client_payload.report?.inference?.reported_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(payload.client_payload.report?.inference?.notes?.join(" ")).toContain("Eastern Time");
 		const staged = github.calls.find((call) => call.method === "PUT" && call.url.includes("payload.json"));
 		const email = (decodedPut(staged!).content as { email: { editorial_mode: string; inference: { runner: string } } }).email;
 		expect(email.editorial_mode).toBe("self-report");
@@ -278,19 +279,23 @@ describe("Dirigo email ingest worker", () => {
 		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as {
 			client_payload: {
 				editorial_mode?: string;
-				trigger?: string;
-				authored_by?: string;
 				submitted_by?: string;
 				inference?: { runner?: string; reported_on?: string; notes?: string[] };
+				report?: {
+					trigger?: string;
+					authored_by?: string;
+					inference?: { runner?: string; reported_on?: string; notes?: string[] };
+				};
 			};
 		};
 		expect(payload.client_payload.editorial_mode).toBe("self-report");
-		expect(payload.client_payload.trigger).toBe("reaction");
 		expect(payload.client_payload.submitted_by).toBe("Crow (459385898992140288)");
-		expect(payload.client_payload.authored_by).toContain("Seth");
-		expect(payload.client_payload.inference?.runner).toBe("Seth Crockett");
-		expect(payload.client_payload.inference?.reported_on).toBe("2026-10-26");
-		expect(payload.client_payload.inference?.notes?.join(" ")).toContain("started this recap");
+		expect(payload.client_payload.report?.trigger).toBe("reaction");
+		expect(payload.client_payload.report?.authored_by).toContain("Seth");
+		expect(payload.client_payload.report?.inference?.runner).toBe("Seth Crockett");
+		expect(payload.client_payload.report?.inference?.reported_on).toBe("2026-10-26");
+		expect(payload.client_payload.report?.inference?.notes?.join(" ")).toContain("started this recap");
+		expect(Object.keys(payload.client_payload).length).toBeLessThanOrEqual(10);
 		const reply = github.calls.find((call) => call.method === "POST" && call.url.includes("/channels/12345678901234567/messages"));
 		expect(JSON.parse(reply?.body || "{}").message_reference.message_id).toBe("12345678901234568");
 	});

@@ -169,9 +169,11 @@ export async function dispatchToGitHub(
 				token: email.discord_interaction_token,
 			};
 		}
-		if (email.inference) clientPayload.inference = email.inference;
-		if (email.trigger) clientPayload.trigger = email.trigger;
-		if (email.authored_by) clientPayload.authored_by = email.authored_by;
+		const report: Record<string, unknown> = {};
+		if (email.inference) report.inference = email.inference;
+		if (email.trigger) report.trigger = email.trigger;
+		if (email.authored_by) report.authored_by = email.authored_by;
+		if (Object.keys(report).length > 0) clientPayload.report = report;
 	}
 	const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
 		method: "POST",
