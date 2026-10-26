@@ -5,7 +5,7 @@ category: "Results"
 layout_style: "single"
 image:
   src: "assets/images/email/2026-09-16/dave-ouellette-bradbury-series-final-4th.jpg"
-  alt: "Dirigo race photo."
+  alt: "Dave Ouellette racing the wet final of the Bradbury Trail series."
 summary: "This past weekend the final race of the 2026 Bradbury Trail Race series took place. In a very wet race Dirgo runner Dave Ouellette finished 4th overall in a time of 2:24:47 which also secured him the second place overall in the series standings."
 tags:
   - "Bradbury Breaker"

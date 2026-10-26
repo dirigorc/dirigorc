@@ -5,7 +5,7 @@ category: "Results"
 layout_style: "single"
 image:
   src: "assets/images/email/2026-07-04/dirigo-5k-in-honor-of-dearing-and-schulte-503610643-17982396170837074-342313142043626689-n.jpg"
-  alt: "Dirigo race photo from 503610643 17982396170837074 342313142043626689 n."
+  alt: "Bethanie Brown, Cait Bourgault, and Katie Mauro with the women's results from the Dirigo 5K."
 summary: "The Dirigo 5K, held in memory of Dan Dearing and Shiloh Schulte, drew a growing field. Luke Marsanskis won in 14:31 and Bethanie Brown took the women's victory in 17:07; multiple athletes recorded PRs and Maine Running Photos captured the day."
 tags:
   - "Dirigo 5K"

@@ -5,7 +5,7 @@ category: "Results"
 layout_style: "feature"
 image:
   src: "assets/images/email/2026-07-04/weekend-results-may-18-2025-54518790031-245a36ddfa-o.jpg"
-  alt: "Dirigo race photo from 54518790031 245a36ddfa o."
+  alt: "Taylor Bickford racing the Boots n Brews 5K."
 summary: "Taylor Bickford won the Boots & Brews 5K in 19:13; Peter Burke was third at the Cape Challenge 5K. Dirigo high-school athletes posted strong finishes at the Marathon Sports Elite Invite."
 tags:
   - "Boots n Brews 5K"

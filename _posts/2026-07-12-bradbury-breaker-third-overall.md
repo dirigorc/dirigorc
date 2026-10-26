@@ -6,7 +6,7 @@ layout_style: feature
 stat: "1:23:22 | 3rd overall"
 image:
   src: assets/images/745843022_1635634061903728_3731182651340256416_n.jpg
-  alt: Dirigo race photo.
+  alt: Dave Ouellette racing the Bradbury Breaker on the trail.
 summary: Dave Ouellette ran 1:23:22 at the Bradbury Breaker trail race on Sunday, finishing third overall.
 tags:
   - "Bradbury Breaker"

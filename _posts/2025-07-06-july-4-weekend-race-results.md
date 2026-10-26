@@ -9,7 +9,7 @@ images:
   - src: "assets/images/bridgton-2025.jpg"
     alt: "Dirigo runners at Bridgton 4 on the Fourth in 2025."
   - src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
-    alt: "Heather Gallant during July racing in a Dirigo photo."
+    alt: "Heather Gallant racing Bridgton 4 on the Fourth."
 summary: "Rob Gomez and Craig Robinson went 1-2 at the GRBA 5K on July 3, then Dirigo spread out across Maine's July 4 races. Heather Gallant was the top woman at Friends on the 4th in Winthrop, Nate Priest cracked the men's top 10, and Bridgton brought more front-running with Karley Piers second woman, Taylor Bickford fourth overall, and Daniel Bannon top masters in eighth."
 tags:
   - "GRBA 5K"
