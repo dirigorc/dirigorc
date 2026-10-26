@@ -1,4 +1,5 @@
 import { loadDiscordContract } from "./discord-contract";
+import type { ReportInference } from "./self-report";
 
 export interface EmailAttachment {
 	filename: string;
@@ -15,6 +16,9 @@ export interface WorkerEnv {
 	DISCORD_PUBLIC_KEY?: string;
 	DISCORD_PR_APPROVER_IDS?: string;
 	DISCORD_BOT_TOKEN?: string;
+	DISCORD_GUILD_ID?: string;
+	DISCORD_RECAP_EMOJI?: string;
+	DISCORD_GATEWAY?: DurableObjectNamespace;
 }
 
 export interface EmailPayload {
@@ -33,6 +37,9 @@ export interface EmailPayload {
 	discord_application_id?: string;
 	discord_interaction_token?: string;
 	correction?: CorrectionWire;
+	inference?: ReportInference;
+	trigger?: "reaction";
+	authored_by?: string;
 }
 
 export type CorrectionWire = {
@@ -162,6 +169,9 @@ export async function dispatchToGitHub(
 				token: email.discord_interaction_token,
 			};
 		}
+		if (email.inference) clientPayload.inference = email.inference;
+		if (email.trigger) clientPayload.trigger = email.trigger;
+		if (email.authored_by) clientPayload.authored_by = email.authored_by;
 	}
 	const response = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
 		method: "POST",

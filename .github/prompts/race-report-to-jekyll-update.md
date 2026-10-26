@@ -42,6 +42,14 @@ The site uses:
    - Return exactly one `_posts/` file for a new verbatim recap. If it duplicates an existing story, report the duplicate instead of overwriting an existing post.
    - Apply normal duplicate checking, attachment handling, safety cleanup, schema normalization, and tag-page creation.
 
+   Self-reported results (`editorial_mode: self-report`) are short personal results with omitted details.
+   - The note is source material. Write a short public result post in the usual Dirigo voice.
+   - When a "Self-reported result" section names a runner, that person is the runner because the note did not name someone else. Use that name in the title, summary, body, and tags.
+   - When that section gives an inferred date, use it as the post date. When the note already includes a date, keep the note's date.
+   - Do not invent a place, time, age group, or race that is not in the note.
+   - Record each inference in `assumptions`.
+   - A reaction recap uses the message author's note. The From line is who started the recap, which can be a different person. Do not treat that production detail as public copy.
+
 4. Balance coverage.
    - Avoid gender imbalance when the source includes women, men, youth, masters, roads, track, and trail.
    - Lead with the strongest news value, then make room for notable breadth.

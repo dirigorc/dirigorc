@@ -186,9 +186,14 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
     command = str(email.get("command") or payload.get("command") or "")
     content_type = str(email.get("content_type") or payload.get("content_type") or payload.get("type") or "")
     editorial_mode = str(email.get("editorial_mode") or payload.get("editorial_mode") or "")
-    if source == "discord" and editorial_mode not in {"verbatim", "agentic"}:
+    if source == "discord" and editorial_mode not in {"verbatim", "agentic", "self-report"}:
         editorial_mode = "verbatim"
     submitted_by = str(email.get("submitted_by") or payload.get("submitted_by") or "")
+    inference = email.get("inference") if isinstance(email.get("inference"), dict) else payload.get("inference")
+    if not isinstance(inference, dict):
+        inference = {}
+    trigger = str(email.get("trigger") or payload.get("trigger") or "")
+    authored_by = str(email.get("authored_by") or payload.get("authored_by") or "")
     if not text and raw:
         text = raw
     if not links:
@@ -201,6 +206,9 @@ def normalize_email_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "content_type": content_type,
         "editorial_mode": editorial_mode,
         "submitted_by": submitted_by,
+        "inference": inference,
+        "trigger": trigger,
+        "authored_by": authored_by,
         "subject": subject,
         "from": sender,
         "text": text,
@@ -847,12 +855,59 @@ def rename_kept_attachments(staged: list[dict[str, str]], files: list[dict[str, 
     return renamed
 
 
+def self_report_context(email: dict[str, Any]) -> str:
+    inference = email.get("inference") or {}
+    if not isinstance(inference, dict) or not inference.get("self_report"):
+        return ""
+    notes = [str(note) for note in inference.get("notes") or [] if str(note).strip()]
+    reported_on = str(inference.get("reported_on") or "").strip()
+    date_line = f"Inferred date: {reported_on}" if reported_on else "The note already includes a date."
+    note_lines = "\n".join(f"- {note}" for note in notes)
+    return f"""# Self-reported result
+
+Runner: {inference.get("runner") or "Unknown"}
+The reporting user is the runner because the note does not name someone else.
+{date_line}
+{note_lines}
+
+Write a short public result post that includes this runner and the reported result. Do not invent a place, time, age group, or race that is not in the note. Record each inference in assumptions.
+"""
+
+
+def message_author_context(email: dict[str, Any]) -> str:
+    author = str(email.get("authored_by") or "").strip()
+    if not author:
+        return ""
+    return (
+        "# Message author\n\n"
+        f"The note was written by {author}. "
+        "The From line is the person who started the recap, who may be someone else. "
+        "Do not add this production note to the public post.\n"
+    )
+
+
+def merge_inference_assumptions(result: dict[str, Any], email: dict[str, Any]) -> None:
+    inference = email.get("inference") or {}
+    if not isinstance(inference, dict):
+        return
+    notes = [str(note) for note in inference.get("notes") or [] if str(note).strip()]
+    if not notes:
+        return
+    existing = result.get("assumptions")
+    kept = [item for item in existing if isinstance(item, str)] if isinstance(existing, list) else []
+    result["assumptions"] = notes + [item for item in kept if item not in notes]
+
+
 def source_line(email: dict[str, Any], mode: str) -> str:
     source = email.get("source")
     if source == "discord":
         submitted_by = email.get("submitted_by") or email.get("from") or "Unknown Discord user"
         editorial_mode = email.get("editorial_mode") or "verbatim"
         command = email.get("command") or "recap"
+        if email.get("trigger") == "reaction":
+            author = str(email.get("authored_by") or "").strip()
+            author_note = f", written by `{author}`" if author else ""
+            return f"Source: **Discord reaction** submitted by `{submitted_by}`{author_note} ({editorial_mode} mode)"
         return f"Source: **Discord /{command}** submitted by `{submitted_by}` ({editorial_mode} mode)"
     if mode == "calendar-event":
         return f"Source note: **{email['subject']}** from `{email['from']}`"
@@ -1407,6 +1462,8 @@ Editorial mode: {email.get('editorial_mode', 'agentic')}
 
 {source_links_context(email.get('links', []))}
 
+{self_report_context(email)}
+{message_author_context(email)}
 # Forwarded Email
 
 From: {email['from']}
@@ -1415,6 +1472,7 @@ Subject: {email['subject']}
 {email['text']}
 """
     result = call_openai(prompt, args.model)
+    merge_inference_assumptions(result, email)
     files = result.get("files", [])
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")

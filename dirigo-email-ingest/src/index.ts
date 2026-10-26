@@ -4,6 +4,7 @@
  * Supports two entry points:
  * - Email Routing Worker: attach this Worker to an address such as updates@dirigorc.com.
  * - Discord interactions endpoint for the /recap, /event, and /revise slash commands.
+ * - Discord gateway for a recap emoji reaction on another member's message.
  * - HTTP POST webhook: send JSON or plain text to the Worker URL.
  *
  * Required Worker secrets/vars:
@@ -15,7 +16,9 @@
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
  * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
  * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish, hold, or revise a draft. Defaults to Seth Crockett and Crow Norlander.
- * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold.
+ * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold, and to read a reacted message.
+ * - DISCORD_RECAP_EMOJI: Emoji that starts a recap from a message. Defaults to the checkered flag.
+ * - DISCORD_GUILD_ID: Optional guild id. When set, reactions in other servers are ignored.
  */
 
 import { loadDiscordContract } from "./discord-contract";
@@ -24,6 +27,7 @@ import {
 	DISCORD_INTERACTION_MESSAGE_COMPONENT,
 	DISCORD_INTERACTION_MODAL_SUBMIT,
 	DISCORD_INTERACTION_PING,
+	DISCORD_RESPONSE_MODAL,
 	DISCORD_RESPONSE_PONG,
 	type DiscordInteraction,
 	discordAck,
@@ -33,7 +37,9 @@ import {
 	discordModalInput,
 	discordOption,
 	discordSubmittedBy,
+	discordUser,
 } from "./discord-reply";
+import { ensureDiscordGateway, DiscordGateway } from "./discord-gateway";
 import {
 	CorrectionIngestError,
 	type EmailAttachment,
@@ -49,6 +55,15 @@ import {
 	textToBase64,
 } from "./dispatch";
 import { handleReviewInteraction } from "./review";
+import {
+	DATEISH_PATTERN,
+	incompleteMemberNameReason,
+	prepareRecap,
+	recapClarificationReason,
+	recapStartedMessage,
+	reporterFromUser,
+	type Reporter,
+} from "./self-report";
 
 loadDiscordContract();
 const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
@@ -62,33 +77,8 @@ const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
 const DISCORD_EVENT_MODAL_ID = "event_modal_v1";
 const DISCORD_LONG_RECAP_MESSAGE = "Run /recap with an empty body and continue in the form when a box fills. To send a file instead, attach a .txt or .md file with recap_file.";
 const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, submit the recap text first, attach a .txt/.md file with recap_file, or use the HTTP test endpoint in the README.";
-const DATEISH_PATTERN = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|today|tomorrow|tonight|next\s+week|this\s+weekend|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/i;
-const RESULTISH_PATTERN = /\b(?:\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?|\d+(?:\.\d+)?\s?(?:k|mile|miler|marathon|half|meters?|m|place|overall|oa|win|winner|won|pr|pb|course record|age group|ag)|results?)\b/i;
-const INCOMPLETE_MEMBER_NAMES = [
-	{ pattern: /\bDave\s+O\b/i, replacements: ["Dave Ouellette"] },
-	{ pattern: /\bAshby\b/i, replacements: ["Robert Ashby", "Rob Ashby"] },
-	{ pattern: /\bDenari\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
-	{ pattern: /\bHarmon\b/i, replacements: ["Chris Harmon"] },
-	{ pattern: /\bChad\b/i, replacements: ["Chad Boucher"] },
-	{ pattern: /\bNate\b/i, replacements: ["Nate Priest"] },
-	{ pattern: /\bSeth\b/i, replacements: ["Seth Crockett"] },
-	{ pattern: /\bCrow\b/i, replacements: ["Crow Norlander"] },
-	{ pattern: /\bMarah\b/i, replacements: ["Marah Borgman"] },
-	{ pattern: /\bKarley\b/i, replacements: ["Karley Piers"] },
-	{ pattern: /\bAly\b/i, replacements: ["Aly Ursiny"] },
-	{ pattern: /\bCliodhna\b/i, replacements: ["Cliodhna O'Malley", "Clíodhna O'Malley"] },
-	{ pattern: /\bVeronica\b/i, replacements: ["Veronica Graziano"] },
-	{ pattern: /\bHeather\b/i, replacements: ["Heather Gallant"] },
-	{ pattern: /\bAdane\b/i, replacements: ["Adane Bewset"] },
-	{ pattern: /\bDeven\b/i, replacements: ["Deven Abrams"] },
-	{ pattern: /\bEric\b/i, replacements: ["Eric Sofen"] },
-	{ pattern: /\bAlexis\b/i, replacements: ["Alexis Wilbert"] },
-	{ pattern: /\bDan\b/i, replacements: ["Dan Bannon"] },
-	{ pattern: /\bNick\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
-	{ pattern: /\bJorma\b/i, replacements: ["Jorma Kurry"] },
-	{ pattern: /\bLaurel\b/i, replacements: ["Laurel Manville", "Laurel Driscoll"] },
-	{ pattern: /\bJustin\b/i, replacements: ["Justin Freeman", "Justin Tomison"] },
-];
+
+export { DiscordGateway };
 
 interface DiscordAttachmentSummary {
 	attachments: EmailAttachment[];
@@ -197,31 +187,21 @@ function wordCount(text: string): number {
 	return text.split(/\s+/).filter(Boolean).length;
 }
 
-function includesFullName(text: string, names: string[]): boolean {
-	const normalized = text.toLowerCase();
-	return names.some((name) => normalized.includes(name.toLowerCase()));
+function interactionReporter(interaction: DiscordInteraction): Reporter {
+	return reporterFromUser(discordUser(interaction));
 }
 
-function incompleteMemberNameReason(body: string): string {
-	const matches: string[] = [];
-	for (const item of INCOMPLETE_MEMBER_NAMES) {
-		if (!item.pattern.test(body)) continue;
-		if (includesFullName(body, item.replacements)) continue;
-		matches.push(item.replacements.join(" or "));
-	}
-	const unique = [...new Set(matches)];
-	if (unique.length === 0) return "";
-	const examples = unique.slice(0, 5).join(", ");
-	const suffix = unique.length > 5 ? ", etc." : "";
-	return `Please use full member names before I create a PR. Possible fixes: ${examples}${suffix}.`;
+function applySelfReport(interaction: DiscordInteraction, body: string, email: EmailPayload): EmailPayload {
+	const requested = email.editorial_mode === "agentic" ? "agentic" : "verbatim";
+	const prepared = prepareRecap(body, interactionReporter(interaction), Date.now(), requested);
+	if (!prepared.inference) return { ...email, editorial_mode: prepared.editorialMode };
+	return { ...email, editorial_mode: prepared.editorialMode, inference: prepared.inference };
 }
 
-function clarificationReason(command: "recap" | "event", body: string, requestedAttachments: number): string {
+function clarificationReason(command: "recap" | "event", body: string, requestedAttachments: number, reporter: Reporter | null = null): string {
 	const trimmed = body.trim();
 	const words = wordCount(trimmed);
-	const hasUrl = extractUrls(trimmed).length > 0;
 	const hasDate = DATEISH_PATTERN.test(trimmed);
-	const hasResult = RESULTISH_PATTERN.test(trimmed);
 	const incompleteNameReason = incompleteMemberNameReason(trimmed);
 
 	if (command === "event") {
@@ -232,12 +212,7 @@ function clarificationReason(command: "recap" | "event", body: string, requested
 		return "";
 	}
 
-	if (!trimmed) return "Please add the race recap or club note.";
-	if (incompleteNameReason) return incompleteNameReason;
-	if (requestedAttachments > 0) return "";
-	if (words < 6) return "Please add a few more details before I create an update PR.";
-	if (words < 16 && !hasResult && !hasUrl) return "Please add a result, race name, date, or source link so the update has enough context.";
-	return "";
+	return recapClarificationReason(trimmed, reporter, requestedAttachments);
 }
 
 function discordLinks(interaction: DiscordInteraction, body: string): string[] {
@@ -384,7 +359,6 @@ async function discordTextAttachment(interaction: DiscordInteraction): Promise<D
 }
 
 function discordSubmissionAck(editorialMode: string, attachmentSummary: DiscordAttachmentSummary): string {
-	const mode = editorialMode === "agentic" ? "AI-edited" : "verbatim-copy";
 	const details: string[] = [];
 	if (attachmentSummary.requested > 0) {
 		details.push(`${attachmentSummary.attachments.length}/${attachmentSummary.requested} image attachment(s) accepted.`);
@@ -397,7 +371,7 @@ function discordSubmissionAck(editorialMode: string, attachmentSummary: DiscordA
 		details.push(DISCORD_FALLBACK_MESSAGE);
 	}
 
-	return `Got it. I started a ${mode} website update PR for review.${details.length ? `\n\n${details.join("\n")}` : ""}`;
+	return `${recapStartedMessage(editorialMode)}${details.length ? `\n\n${details.join("\n")}` : ""}`;
 }
 
 function errorMessage(error: unknown): string {
@@ -440,7 +414,7 @@ async function processDiscordCommandSubmission(env: WorkerEnv, interaction: Disc
 	const editorialMode = command === "event" ? "agentic" : discordEditorialMode(interaction);
 	const submittedBy = discordSubmittedBy(interaction);
 	const links = discordLinks(interaction, body);
-	const email: EmailPayload = {
+	let email: EmailPayload = {
 		source: "discord",
 		command,
 		editorial_mode: editorialMode,
@@ -455,9 +429,10 @@ async function processDiscordCommandSubmission(env: WorkerEnv, interaction: Disc
 		discord_application_id: interaction.application_id || "",
 		discord_interaction_token: interaction.token || "",
 	};
+	if (command === "recap") email = applySelfReport(interaction, body, email);
 
 	await dispatchToGitHub(env, email);
-	await discordFollowup(interaction, discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
+	await discordFollowup(interaction, discordSubmissionAck(email.editorial_mode || editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
 async function processDiscordRecapFileSubmission(env: WorkerEnv, interaction: DiscordInteraction, inlineBody = ""): Promise<void> {
@@ -469,7 +444,7 @@ async function processDiscordRecapFileSubmission(env: WorkerEnv, interaction: Di
 	}
 
 	const body = [inlineBody.trim(), fileSummary.text].filter(Boolean).join("\n\n").trim();
-	const reason = clarificationReason("recap", body, discordRequestedAttachmentCount(interaction));
+	const reason = clarificationReason("recap", body, discordRequestedAttachmentCount(interaction), interactionReporter(interaction));
 	if (reason) {
 		await discordFollowup(interaction, `${reason}\n\nPlease edit the recap file and rerun /recap.`);
 		return;
@@ -1074,7 +1049,7 @@ async function buildRecapEmail(env: WorkerEnv, draft: RecapDraft, interaction: D
 	}
 	const text = draft.parts.join("");
 	const submittedBy = discordSubmittedBy(interaction);
-	return {
+	return applySelfReport(interaction, text, {
 		source: "discord",
 		command: "recap",
 		editorial_mode: draft.editorial_mode,
@@ -1088,7 +1063,7 @@ async function buildRecapEmail(env: WorkerEnv, draft: RecapDraft, interaction: D
 		links: uniqueUrls([text, draft.links]),
 		discord_application_id: interaction.application_id || draft.application_id,
 		discord_interaction_token: interaction.token || draft.interaction_token,
-	};
+	});
 }
 
 async function stageRecapPayload(env: WorkerEnv, draft: RecapDraft, interaction: DiscordInteraction): Promise<EmailPayload> {
@@ -1155,7 +1130,7 @@ async function finishRecapDraft(env: WorkerEnv, interaction: DiscordInteraction,
 	let email: EmailPayload;
 	try {
 		email = await stageRecapPayload(env, draft, interaction);
-		const reason = clarificationReason("recap", email.body || "", draft.attachments.length);
+		const reason = clarificationReason("recap", email.body || "", draft.attachments.length, interactionReporter(interaction));
 		if (reason) {
 			await commitRecapEvent(env, id, { type: "dispatchResult", ok: false });
 			await discordFollowup(interaction, `${reason}\n\nAdd the missing detail with Add more, then click Finish.`);
@@ -1201,7 +1176,7 @@ async function finishRecapDraft(env: WorkerEnv, interaction: DiscordInteraction,
 	const attachments = email.attachments || [];
 	await discordFollowup(
 		interaction,
-		discordSubmissionAck(draft.editorial_mode, { attachments, skipped: [], requested: attachments.length }),
+		discordSubmissionAck(email.editorial_mode || draft.editorial_mode, { attachments, skipped: [], requested: attachments.length }),
 	);
 }
 
@@ -1233,6 +1208,7 @@ async function handleDiscordInteraction(
 		return new Response("Invalid interaction payload\n", { status: 400 });
 	}
 
+	ctx.waitUntil(ensureDiscordGateway(env));
 	return routeDiscordInteraction(interaction, env, ctx);
 }
 
@@ -1275,13 +1251,14 @@ export async function routeDiscordInteraction(
 		}
 		const body = raw.trim();
 		if (!body) return discordAck("Please include recap text.");
-		const reason = clarificationReason("recap", body, 0);
+		const reporter = interactionReporter(interaction);
+		const reason = clarificationReason("recap", body, 0, reporter);
 		if (reason) return discordAck(`${reason}\n\nPlease rerun /recap with the full names in the body.`);
 		const linksField = discordModalInput(interaction, "links");
 		const links = [...extractUrls(body), ...extractUrls(linksField)];
 		const polish = parsePolish(discordModalInput(interaction, "polish"), parsePolish(discordModalInput(interaction, "agentic"), false));
 		const submittedBy = discordSubmittedBy(interaction);
-		const email: EmailPayload = {
+		const email = applySelfReport(interaction, body, {
 			source: "discord",
 			command: "recap",
 			editorial_mode: polish ? "agentic" : "verbatim",
@@ -1294,10 +1271,9 @@ export async function routeDiscordInteraction(
 			links,
 			discord_application_id: interaction.application_id || "",
 			discord_interaction_token: interaction.token || "",
-		};
+		});
 		ctx.waitUntil(runDiscordBackgroundTask(interaction, "recap", () => dispatchToGitHub(env, email)));
-		if (polish) return discordAck("Got it. I started an AI-edited website update PR for review.");
-		return discordAck("Got it. I started a verbatim-copy website update PR with normalized metadata and tags for review.");
+		return discordAck(recapStartedMessage(email.editorial_mode || "verbatim"));
 	}
 
 	if (interaction.type === DISCORD_INTERACTION_MODAL_SUBMIT && interaction.data?.custom_id === DISCORD_EVENT_MODAL_ID) {
@@ -1375,7 +1351,7 @@ export async function routeDiscordInteraction(
 		return discordDeferredAck();
 	}
 
-	const reason = clarificationReason(command, body, requestedAttachments);
+	const reason = clarificationReason(command, body, requestedAttachments, command === "recap" ? interactionReporter(interaction) : null);
 	if (reason) {
 		if (requestedAttachments > 0) {
 			return discordAck(`${reason}\n\nWhen submitting image attachments, Discord modals cannot carry the files forward. Please rerun /${command} with the missing details in the body and reattach the images.`);
@@ -1395,7 +1371,7 @@ export async function routeDiscordInteraction(
 	const submittedBy = discordSubmittedBy(interaction);
 	const links = discordLinks(interaction, body);
 	const attachmentSummary: DiscordAttachmentSummary = { attachments: [], skipped: [], requested: 0 };
-	const email: EmailPayload = {
+	let email: EmailPayload = {
 		source: "discord",
 		command,
 		editorial_mode: editorialMode,
@@ -1410,9 +1386,10 @@ export async function routeDiscordInteraction(
 		discord_application_id: interaction.application_id || "",
 		discord_interaction_token: interaction.token || "",
 	};
+	if (command === "recap") email = applySelfReport(interaction, body, email);
 
 	ctx.waitUntil(runDiscordBackgroundTask(interaction, command, () => dispatchToGitHub(env, email)));
-	return discordAck(discordSubmissionAck(editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
+	return discordAck(discordSubmissionAck(email.editorial_mode || editorialMode, attachmentSummary).replace("website update", command === "event" ? "calendar event" : "website update"));
 }
 
 async function emailPayloadFromRequest(request: Request): Promise<EmailPayload> {
@@ -1474,6 +1451,10 @@ export default {
 		return new Response(JSON.stringify({ ok: true }), {
 			headers: { "content-type": "application/json" },
 		});
+	},
+
+	async scheduled(_event: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
+		ctx.waitUntil(ensureDiscordGateway(env));
 	},
 
 	async email(message: EmailMessage, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
