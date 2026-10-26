@@ -375,5 +375,79 @@ class CorrectionEditTests(unittest.TestCase):
         }
 
 
+class SelfReportTests(unittest.TestCase):
+    def test_normalize_keeps_self_report_inference(self):
+        email = GENERATOR.normalize_email_payload({
+            "email": {
+                "source": "discord",
+                "command": "recap",
+                "editorial_mode": "self-report",
+                "from": "Seth (1)",
+                "subject": "Discord /recap",
+                "text": "18:42 at Back Cove",
+                "trigger": "reaction",
+                "authored_by": "Seth (1)",
+                "inference": {
+                    "self_report": True,
+                    "runner": "Seth Crockett",
+                    "notes": ["Seth Crockett is the runner because the note does not name someone else."],
+                },
+            }
+        })
+        self.assertEqual(email["editorial_mode"], "self-report")
+        self.assertEqual(email["inference"]["runner"], "Seth Crockett")
+        self.assertEqual(email["trigger"], "reaction")
+
+        unknown = GENERATOR.normalize_email_payload({
+            "email": {
+                "source": "discord",
+                "editorial_mode": "mystery",
+                "from": "Seth",
+                "subject": "Discord /recap",
+                "text": "A long enough recap with a result in 18:42 and a date on Saturday at Back Cove.",
+            }
+        })
+        self.assertEqual(unknown["editorial_mode"], "verbatim")
+
+    def test_prompt_context_names_the_inferred_runner_and_assumptions_keep_the_note(self):
+        email = {
+            "inference": {
+                "self_report": True,
+                "runner": "Seth Crockett",
+                "reported_on": "2026-10-26",
+                "notes": ["Seth Crockett is the runner because the note does not name someone else."],
+            },
+            "authored_by": "Seth (1)",
+        }
+        context = GENERATOR.self_report_context(email)
+        self.assertIn("Runner: Seth Crockett", context)
+        self.assertIn("Inferred date: 2026-10-26", context)
+        self.assertIn("Seth (1)", GENERATOR.message_author_context(email))
+
+        result = {"assumptions": ["Model note."]}
+        GENERATOR.merge_inference_assumptions(result, email)
+        self.assertEqual(
+            result["assumptions"],
+            ["Seth Crockett is the runner because the note does not name someone else.", "Model note."],
+        )
+
+    def test_reaction_source_line_names_the_author(self):
+        line = GENERATOR.source_line(
+            {
+                "source": "discord",
+                "trigger": "reaction",
+                "submitted_by": "Crow (2)",
+                "authored_by": "Seth (1)",
+                "editorial_mode": "self-report",
+                "from": "Crow (2)",
+                "subject": "Discord /recap",
+            },
+            "race-report",
+        )
+        self.assertIn("Discord reaction", line)
+        self.assertIn("Crow (2)", line)
+        self.assertIn("Seth (1)", line)
+
+
 if __name__ == "__main__":
     unittest.main()

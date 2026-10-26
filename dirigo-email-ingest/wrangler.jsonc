@@ -33,8 +33,26 @@
 	 */
 	"vars": {
 		"GITHUB_REPO": "dirigorc/dirigorc",
-		"DISCORD_PR_APPROVER_IDS": "1227055686295359519,459385898992140288"
-	}
+		"DISCORD_PR_APPROVER_IDS": "1227055686295359519,459385898992140288",
+		"DISCORD_RECAP_EMOJI": "🏁"
+	},
+	"triggers": {
+		"crons": ["*/5 * * * *"]
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "DISCORD_GATEWAY",
+				"class_name": "DiscordGateway"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["DiscordGateway"]
+		}
+	]
 	/**
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/

@@ -5,6 +5,7 @@ import {
 	SELF,
 } from "cloudflare:test";
 import { afterEach, describe, it, expect, vi } from "vitest";
+import { handleRecapReaction } from "../src/discord-reaction";
 import worker, { discordAttachments, routeDiscordInteraction, runDiscordBackgroundTask } from "../src/index";
 
 // For now, you'll need to do something like this to get a correctly-typed
@@ -193,8 +194,150 @@ describe("Dirigo email ingest worker", () => {
 		const dispatches = github.calls.filter(isGithubDispatch);
 		expect(dispatches).toHaveLength(1);
 		expect(dispatches[0].url).toContain("https://api.github.com/");
-		const payload = JSON.parse(dispatches[0].body || "{}") as { client_payload: { body?: string } };
+		const payload = JSON.parse(dispatches[0].body || "{}") as { client_payload: { body?: string; editorial_mode?: string; inference?: unknown } };
 		expect(payload.client_payload.body).toBe(body);
+		expect(payload.client_payload.editorial_mode).toBe("verbatim");
+		expect(payload.client_payload.inference).toBeUndefined();
+	});
+
+	it("treats a short result with no other name as the reporting runner", async () => {
+		const github = mockGithub();
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(slashRecap("18:42 at Back Cove", {
+			id: "1227055686295359519",
+			username: "seth",
+			global_name: "Seth",
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(((await response.json()) as { type: number }).type).toBe(4);
+		const dispatch = github.calls.find(isGithubDispatch);
+		const payload = JSON.parse(dispatch?.body || "{}") as { client_payload: { editorial_mode?: string; inference?: { runner?: string; reported_on?: string; notes?: string[] } } };
+		expect(payload.client_payload.editorial_mode).toBe("self-report");
+		expect(payload.client_payload.inference?.runner).toBe("Seth Crockett");
+		expect(payload.client_payload.inference?.reported_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(payload.client_payload.inference?.notes?.join(" ")).toContain("Eastern Time");
+		const staged = github.calls.find((call) => call.method === "PUT" && call.url.includes("payload.json"));
+		const email = (decodedPut(staged!).content as { email: { editorial_mode: string; inference: { runner: string } } }).email;
+		expect(email.editorial_mode).toBe("self-report");
+		expect(email.inference.runner).toBe("Seth Crockett");
+	});
+
+	it("still asks for another athlete's full name", async () => {
+		const github = mockGithub();
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(slashRecap("Karley won the Back Cove 5k in 16:02", {
+			id: "1227055686295359519",
+			username: "seth",
+			global_name: "Seth Crockett",
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(((await response.json()) as { type: number }).type).toBe(9);
+		expect(github.calls.filter(isGithubDispatch)).toEqual([]);
+	});
+
+	it("does not assign a team result to the reporting runner", async () => {
+		const github = mockGithub();
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(slashRecap("We won the 5k as a team today at Back Cove.", {
+			id: "1227055686295359519",
+			username: "seth",
+			global_name: "Seth Crockett",
+		}), env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(((await response.json()) as { type: number }).type).toBe(4);
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { editorial_mode?: string } };
+		expect(payload.client_payload.editorial_mode).toBe("verbatim");
+	});
+
+	it("starts a recap from a checkered-flag reaction and uses the message author as the runner", async () => {
+		const github = mockGithub({
+			message: {
+				content: "18:42 at Back Cove",
+				timestamp: "2026-10-26T15:00:00.000Z",
+				author: { id: "1227055686295359519", username: "seth", global_name: "Seth", bot: false },
+				attachments: [],
+			},
+		});
+		const outcome = await handleRecapReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "🏁",
+			reactor: { id: "459385898992140288", displayName: "Crow" },
+		});
+
+		expect(outcome).toBe("started");
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as {
+			client_payload: {
+				editorial_mode?: string;
+				trigger?: string;
+				authored_by?: string;
+				submitted_by?: string;
+				inference?: { runner?: string; reported_on?: string; notes?: string[] };
+			};
+		};
+		expect(payload.client_payload.editorial_mode).toBe("self-report");
+		expect(payload.client_payload.trigger).toBe("reaction");
+		expect(payload.client_payload.submitted_by).toBe("Crow (459385898992140288)");
+		expect(payload.client_payload.authored_by).toContain("Seth");
+		expect(payload.client_payload.inference?.runner).toBe("Seth Crockett");
+		expect(payload.client_payload.inference?.reported_on).toBe("2026-10-26");
+		expect(payload.client_payload.inference?.notes?.join(" ")).toContain("started this recap");
+		const reply = github.calls.find((call) => call.method === "POST" && call.url.includes("/channels/12345678901234567/messages"));
+		expect(JSON.parse(reply?.body || "{}").message_reference.message_id).toBe("12345678901234568");
+	});
+
+	it("keeps a reacted message verbatim when it already names the athlete", async () => {
+		const github = mockGithub({
+			message: {
+				content: "Seth Crockett finished the Beach to Beacon 10K in 42:10 on Saturday and the club cheered.",
+				timestamp: "2026-10-26T15:00:00.000Z",
+				author: { id: "459385898992140288", username: "crow", global_name: "Crow Norlander", bot: false },
+				attachments: [],
+			},
+		});
+		const outcome = await handleRecapReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "🏁",
+			reactor: { id: "1227055686295359519", displayName: "Seth Crockett" },
+		});
+
+		expect(outcome).toBe("started");
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { editorial_mode?: string; inference?: unknown } };
+		expect(payload.client_payload.editorial_mode).toBe("verbatim");
+		expect(payload.client_payload.inference).toBeUndefined();
+	});
+
+	it("ignores a reaction that is not the recap emoji", async () => {
+		const fetchMock = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("should not fetch"));
+		const outcome = await handleRecapReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "👍",
+			reactor: { id: "459385898992140288", displayName: "Crow" },
+		});
+
+		expect(outcome).toBe("skipped");
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it("saves a full recap box and offers Add more and Finish", async () => {
@@ -886,7 +1029,17 @@ function recapId(calls: FetchCall[], prefix: "recap_done" | "recap_write"): stri
 	throw new Error(`missing ${prefix}`);
 }
 
-function mockGithub(options: { imageBytes?: Uint8Array; failDispatch?: boolean; conflictOnce?: boolean } = {}) {
+function slashRecap(body: string, user: { id: string; username?: string; global_name?: string }) {
+	return {
+		type: 2,
+		application_id: "discord-app",
+		token: "slash-token",
+		data: { name: "recap", options: [{ name: "body", value: body }] },
+		member: { user },
+	};
+}
+
+function mockGithub(options: { imageBytes?: Uint8Array; failDispatch?: boolean; conflictOnce?: boolean; message?: unknown } = {}) {
 	const files = new Map<string, { sha: string; text: string }>();
 	const calls: FetchCall[] = [];
 	let shaCounter = 0;
@@ -899,6 +1052,10 @@ function mockGithub(options: { imageBytes?: Uint8Array; failDispatch?: boolean; 
 		const method = (init?.method || "GET").toUpperCase();
 		const body = typeof init?.body === "string" ? init.body : undefined;
 		calls.push({ url, method, body });
+		if (method === "GET" && /\/channels\/\d+\/messages\/\d+$/.test(new URL(url).pathname)) {
+			if (!options.message) return new Response("missing message", { status: 404 });
+			return Response.json(options.message);
+		}
 		if (url.startsWith("https://cdn.discord.test/")) {
 			return new Response(options.imageBytes || new Uint8Array(), {
 				status: 200,
