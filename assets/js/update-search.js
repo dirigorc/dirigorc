@@ -152,7 +152,13 @@
   };
 
   const renderResults = (matches, terms) => {
-    resultsRoot.innerHTML = matches.map(({ update }) => `
+    resultsRoot.innerHTML = matches.map(({ update }) => {
+      const title = highlight(update.title, terms);
+      const titleHtml = update.url
+        ? `<a class="update-title-link" href="${escapeHtml(update.url)}">${title}</a>`
+        : title;
+
+      return `
       <article class="activity-item search-result">
         <p class="activity-meta">
           <span>${escapeHtml(update.category || "Update")}</span>
@@ -160,12 +166,13 @@
         </p>
         <div>
           ${update.stat ? `<p class="result-pill">${highlight(update.stat, terms)}</p>` : ""}
-          <h2>${highlight(update.title, terms)}</h2>
+          <h2>${titleHtml}</h2>
           <p>${renderLinkedSummary(update.summary, update.tags, terms)}</p>
           ${renderLinks(update.links)}
         </div>
       </article>
-    `).join("");
+    `;
+    }).join("");
   };
 
   const setUrlQuery = (query) => {

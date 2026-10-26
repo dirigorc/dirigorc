@@ -5,6 +5,7 @@
 {% for update in updates %}
   {
     "title": {{ update.title | jsonify }},
+    "url": {{ update.url | relative_url | jsonify }},
     "date": {{ update.date | date: "%Y-%m-%d" | jsonify }},
     "displayDate": {{ update.date | date: "%b %-d, %Y" | jsonify }},
     "category": {{ update.category | default: "Update" | jsonify }},
