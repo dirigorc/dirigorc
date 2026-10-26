@@ -5,7 +5,7 @@ import {
 	SELF,
 } from "cloudflare:test";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { handleRecapReaction } from "../src/discord-reaction";
+import { handleRecapReaction, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
 import worker, { discordAttachments, routeDiscordInteraction, runDiscordBackgroundTask } from "../src/index";
 
 // For now, you'll need to do something like this to get a correctly-typed
@@ -1260,6 +1260,72 @@ function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, merge
 	});
 	return calls;
 }
+
+describe("reaction scan", () => {
+	const now = Date.parse("2026-10-26T13:20:00Z");
+
+	it("plans a recap for a checkered flag that is already on a message", () => {
+		const plan = planReactionScan(
+			[{
+				channelId: "111111111111111111",
+				messageId: "222222222222222222",
+				guildId: "333333333333333333",
+				reactions: [{ emoji: { name: "🏁", id: null } }],
+			}],
+			new Map(),
+			"🏁",
+			now,
+		);
+
+		expect(plan.clear).toEqual([]);
+		expect(plan.start).toEqual([{
+			channelId: "111111111111111111",
+			messageId: "222222222222222222",
+			guildId: "333333333333333333",
+			emojiName: "🏁",
+			emojiPath: "🏁",
+			key: reactionStorageKey("111111111111111111", "222222222222222222", "🏁"),
+		}]);
+	});
+
+	it("leaves a finished flag alone and clears the key once the flag is gone", () => {
+		const key = reactionStorageKey("111111111111111111", "222222222222222222", "🏁");
+		const flagged = planReactionScan(
+			[{ channelId: "111111111111111111", messageId: "222222222222222222", reactions: [{ emoji: { name: "🏁" } }] }],
+			new Map([[key, "done"]]),
+			undefined,
+			now,
+		);
+		const removed = planReactionScan(
+			[{ channelId: "111111111111111111", messageId: "222222222222222222", reactions: [] }],
+			new Map([[key, "done"]]),
+			undefined,
+			now,
+		);
+
+		expect(flagged.start).toEqual([]);
+		expect(removed.clear).toEqual([key]);
+	});
+
+	it("retries a flag whose earlier attempt stalled", () => {
+		const key = reactionStorageKey("111111111111111111", "222222222222222222", "🏁");
+		const fresh = planReactionScan(
+			[{ channelId: "111111111111111111", messageId: "222222222222222222", reactions: [{ emoji: { name: "🏁" } }] }],
+			new Map([[key, `pending:${now - 30_000}`]]),
+			"🏁",
+			now,
+		);
+		const stalled = planReactionScan(
+			[{ channelId: "111111111111111111", messageId: "222222222222222222", reactions: [{ emoji: { name: "🏁" } }] }],
+			new Map([[key, `pending:${now - 3 * 60 * 1000}`]]),
+			"🏁",
+			now,
+		);
+
+		expect(fresh.start).toEqual([]);
+		expect(stalled.start).toHaveLength(1);
+	});
+});
 
 function reviewUpdate(calls: FetchCall[]): { content?: string; components?: unknown[]; embeds?: unknown[] } {
 	const update = calls.find((call) => call.method === "PATCH" && call.url.includes("/messages/@original"));

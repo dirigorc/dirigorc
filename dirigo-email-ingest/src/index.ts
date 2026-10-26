@@ -4,7 +4,7 @@
  * Supports two entry points:
  * - Email Routing Worker: attach this Worker to an address such as updates@dirigorc.com.
  * - Discord interactions endpoint for the /recap, /event, and /revise slash commands.
- * - Discord gateway for a recap emoji reaction on another member's message.
+ * - Discord gateway and a five-minute check of recent messages for a recap emoji reaction.
  * - HTTP POST webhook: send JSON or plain text to the Worker URL.
  *
  * Required Worker secrets/vars:
