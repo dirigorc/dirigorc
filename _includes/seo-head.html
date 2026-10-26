@@ -83,9 +83,12 @@
         {% if include.preload_image_sizes %} imagesizes="{{ include.preload_image_sizes }}" {% endif %}
         fetchpriority="high">
     {% endif %}
+    <link rel="preload" href="{{ '/assets/fonts/manrope-latin.woff2' | relative_url }}" as="font" type="font/woff2"
+        crossorigin>
     <link rel="preload" href="{{ '/assets/Mandrel-ExtBlaIt.woff2' | relative_url }}" as="font" type="font/woff2"
         crossorigin>
     <link rel="stylesheet" href="{{ '/styles.css' | relative_url }}">
+    <script>document.documentElement.classList.add("js");</script>
 
     <script type="application/ld+json">
     {

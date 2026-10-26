@@ -37,7 +37,31 @@
         </nav>
         {% endif %}
     </div>
+    <nav class="footer-legal" aria-label="Legal">
+        <a href="{{ '/privacy.html' | relative_url }}">Privacy</a>
+        <a href="{{ '/terms.html' | relative_url }}">Terms</a>
+    </nav>
 </footer>
+<script>
+    (function () {
+        if (!window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
+        var nodes = document.querySelectorAll("main .section");
+        if (!nodes.length || !("IntersectionObserver" in window)) {
+            nodes.forEach(function (node) { node.classList.add("is-in"); });
+            return;
+        }
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add("is-in");
+                observer.unobserve(entry.target);
+            });
+        }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+        window.requestAnimationFrame(function () {
+            nodes.forEach(function (node) { observer.observe(node); });
+        });
+    })();
+</script>
 <!-- Cloudflare Web Analytics -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js"
     data-cf-beacon='{"token": "310d35b6fd8c404bb33a48b65677aab2"}'></script>
