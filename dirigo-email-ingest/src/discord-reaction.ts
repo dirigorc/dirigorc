@@ -4,6 +4,7 @@ import {
 	formatReporter,
 	prepareRecap,
 	recapClarificationReason,
+	recapEmojiName,
 	recapStartedMessage,
 	reporterFromUser,
 	type Reporter,
@@ -19,6 +20,73 @@ export interface RecapReaction {
 	guildId: string;
 	emojiName: string;
 	reactor: Reporter;
+}
+
+export interface ReactionScanMessage {
+	channelId: string;
+	messageId: string;
+	guildId?: string;
+	reactions?: { emoji?: { id?: string | null; name?: string | null } }[];
+}
+
+export interface PlannedReaction {
+	channelId: string;
+	messageId: string;
+	guildId: string;
+	emojiName: string;
+	emojiPath: string;
+	key: string;
+}
+
+const PENDING_PREFIX = "pending:";
+const STALE_PENDING_MS = 2 * 60 * 1000;
+
+export function reactionStorageKey(channelId: string, messageId: string, emojiName: string): string {
+	return `reaction:${channelId}:${messageId}:${emojiName}`;
+}
+
+export function pendingReactionValue(now: number): string {
+	return `${PENDING_PREFIX}${now}`;
+}
+
+export function reactionClaimable(value: string | undefined, now: number): boolean {
+	if (!value) return true;
+	if (value === "done") return false;
+	if (value.startsWith(PENDING_PREFIX)) {
+		const startedAt = Number(value.slice(PENDING_PREFIX.length));
+		return Number.isFinite(startedAt) && now - startedAt > STALE_PENDING_MS;
+	}
+	return true;
+}
+
+export function planReactionScan(
+	messages: ReactionScanMessage[],
+	states: ReadonlyMap<string, string>,
+	configured: string | undefined,
+	now: number,
+): { start: PlannedReaction[]; clear: string[] } {
+	const start: PlannedReaction[] = [];
+	const clear: string[] = [];
+	const emojiName = recapEmojiName(configured);
+	for (const message of messages) {
+		const key = reactionStorageKey(message.channelId, message.messageId, emojiName);
+		const reaction = (message.reactions || []).find((item) => emojiMatches(item.emoji?.name || "", configured));
+		if (!reaction) {
+			if (states.has(key)) clear.push(key);
+			continue;
+		}
+		if (!reactionClaimable(states.get(key), now)) continue;
+		const emojiId = reaction.emoji?.id;
+		start.push({
+			channelId: message.channelId,
+			messageId: message.messageId,
+			guildId: message.guildId || "",
+			emojiName,
+			emojiPath: emojiId ? `${reaction.emoji?.name}:${emojiId}` : emojiName,
+			key,
+		});
+	}
+	return { start, clear };
 }
 
 interface DiscordMessage {
