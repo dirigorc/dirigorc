@@ -371,11 +371,172 @@ def stage_email_attachments(email_payload: dict[str, Any], today: str) -> list[d
     return staged
 
 
+MAX_SCREENSHOT_TEXT = 6000
+
+
+def apply_image_readings(
+    staged: list[dict[str, str]],
+    readings: list[dict[str, str]],
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Drop a results screenshot once its text has been read. Keep race photos."""
+
+    by_path = {item.get("path", ""): item for item in readings}
+    photos: list[dict[str, str]] = []
+    notes: list[dict[str, str]] = []
+    for item in staged:
+        reading = by_path.get(item["path"])
+        text = str((reading or {}).get("text") or "").strip()
+        if reading and reading.get("kind") == "stats-screenshot" and text:
+            notes.append(
+                {
+                    "path": item["path"],
+                    "filename": item.get("filename") or item["path"],
+                    "text": text[:MAX_SCREENSHOT_TEXT],
+                }
+            )
+            screenshot = ROOT / item["path"]
+            if screenshot.is_file():
+                screenshot.unlink()
+            continue
+        photos.append(item)
+    return photos, notes
+
+
+def stats_screenshot_context(notes: list[dict[str, str]]) -> str:
+    if not notes:
+        return ""
+    blocks = [
+        "# Results read from screenshots",
+        "",
+        "These images were results cards or timing screenshots. They were transcribed and removed, so they are not post photos. Use the transcribed names, times, places, and other visible facts. Do not invent numbers that are not written here, and do not reference the screenshot as an image.",
+        "",
+    ]
+    for note in notes:
+        blocks.extend([f"## {note['filename']}", note["text"], ""])
+    return "\n".join(blocks).rstrip() + "\n"
+
+
+def merge_screenshot_assumptions(result: dict[str, Any], notes: list[dict[str, str]]) -> None:
+    lines = [
+        f"Read {note['filename']} as a results screenshot and left that image out of the post: {note['text']}"
+        for note in notes
+        if note.get("text")
+    ]
+    if not lines:
+        return
+    existing = result.get("assumptions")
+    kept = [item for item in existing if isinstance(item, str)] if isinstance(existing, list) else []
+    result["assumptions"] = lines + [item for item in kept if item not in lines]
+
+
+def attachment_reading_body(staged: list[dict[str, str]], model: str) -> dict[str, Any] | None:
+    content: list[dict[str, str]] = [
+        {
+            "type": "input_text",
+            "text": (
+                "Classify each image and transcribe results screenshots.\n"
+                "kind is stats-screenshot only when the image is primarily a results page, timing app card, leaderboard, or other graphic made to display race statistics.\n"
+                "A photograph of a runner, finish, course, crowd, or medal is race-photo even when a bib number is visible.\n"
+                "For a stats-screenshot, text is a verbatim transcription of the visible facts: athlete, club, bib, race, date, location, times, pace, and places. Keep every number. Do not add facts that are not visible.\n"
+                "For a race-photo, text is an empty string.\n"
+                "Return one entry for each image path."
+            ),
+        }
+    ]
+    included = False
+    for item in staged:
+        path = ROOT / item["path"]
+        if not path.is_file() or item.get("content_type") not in IMAGE_CONTENT_TYPES:
+            continue
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        content.append({"type": "input_text", "text": f"Image path: {item['path']}"})
+        content.append(
+            {
+                "type": "input_image",
+                "image_url": f"data:{item['content_type']};base64,{encoded}",
+                "detail": "high",
+            }
+        )
+        included = True
+    if not included:
+        return None
+    return {
+        "model": model,
+        "input": [{"role": "user", "content": content}],
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "attachment_image_readings",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "images": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "path": {"type": "string"},
+                                    "kind": {"type": "string", "enum": ["race-photo", "stats-screenshot"]},
+                                    "text": {"type": "string"},
+                                },
+                                "required": ["path", "kind", "text"],
+                            },
+                        }
+                    },
+                    "required": ["images"],
+                },
+            }
+        },
+    }
+
+
+def read_attachment_images(staged: list[dict[str, str]], model: str) -> list[dict[str, str]]:
+    body = attachment_reading_body(staged, model)
+    if body is None:
+        return []
+    result = post_openai(body)
+    images = result.get("images")
+    if not isinstance(images, list):
+        return []
+    readings: list[dict[str, str]] = []
+    for item in images:
+        if not isinstance(item, dict):
+            continue
+        kind = item.get("kind")
+        if kind not in {"race-photo", "stats-screenshot"}:
+            continue
+        readings.append(
+            {
+                "path": str(item.get("path") or ""),
+                "kind": str(kind),
+                "text": str(item.get("text") or "").strip()[:MAX_SCREENSHOT_TEXT],
+            }
+        )
+    return readings
+
+
+def separate_results_screenshots(
+    staged: list[dict[str, str]],
+    model: str,
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    if not staged:
+        return staged, []
+    try:
+        readings = read_attachment_images(staged, model)
+    except Exception as error:
+        print(f"Results screenshot reading failed; keeping every image. {error}", file=sys.stderr)
+        return staged, []
+    return apply_image_readings(staged, readings)
+
+
 def attachment_context(staged: list[dict[str, str]]) -> str:
     if not staged:
         return "No image attachments were found in the email payload."
     lines = [
-        "The forwarded email included these image attachments. Use them only when they clearly fit a generated update or event. If used, reference the local path exactly.",
+        "The forwarded email included these image attachments. Results screenshots are omitted after their text is read. Use a listed photo when it fits the update, and reference the local path exactly.",
     ]
     for item in staged:
         dimensions = f", {item['dimensions']}" if item.get("dimensions") else ""
@@ -407,11 +568,31 @@ def response_output_text(data: dict[str, Any]) -> str:
     raise ValueError("Could not find text output in OpenAI response.")
 
 
-def call_openai(prompt: str, model: str) -> dict[str, Any]:
+def post_openai(body: dict[str, Any]) -> dict[str, Any]:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required.")
 
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"OpenAI API request failed: {error.code}\n{detail}") from error
+
+    return json.loads(response_output_text(json.loads(raw)))
+
+
+def call_openai(prompt: str, model: str) -> dict[str, Any]:
     body = {
         "model": model,
         "input": [
@@ -453,23 +634,7 @@ def call_openai(prompt: str, model: str) -> dict[str, Any]:
         },
     }
 
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            raw = response.read().decode("utf-8")
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"OpenAI API request failed: {error.code}\n{detail}") from error
-
-    return json.loads(response_output_text(json.loads(raw)))
+    return post_openai(body)
 
 
 def extract_tags_from_post(content: str) -> list[str]:
@@ -1439,6 +1604,7 @@ def main() -> int:
 
     today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
     staged_attachments = stage_email_attachments(email, today)
+    staged_attachments, screenshot_notes = separate_results_screenshots(staged_attachments, args.model)
 
     skill_prompt = read_text(PROMPT_PATHS[args.mode])
     context = collect_recent_context()
@@ -1458,6 +1624,7 @@ Editorial mode: {email.get('editorial_mode', 'agentic')}
 
 {attachment_context(staged_attachments)}
 
+{stats_screenshot_context(screenshot_notes)}
 # Explicit Source URLs
 
 {source_links_context(email.get('links', []))}
@@ -1473,6 +1640,7 @@ Subject: {email['subject']}
 """
     result = call_openai(prompt, args.model)
     merge_inference_assumptions(result, email)
+    merge_screenshot_assumptions(result, screenshot_notes)
     files = result.get("files", [])
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")
