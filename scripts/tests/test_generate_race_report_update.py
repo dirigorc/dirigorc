@@ -449,5 +449,108 @@ class SelfReportTests(unittest.TestCase):
         self.assertIn("Seth (1)", line)
 
 
+class ScreenshotReadingTests(unittest.TestCase):
+    def test_results_screenshot_is_transcribed_and_removed_while_the_race_photo_stays(self):
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        email = {
+            "attachments": [
+                {
+                    "filename": "rich-finish.png",
+                    "content_type": "image/png",
+                    "data": base64.b64encode(tiny_png).decode("ascii"),
+                },
+                {
+                    "filename": "results-card.png",
+                    "content_type": "image/png",
+                    "data": base64.b64encode(tiny_png).decode("ascii"),
+                },
+            ]
+        }
+        transcription = "Richard Alff\nNet Time 1:21:15.0\n11th Overall\n1st M50-54"
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GENERATOR, "ROOT", Path(directory)):
+            staged = GENERATOR.stage_email_attachments(email, "2026-10-18")
+            photo = next(item for item in staged if "rich-finish" in item["filename"])
+            card = next(item for item in staged if "results-card" in item["filename"])
+            photos, notes = GENERATOR.apply_image_readings(
+                staged,
+                [
+                    {"path": photo["path"], "kind": "race-photo", "text": ""},
+                    {"path": card["path"], "kind": "stats-screenshot", "text": transcription},
+                ],
+            )
+
+            self.assertEqual([item["path"] for item in photos], [photo["path"]])
+            self.assertTrue((Path(directory) / photo["path"]).is_file())
+            self.assertFalse((Path(directory) / card["path"]).exists())
+            self.assertIn("1:21:15.0", GENERATOR.stats_screenshot_context(notes))
+            self.assertIn("not post photos", GENERATOR.stats_screenshot_context(notes))
+
+            files = [{"path": "_posts/2026-10-18-rich-alff.md", "content": "---\ntitle: Rich Alff\n---\n\nBody.\n"}]
+            result = {"assumptions": []}
+            GENERATOR.ensure_attached_images_used(photos, files, result)
+            self.assertIn(photo["path"], files[0]["content"])
+            self.assertNotIn(card["path"], files[0]["content"])
+            GENERATOR.merge_screenshot_assumptions(result, notes)
+            self.assertIn("1:21:15.0", result["assumptions"][0])
+            self.assertIn("left that image out", result["assumptions"][0])
+
+    def test_blank_screenshot_reading_keeps_the_image(self):
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        email = {
+            "attachments": [
+                {
+                    "filename": "results-card.png",
+                    "content_type": "image/png",
+                    "data": base64.b64encode(tiny_png).decode("ascii"),
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GENERATOR, "ROOT", Path(directory)):
+            staged = GENERATOR.stage_email_attachments(email, "2026-10-18")
+            photos, notes = GENERATOR.apply_image_readings(
+                staged,
+                [{"path": staged[0]["path"], "kind": "stats-screenshot", "text": "   "}],
+            )
+            self.assertEqual(photos, staged)
+            self.assertEqual(notes, [])
+            self.assertTrue((Path(directory) / staged[0]["path"]).is_file())
+
+    def test_reading_request_sends_each_image_and_keeps_a_bib_photo(self):
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        email = {
+            "attachments": [
+                {
+                    "filename": "rich-finish.png",
+                    "content_type": "image/png",
+                    "data": base64.b64encode(tiny_png).decode("ascii"),
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GENERATOR, "ROOT", Path(directory)):
+            staged = GENERATOR.stage_email_attachments(email, "2026-10-18")
+            body = GENERATOR.attachment_reading_body(staged, "gpt-5-mini")
+
+        content = body["input"][0]["content"]
+        self.assertIn("bib number", content[0]["text"])
+        self.assertEqual(content[1]["text"], f"Image path: {staged[0]['path']}")
+        self.assertEqual(content[2]["type"], "input_image")
+        self.assertTrue(content[2]["image_url"].startswith("data:image/png;base64,"))
+        self.assertEqual(body["text"]["format"]["schema"]["properties"]["images"]["items"]["properties"]["kind"]["enum"], ["race-photo", "stats-screenshot"])
+
+    def test_failed_screenshot_reading_keeps_every_image(self):
+        staged = [{"path": "assets/images/email/2026-10-18/rich-finish.png"}]
+        with mock.patch.object(GENERATOR, "read_attachment_images", side_effect=RuntimeError("vision failed")):
+            photos, notes = GENERATOR.separate_results_screenshots(staged, "gpt-5-mini")
+        self.assertEqual(photos, staged)
+        self.assertEqual(notes, [])
+
+
 if __name__ == "__main__":
     unittest.main()

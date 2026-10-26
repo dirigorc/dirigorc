@@ -47,6 +47,7 @@ The site uses:
    - When a "Self-reported result" section names a runner, that person is the runner because the note did not name someone else. Use that name in the title, summary, body, and tags.
    - When that section gives an inferred date, use it as the post date. When the note already includes a date, keep the note's date.
    - Do not invent a place, time, age group, or race that is not in the note.
+   - When a results screenshot was transcribed, include those names, times, and places. The screenshot itself is not an image to publish.
    - Record each inference in `assumptions`.
    - A reaction recap uses the message author's note. The From line is who started the recap, which can be a different person. Do not treat that production detail as public copy.
 
@@ -58,6 +59,7 @@ The site uses:
    - Use only existing local image paths from the context unless the input explicitly provides usable assets.
    - Email image attachments are usable assets when the prompt lists them under "Email Image Attachments".
    - Strongly prefer using email/Discord image attachments when they are provided. Treat attached images as intentional editorial input from the submitter unless they are clearly unrelated, duplicate, broken, private, or unsafe.
+   - A results card, timing app, or leaderboard screenshot is not a post photo. When "Results read from screenshots" is present, use that transcription as source facts and do not reference the screenshot file. Publish the race photographs listed under Email Image Attachments.
    - If submitted attachments are included, err toward using them. Do not drop usable submitted images just because one photo would be enough.
    - If an attached image fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
    - Attachment paths shown in the prompt are temporary staging names. The automation will rename used attachments to content-specific filenames before opening the PR.
