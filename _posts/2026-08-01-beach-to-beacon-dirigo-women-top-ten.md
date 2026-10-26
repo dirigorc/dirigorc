@@ -11,43 +11,43 @@ images:
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-pack-road.webp
     alt: Dirigo runners racing Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-blue-coast.webp
-    alt: Two thumbs up for Clíodhna.
+    alt: "Clíodhna O'Malley racing the coast at Beach to Beacon 2026."
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-women-shore-road.webp
-    alt: Heather and Bethanie cruise along the coast
+    alt: Heather Gallant and Bethanie Brown racing Shore Road at Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-finish-grass.webp
     alt: Dirigo runner near the Beach to Beacon finish.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-alexis-wilbert.webp
-    alt: Alexis in Cape
+    alt: Alexis Wilbert racing Beach to Beacon 2026 in Cape Elizabeth.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-karley-piers.webp
-    alt: Karley approaches the finish line
+    alt: Karley Piers racing Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-dirigo-start-selfie.webp
     alt: Dirigo runners before Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-high-school-mile-medalists.webp
     alt: Beach to Beacon High School Mile medalists.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-high-school-mile-finishers.webp
-    alt: Beach to Beacon finishers!
+    alt: High School Mile finishers with medals at Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-masters-awards-podium.webp
     alt: Beach to Beacon awards podium.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-finish-sign-team.webp
     alt: Dirigo runners after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-family-photo.webp
-    alt: Laurel Manville!
+    alt: Laurel Manville with family after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-dirigo-duo.webp
-    alt: Taylor and Nick
+    alt: Taylor and Nick after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-women-duo.webp
-    alt: Karley and Michelle
+    alt: Karley Piers and Michelle Lilienthal after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-thumbs-up.webp
-    alt: Maeve Ginevan
+    alt: Maeve Ginevan after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-friends-duo.webp
-    alt: Veronica Graziano
+    alt: Veronica Graziano with a friend after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-supporter-duo.webp
-    alt: Mary Pardi
+    alt: Mary Pardi with a supporter after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-team-group.webp
-    alt: Maeve, Jorma Kurry, Ben Greene, Charles Robertson, and Paul Greene
+    alt: Maeve, Jorma Kurry, Ben Greene, Charles Robertson, and Paul Greene after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-three-runners.webp
-    alt: Scott and Kelly Brown 
+    alt: Scott and Kelly Brown after Beach to Beacon 2026.
   - src: assets/images/updates/b2b-2026/beach-to-beacon-2026-postrace-mens-duo.webp
-    alt: Rich Alff and Seth Crockett
+    alt: Rich Alff and Seth Crockett after Beach to Beacon 2026.
 
 summary: "Dirigo's Beach to Beacon weekend had range: Georgia Moon won the Girls High School Mile, then the women's squad put seven runners in the Maine top ten over 10K. Clíodhna O'Malley led the group in 35:10, with Heather Gallant, Bethanie Brown, Veronica Graziano, Alexis Wilbert, Aly Ursiny, and Karley Piers all close behind."
 tags:

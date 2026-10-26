@@ -5,7 +5,7 @@ category: Results
 layout_style: image-row
 images:
   - src: assets/images/bridgton-2025.jpg
-    alt: Taylor Bagley and on the 2026 Bridgton 4 on the Fourth podium.
+    alt: Runners on the podium at Bridgton 4 on the Fourth.
   - src: assets/images/karley-bridgton-2026-2.webp
     alt: Karley Piers racing at the 2026 Bridgton 4 on the Fourth.
 summary: "Karley Piers won the Bridgton 4 on the Fourth in 22:45.04, and Taylor Bagley placed third while setting a 10-second course personal best."
