@@ -175,6 +175,8 @@ jobs:
           title: ${{ steps.generated_guard.outputs.title }}
           body-path: tmp/race-report-pr-body.md
           branch: ${{ github.event.client_payload.correction.branch || format('automation/calendar-event-{0}', github.run_id) }}
+          # A revise checks out the draft branch first. Pin the base or this action uses that branch as both sides.
+          base: ${{ github.event.repository.default_branch }}
           delete-branch: true
           assignees: ${{ vars.CALENDAR_EVENT_PR_ASSIGNEE || 'crowjonah' }}
           reviewers: ${{ vars.CALENDAR_EVENT_PR_REVIEWERS || 'crowjonah' }}
