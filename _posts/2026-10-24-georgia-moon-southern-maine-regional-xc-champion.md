@@ -5,7 +5,7 @@ category: "Results"
 layout_style: "single"
 image:
   src: "assets/images/email/2026-10-27/georgia-moon-southern-maine-regional-xc-champion-mainetrack-xc-1792879719-4015288571166528503-1445532972.jpg"
-  alt: "Dirigo race photo from mainetrack xc 1792879719 4015288571166528503 1445532972."
+  alt: "Georgia Moon runs in a blue Falmouth singlet, bib 627. A MaineTrack graphic shows her time of 18:11.51."
 summary: "Georgia Moon of Falmouth High School won the Class A Southern Maine Regional cross country title on October 24, 2026 in 18:11.51."
 tags:
   - "Southern Maine Regional XC"
