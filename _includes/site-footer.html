@@ -45,18 +45,27 @@
 <script>
     (function () {
         if (!window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
-        var nodes = document.querySelectorAll("main .section");
+        var sections = document.querySelectorAll("main .section:not(.updates-archive)");
+        var updates = document.querySelectorAll("main .updates-archive .activity-item:not(.search-result)");
+        var nodes = [];
+        sections.forEach(function (node) { nodes.push(node); });
+        updates.forEach(function (node) { nodes.push(node); });
         if (!nodes.length || !("IntersectionObserver" in window)) {
             nodes.forEach(function (node) { node.classList.add("is-in"); });
             return;
         }
         var observer = new IntersectionObserver(function (entries) {
+            var step = 0;
             entries.forEach(function (entry) {
                 if (!entry.isIntersecting) return;
+                if (entry.target.classList.contains("activity-item")) {
+                    entry.target.style.transitionDelay = Math.min(step, 5) * 90 + "ms";
+                    step += 1;
+                }
                 entry.target.classList.add("is-in");
                 observer.unobserve(entry.target);
             });
-        }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+        }, { threshold: 0, rootMargin: "0px 0px -8% 0px" });
         window.requestAnimationFrame(function () {
             nodes.forEach(function (node) { observer.observe(node); });
         });

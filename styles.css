@@ -203,7 +203,7 @@ a {
 
 .hero {
   position: relative;
-  min-height: calc(100dvh - 5rem);
+  min-height: calc(100svh - 5rem);
   display: grid;
   align-items: end;
   overflow: hidden;
@@ -2350,7 +2350,8 @@ body.has-lightbox {
 
   .hero {
     display: grid;
-    min-height: min(760px, calc(100dvh - 7.5rem));
+    /* svh stays fixed when Safari’s URL bar shows or hides. dvh rescales the photo. */
+    min-height: min(760px, calc(100svh - 7.5rem));
     align-items: start;
   }
 
@@ -2388,7 +2389,7 @@ body.has-lightbox {
     align-items: end;
     align-content: start;
     width: 100%;
-    min-height: min(760px, calc(100dvh - 7.5rem));
+    min-height: min(760px, calc(100svh - 7.5rem));
     padding: clamp(1.75rem, 5svh, 3rem) 1rem 5.25rem;
     background: transparent;
   }
@@ -2519,12 +2520,14 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .js main .section {
+  .js main .section:not(.updates-archive),
+  .js main .updates-archive .activity-item:not(.search-result) {
     opacity: 0;
     transform: translateY(12px);
   }
 
-  .js main .section.is-in {
+  .js main .section:not(.updates-archive).is-in,
+  .js main .updates-archive .activity-item:not(.search-result).is-in {
     opacity: 1;
     transform: none;
     transition:
