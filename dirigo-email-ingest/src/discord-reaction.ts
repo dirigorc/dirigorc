@@ -1,17 +1,6 @@
 import { dispatchToGitHub, type EmailAttachment, type EmailPayload, type WorkerEnv } from "./dispatch";
-import {
-	emojiMatches,
-	formatReporter,
-	prepareRecap,
-	recapClarificationReason,
-	recapEmojiName,
-	reporterFromUser,
-	type Reporter,
-} from "./self-report";
-
-const IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_IMAGES = 5;
+import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES, NEARBY_LIMIT, draftRecapFromMessages, type ImageRef } from "./recap-window";
+import { emojiMatches, formatReporter, recapEmojiName, type Reporter } from "./self-report";
 
 export interface RecapReaction {
 	channelId: string;
@@ -107,104 +96,93 @@ export interface PlannedAck {
 	messageId: string;
 }
 
-interface DiscordMessage {
-	content: string;
-	timestamp: string;
-	author: Reporter;
-	attachments: DiscordMessageAttachment[];
-}
-
-interface DiscordMessageAttachment {
-	filename?: string;
-	content_type?: string;
-	size?: number;
-	url?: string;
-}
-
 export async function handleRecapReaction(env: WorkerEnv, reaction: RecapReaction): Promise<"started" | "skipped" | "needs-detail"> {
 	if (!emojiMatches(reaction.emojiName, env.DISCORD_RECAP_EMOJI)) return "skipped";
 	if (env.DISCORD_GUILD_ID && reaction.guildId && reaction.guildId !== env.DISCORD_GUILD_ID) return "skipped";
 	if (!snowflake(reaction.channelId) || !snowflake(reaction.messageId)) return "skipped";
 	if (!env.DISCORD_BOT_TOKEN) throw new Error("DISCORD_BOT_TOKEN is not set.");
 
-	const message = await fetchMessage(env, reaction.channelId, reaction.messageId);
-	if (!message) {
+	const anchorResponse = await fetch(`https://discord.com/api/v10/channels/${reaction.channelId}/messages/${reaction.messageId}`, {
+		headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}` },
+	});
+	if (!anchorResponse.ok) {
 		await channelReply(env, reaction, "I couldn't read that message. Diri needs permission to view the channel and read its history.");
 		return "needs-detail";
 	}
-	if (message.author.bot) {
-		await channelReply(env, reaction, "I start recaps from a member's message.");
-		return "skipped";
-	}
-	const body = message.content.trim();
-	if (!body) {
-		await channelReply(env, reaction, "That message has no text I can use. If it already has text, enable the Message Content intent for Diri and react again.");
-		return "needs-detail";
+
+	let nearbyPayload: unknown = undefined;
+	try {
+		const nearbyResponse = await fetch(
+			`https://discord.com/api/v10/channels/${reaction.channelId}/messages?around=${reaction.messageId}&limit=${NEARBY_LIMIT}`,
+			{ headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } },
+		);
+		nearbyPayload = await readNearbyPayload(nearbyResponse);
+	} catch {
+		nearbyPayload = undefined;
 	}
 
-	const reportedAt = Date.parse(message.timestamp);
-	const prepared = prepareRecap(body, message.author, Number.isNaN(reportedAt) ? Date.now() : reportedAt, "verbatim");
-	const reason = recapClarificationReason(body, message.author, message.attachments.length);
-	if (reason) {
-		await channelReply(env, reaction, reason);
-		return "needs-detail";
+	const draft = draftRecapFromMessages(await anchorResponse.json(), nearbyPayload, {
+		channelId: reaction.channelId,
+		messageId: reaction.messageId,
+		guildId: reaction.guildId,
+		reactor: reaction.reactor,
+		nowMs: Date.now(),
+	});
+	switch (draft.status) {
+		case "skipped":
+		case "needs-detail":
+			await channelReply(env, reaction, draft.reply);
+			return draft.status;
+		case "ready":
+			break;
+		default: {
+			const unreachable: never = draft;
+			throw new Error(`Unexpected recap draft: ${JSON.stringify(unreachable)}`);
+		}
 	}
 
-	const downloaded = await downloadImages(message.attachments);
-	const links = uniqueUrls([body, messageLink(reaction)]);
-	if (prepared.inference && formatReporter(reaction.reactor) !== formatReporter(message.author)) {
-		prepared.inference.notes.push(`${formatReporter(reaction.reactor)} started this recap from ${formatReporter(message.author)}'s message.`);
+	const downloaded = await downloadImages(draft.fields.images);
+	const inference = draft.fields.inference
+		? { ...draft.fields.inference, notes: [...draft.fields.inference.notes] }
+		: null;
+	if (inference && formatReporter(reaction.reactor) !== draft.fields.authoredBy) {
+		inference.notes.push(`${formatReporter(reaction.reactor)} started this recap from ${draft.fields.authoredBy}'s message.`);
 	}
 	const email: EmailPayload = {
 		source: "discord",
 		command: "recap",
-		editorial_mode: prepared.editorialMode,
-		submitted_by: formatReporter(reaction.reactor),
-		from: formatReporter(reaction.reactor),
+		editorial_mode: draft.fields.editorialMode,
+		submitted_by: draft.fields.submittedBy,
+		from: draft.fields.submittedBy,
 		subject: "Discord /recap",
-		text: body,
-		body,
+		text: draft.fields.text,
+		body: draft.fields.text,
 		raw: "",
 		attachments: downloaded.attachments,
-		links,
+		links: [...draft.fields.links],
 		trigger: "reaction",
-		authored_by: formatReporter(message.author),
-		...(prepared.inference ? { inference: prepared.inference } : {}),
+		authored_by: draft.fields.authoredBy,
+		...(inference ? { inference } : {}),
 	};
 	await dispatchToGitHub(env, email);
 	await acknowledgeRecap(env, reaction.channelId, reaction.messageId);
 	return "started";
 }
 
+async function readNearbyPayload(response: Response): Promise<unknown> {
+	if (response.status !== 200) return undefined;
+	try {
+		return await response.json();
+	} catch {
+		return undefined;
+	}
+}
+
 function snowflake(value: string): boolean {
 	return /^\d{5,22}$/.test(value);
 }
 
-function messageLink(reaction: RecapReaction): string {
-	if (!snowflake(reaction.guildId)) return "";
-	return `https://discord.com/channels/${reaction.guildId}/${reaction.channelId}/${reaction.messageId}`;
-}
-
-async function fetchMessage(env: WorkerEnv, channelId: string, messageId: string): Promise<DiscordMessage | null> {
-	const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
-		headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}` },
-	});
-	if (!response.ok) return null;
-	const payload = (await response.json()) as {
-		content?: string;
-		timestamp?: string;
-		author?: { id?: string; username?: string; global_name?: string | null; bot?: boolean };
-		attachments?: DiscordMessageAttachment[];
-	};
-	return {
-		content: String(payload.content || ""),
-		timestamp: String(payload.timestamp || ""),
-		author: reporterFromUser(payload.author || {}),
-		attachments: Array.isArray(payload.attachments) ? payload.attachments : [],
-	};
-}
-
-async function downloadImages(items: DiscordMessageAttachment[]): Promise<{ attachments: EmailAttachment[]; skipped: string[]; requested: number }> {
+async function downloadImages(items: readonly ImageRef[]): Promise<{ attachments: EmailAttachment[]; skipped: string[]; requested: number }> {
 	const selected = items.slice(0, MAX_IMAGES);
 	const attachments: EmailAttachment[] = [];
 	const skipped: string[] = [];
@@ -270,21 +248,6 @@ async function reactAsBot(env: WorkerEnv, channelId: string, messageId: string, 
 			detail: await response.text(),
 		}));
 	}
-}
-
-function uniqueUrls(values: string[]): string[] {
-	const unique: string[] = [];
-	const seen = new Set<string>();
-	for (const value of values) {
-		const matches = value.match(/https?:\/\/[^\s<>()"']+/gi) || [];
-		for (const match of matches) {
-			const cleaned = match.replace(/[),.;!?]+$/, "");
-			if (!cleaned || seen.has(cleaned)) continue;
-			seen.add(cleaned);
-			unique.push(cleaned);
-		}
-	}
-	return unique;
 }
 
 async function channelReply(env: WorkerEnv, reaction: RecapReaction, content: string): Promise<void> {

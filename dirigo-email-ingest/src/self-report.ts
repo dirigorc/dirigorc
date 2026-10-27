@@ -173,19 +173,34 @@ export function prepareRecap(
 	};
 }
 
-export function recapClarificationReason(body: string, reporter: Reporter | null, requestedAttachments: number): string {
+export function noteHasResultOrUrl(text: string): boolean {
+	const trimmed = text.trim();
+	return RESULTISH_PATTERN.test(trimmed) || /https?:\/\//i.test(trimmed);
+}
+
+export function recapClarificationReason(
+	body: string,
+	reporter: Reporter | null,
+	requestedAttachments: number,
+	nearbyEvidence?: { readonly text: string; readonly images: number },
+): string {
 	const trimmed = body.trim();
 	const words = wordCount(trimmed);
-	const hasUrl = /https?:\/\//i.test(trimmed);
-	const hasResult = RESULTISH_PATTERN.test(trimmed);
 	if (!trimmed) return "Please add the race recap or club note.";
 	if (reporter && isSelfReport(trimmed, reporter)) return "";
 	const incompleteNameReason = incompleteMemberNameReason(trimmed);
 	if (incompleteNameReason) return incompleteNameReason;
 	if (requestedAttachments > 0) return "";
+	if (nearbyEvidenceClears(nearbyEvidence)) return "";
 	if (words < 6) return "Please add a few more details before I create an update PR.";
-	if (words < 16 && !hasResult && !hasUrl) return "Please add a result, race name, date, or source link so the update has enough context.";
+	if (words < 16 && !noteHasResultOrUrl(trimmed)) return "Please add a result, race name, date, or source link so the update has enough context.";
 	return "";
+}
+
+function nearbyEvidenceClears(evidence: { readonly text: string; readonly images: number } | undefined): boolean {
+	if (!evidence) return false;
+	if (evidence.images > 0) return true;
+	return noteHasResultOrUrl(evidence.text) || wordCount(evidence.text) >= 6;
 }
 
 function wordCount(text: string): number {
@@ -201,6 +216,10 @@ function isTeamNote(text: string): boolean {
 	const plural = /\b(?:we|our|ours|us)\b/i.test(text);
 	const singular = /\b(?:i|i'm|im|i've|ive|my|me|myself)\b/i.test(text);
 	return plural && !singular;
+}
+
+export function memberName(reporter: Reporter): string {
+	return runnerName(reporter).name;
 }
 
 function runnerName(reporter: Reporter): { name: string; expanded: boolean; ambiguous: boolean } {

@@ -280,6 +280,7 @@ describe("Dirigo email ingest worker", () => {
 			client_payload: {
 				editorial_mode?: string;
 				submitted_by?: string;
+				body?: string;
 				inference?: { runner?: string; reported_on?: string; notes?: string[] };
 				report?: {
 					trigger?: string;
@@ -289,6 +290,7 @@ describe("Dirigo email ingest worker", () => {
 			};
 		};
 		expect(payload.client_payload.editorial_mode).toBe("self-report");
+		expect(payload.client_payload.body).toBe("18:42 at Back Cove");
 		expect(payload.client_payload.submitted_by).toBe("Crow (459385898992140288)");
 		expect(payload.client_payload.report?.trigger).toBe("reaction");
 		expect(payload.client_payload.report?.authored_by).toContain("Seth");
@@ -325,9 +327,218 @@ describe("Dirigo email ingest worker", () => {
 		});
 
 		expect(outcome).toBe("started");
-		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { editorial_mode?: string; inference?: unknown } };
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { body?: string; editorial_mode?: string; inference?: unknown } };
 		expect(payload.client_payload.editorial_mode).toBe("verbatim");
+		expect(payload.client_payload.body).toBe("Seth Crockett finished the Beach to Beacon 10K in 42:10 on Saturday and the club cheered.");
 		expect(payload.client_payload.inference).toBeUndefined();
+	});
+
+	it("adds a nearby result to an agentic recap and leaves the anchor author in place", async () => {
+		const neighborLine = "Nate Priest: Nate Priest finished in 19:01. https://results.example/back-cove";
+		const flagged = await flagRecap(verbatimMessage(), [
+			verbatimMessage(),
+			{
+				id: "12345678901234571",
+				content: "Bot posted 15:00 and https://bot.example/secret",
+				timestamp: "2026-10-26T15:01:00.000Z",
+				author: { id: "999", username: "diri", global_name: "Diri", bot: true },
+				attachments: [],
+			},
+			{
+				id: "12345678901234572",
+				content: "nice",
+				timestamp: "2026-10-26T15:02:00.000Z",
+				author: { id: "333", username: "alex", global_name: "Alex Example", bot: false },
+				attachments: [],
+			},
+			{
+				id: "12345678901234570",
+				content: "Nate Priest finished in 19:01. https://results.example/back-cove",
+				timestamp: "2026-10-26T15:05:00.000Z",
+				author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+				attachments: [],
+			},
+		]);
+
+		expect(flagged.outcome).toBe("started");
+		expect(flagged.payload.client_payload?.editorial_mode).toBe("agentic");
+		expect(flagged.payload.client_payload?.body).toContain(neighborLine);
+		expect(flagged.payload.client_payload?.body).not.toContain("bot.example");
+		expect(flagged.payload.client_payload?.body).not.toContain(": nice");
+		expect(flagged.email?.text).toContain(neighborLine);
+		expect(flagged.email?.text).toBe(flagged.payload.client_payload?.body);
+		expect(flagged.payload.client_payload?.links).toEqual([
+			`https://discord.com/channels/${RECAP_GUILD}/${RECAP_CHANNEL}/${RECAP_MESSAGE}`,
+			"https://results.example/back-cove",
+		]);
+		expect(flagged.payload.client_payload?.report?.authored_by).toBe("Crow Norlander (459385898992140288)");
+		expect(flagged.payload.client_payload?.submitted_by).toBe("Crow (459385898992140288)");
+	});
+
+	it("keeps a self-report when a neighbor adds a result", async () => {
+		const flagged = await flagRecap({
+			id: RECAP_MESSAGE,
+			content: "18:42 at Back Cove",
+			timestamp: "2026-10-26T15:00:00.000Z",
+			author: { id: "1227055686295359519", username: "seth", global_name: "Seth", bot: false },
+			attachments: [],
+		}, [{
+			id: "12345678901234570",
+			content: "Nate Priest finished in 19:01. https://results.example/back-cove",
+			timestamp: "2026-10-26T15:05:00.000Z",
+			author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+			attachments: [],
+		}]);
+
+		expect(flagged.outcome).toBe("started");
+		expect(flagged.payload.client_payload?.editorial_mode).toBe("self-report");
+		expect(flagged.payload.client_payload?.body).toContain("18:42 at Back Cove");
+		expect(flagged.payload.client_payload?.body).toContain("Nate Priest: Nate Priest finished in 19:01. https://results.example/back-cove");
+		expect(flagged.payload.client_payload?.report?.inference?.runner).toBe("Seth Crockett");
+		expect(flagged.email?.inference?.runner).toBe("Seth Crockett");
+	});
+
+	it("leaves out a neighbor message three hours from the anchor", async () => {
+		const flagged = await flagRecap(verbatimMessage(), [{
+			id: "12345678901234570",
+			content: "Nate Priest finished in 19:01. https://results.example/back-cove",
+			timestamp: "2026-10-26T18:00:00.000Z",
+			author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+			attachments: [],
+		}]);
+
+		expect(flagged.outcome).toBe("started");
+		expect(flagged.payload.client_payload?.editorial_mode).toBe("verbatim");
+		expect(flagged.payload.client_payload?.body).toBe(VERBATIM_NOTE);
+		expect(flagged.email?.text).toBe(VERBATIM_NOTE);
+		expect(flagged.payload.client_payload?.links).not.toContain("https://results.example/back-cove");
+	});
+
+	it("does not let a one-word neighbor change the recap mode", async () => {
+		const flagged = await flagRecap(verbatimMessage(), [{
+			id: "12345678901234570",
+			content: "nice",
+			timestamp: "2026-10-26T15:05:00.000Z",
+			author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+			attachments: [],
+		}]);
+
+		expect(flagged.outcome).toBe("started");
+		expect(flagged.payload.client_payload?.editorial_mode).toBe("verbatim");
+		expect(flagged.payload.client_payload?.body).toBe(VERBATIM_NOTE);
+	});
+
+	it("asks for more detail when a one-word neighbor is the only nearby evidence", async () => {
+		const flagged = await flagRecap({
+			id: RECAP_MESSAGE,
+			content: "Club photo",
+			timestamp: "2026-10-26T15:00:00.000Z",
+			author: { id: "333", username: "alex", global_name: "Alex Example", bot: false },
+			attachments: [],
+		}, [{
+			id: "12345678901234570",
+			content: "nice",
+			timestamp: "2026-10-26T15:05:00.000Z",
+			author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+			attachments: [],
+		}]);
+
+		expect(flagged.outcome).toBe("needs-detail");
+		expect(flagged.github.calls.filter(isGithubDispatch)).toEqual([]);
+		expect(discordMessages(flagged.github.calls).at(-1)?.content).toBe("Please add a few more details before I create an update PR.");
+	});
+
+	it("accepts a short anchor when a nearby note has enough words", async () => {
+		const flagged = await flagRecap({
+			id: RECAP_MESSAGE,
+			content: "Club photo",
+			timestamp: "2026-10-26T15:00:00.000Z",
+			author: { id: "333", username: "alex", global_name: "Alex Example", bot: false },
+			attachments: [],
+		}, [{
+			id: "12345678901234570",
+			content: "Runners met at the park today",
+			timestamp: "2026-10-26T15:05:00.000Z",
+			author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+			attachments: [],
+		}]);
+
+		expect(flagged.outcome).toBe("started");
+		expect(flagged.payload.client_payload?.editorial_mode).toBe("agentic");
+		expect(flagged.email?.text).toContain("Nate Priest: Runners met at the park today");
+	});
+
+	it("names the member who posted an image next to a verbatim anchor", async () => {
+		const flagged = await flagRecap(verbatimMessage(), [{
+			id: "12345678901234570",
+			content: "",
+			timestamp: "2026-10-26T15:04:00.000Z",
+			author: { id: "222", username: "karley", global_name: "Karley", bot: false },
+			attachments: [imageFile("karley-finish.jpg", "https://cdn.discord.test/karley-finish.jpg")],
+		}]);
+
+		expect(flagged.outcome).toBe("started");
+		expect(flagged.payload.client_payload?.editorial_mode).toBe("agentic");
+		expect(flagged.email?.text).toContain("Karley Piers: karley-finish.jpg");
+	});
+
+	it("downloads the anchor image before a neighbor image", async () => {
+		const flagged = await flagRecap(verbatimMessage([
+			imageFile("notes.pdf", "https://cdn.discord.test/notes.pdf", "application/pdf"),
+			imageFile("anchor.jpg", "https://cdn.discord.test/anchor.jpg"),
+		]), [
+			verbatimMessage([imageFile("anchor.jpg", "https://cdn.discord.test/anchor.jpg")]),
+			{
+				id: "12345678901234570",
+				content: "",
+				timestamp: "2026-10-26T15:04:00.000Z",
+				author: { id: "222", username: "karley", global_name: "Karley", bot: false },
+				attachments: [imageFile("neighbor.jpg", "https://cdn.discord.test/neighbor.jpg")],
+			},
+		]);
+
+		const fetched = flagged.github.calls
+			.filter((call) => call.url.startsWith("https://cdn.discord.test/"))
+			.map((call) => call.url);
+		expect(fetched).toEqual([
+			"https://cdn.discord.test/anchor.jpg",
+			"https://cdn.discord.test/neighbor.jpg",
+		]);
+		expect(flagged.email?.attachments.map((attachment) => attachment.filename)).toEqual(["anchor.jpg", "neighbor.jpg"]);
+	});
+
+	it("does not let neighbors fill an empty anchor", async () => {
+		const flagged = await flagRecap({
+			id: RECAP_MESSAGE,
+			content: "",
+			timestamp: "2026-10-26T15:00:00.000Z",
+			author: { id: "1227055686295359519", username: "seth", global_name: "Seth", bot: false },
+			attachments: [],
+		}, [{
+			id: "12345678901234570",
+			content: "Nate Priest finished in 19:01. https://results.example/back-cove",
+			timestamp: "2026-10-26T15:05:00.000Z",
+			author: { id: "111", username: "nate", global_name: "Nate", bot: false },
+			attachments: [],
+		}]);
+
+		expect(flagged.outcome).toBe("needs-detail");
+		expect(flagged.github.calls.filter(isGithubDispatch)).toEqual([]);
+		expect(discordMessages(flagged.github.calls).at(-1)?.content).toBe("That message has no text I can use. If it already has text, enable the Message Content intent for Diri and react again.");
+	});
+
+	it("skips a bot anchor", async () => {
+		const flagged = await flagRecap({
+			id: RECAP_MESSAGE,
+			content: "18:42 at Back Cove",
+			timestamp: "2026-10-26T15:00:00.000Z",
+			author: { id: "999", username: "diri", global_name: "Diri", bot: true },
+			attachments: [],
+		});
+
+		expect(flagged.outcome).toBe("skipped");
+		expect(flagged.github.calls.filter(isGithubDispatch)).toEqual([]);
+		expect(discordMessages(flagged.github.calls).at(-1)?.content).toBe("I start recaps from a member's message.");
 	});
 
 	it("ignores a reaction that is not the recap emoji", async () => {
@@ -1046,7 +1257,72 @@ function slashRecap(body: string, user: { id: string; username?: string; global_
 	};
 }
 
-function mockGithub(options: { imageBytes?: Uint8Array; failDispatch?: boolean; conflictOnce?: boolean; message?: unknown } = {}) {
+const RECAP_CHANNEL = "12345678901234567";
+const RECAP_MESSAGE = "12345678901234568";
+const RECAP_GUILD = "12345678901234569";
+const VERBATIM_NOTE = "Seth Crockett finished the Beach to Beacon 10K in 42:10 on Saturday and the club cheered.";
+const IMAGE_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+
+function verbatimMessage(attachments: unknown[] = []) {
+	return {
+		id: RECAP_MESSAGE,
+		content: VERBATIM_NOTE,
+		timestamp: "2026-10-26T15:00:00.000Z",
+		author: { id: "459385898992140288", username: "crow", global_name: "Crow Norlander", bot: false },
+		attachments,
+	};
+}
+
+function imageFile(filename: string, url: string, contentType = "image/jpeg") {
+	return {
+		filename,
+		content_type: contentType,
+		size: IMAGE_BYTES.length,
+		url,
+	};
+}
+
+async function flagRecap(message: unknown, nearby?: unknown) {
+	const github = mockGithub({ message, nearby, imageBytes: IMAGE_BYTES });
+	const outcome = await handleRecapReaction({
+		...env,
+		DISCORD_BOT_TOKEN: "bot-token",
+		GITHUB_TOKEN: "github-token",
+		GITHUB_REPO: "dirigorc/dirigorc",
+	}, {
+		channelId: RECAP_CHANNEL,
+		messageId: RECAP_MESSAGE,
+		guildId: RECAP_GUILD,
+		emojiName: "🏁",
+		reactor: { id: "459385898992140288", displayName: "Crow" },
+	});
+	const dispatch = github.calls.find(isGithubDispatch);
+	const payload = JSON.parse(dispatch?.body || "{}") as {
+		client_payload?: {
+			body?: string;
+			editorial_mode?: string;
+			submitted_by?: string;
+			links?: string[];
+			report?: { authored_by?: string; inference?: { runner?: string } };
+		};
+	};
+	const staged = github.calls.find((call) => call.method === "PUT" && call.url.includes("payload.json"));
+	const email = staged
+		? (decodedPut(staged).content as {
+			email: {
+				text: string;
+				body: string;
+				editorial_mode: string;
+				links: string[];
+				attachments: { filename: string }[];
+				inference?: { runner: string };
+			};
+		}).email
+		: undefined;
+	return { github, outcome, payload, email };
+}
+
+function mockGithub(options: { imageBytes?: Uint8Array; failDispatch?: boolean; conflictOnce?: boolean; message?: unknown; nearby?: unknown } = {}) {
 	const files = new Map<string, { sha: string; text: string }>();
 	const calls: FetchCall[] = [];
 	let shaCounter = 0;
@@ -1062,6 +1338,11 @@ function mockGithub(options: { imageBytes?: Uint8Array; failDispatch?: boolean; 
 		if (method === "GET" && /\/channels\/\d+\/messages\/\d+$/.test(new URL(url).pathname)) {
 			if (!options.message) return new Response("missing message", { status: 404 });
 			return Response.json(options.message);
+		}
+		const parsed = new URL(url);
+		if (method === "GET" && parsed.pathname.endsWith("/messages") && parsed.searchParams.has("around")) {
+			if (options.nearby === undefined) return new Response(null, { status: 204 });
+			return Response.json(options.nearby);
 		}
 		if (url.startsWith("https://cdn.discord.test/")) {
 			return new Response(options.imageBytes || new Uint8Array(), {
