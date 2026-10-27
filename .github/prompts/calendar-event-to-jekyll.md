@@ -35,7 +35,7 @@ The site uses:
    - Use only existing local image paths from the context unless the input explicitly provides usable assets.
    - Email or Discord image attachments are usable assets when listed under "Email Image Attachments".
    - Treat submitted images as intentional editorial input unless clearly unrelated, duplicate, private, broken, or unsafe.
-   - Use plain placeholder alt text such as `Dirigo race photo.` for attachments; automation can replace attached-image alt text deterministically.
+   - Use plain placeholder alt text such as `Dirigo race photo.` for attachments. The automation keeps that placeholder when the filename is a camera name or an id, and uses the filename only when it is words.
    - Preserve event, registration, result, Instagram, Facebook, race, gallery, and photo-credit links in structured fields.
 
 ## Event Front Matter

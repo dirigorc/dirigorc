@@ -552,5 +552,20 @@ class ScreenshotReadingTests(unittest.TestCase):
         self.assertEqual(notes, [])
 
 
+class AttachmentAltTests(unittest.TestCase):
+    def test_id_like_filename_stays_a_plain_alt(self):
+        alt = GENERATOR.deterministic_attachment_alt({
+            "filename": "mainetrack-xc-1792879719-4015288571166528503-1445532972.jpg",
+        })
+        self.assertEqual(alt, "Dirigo race photo.")
+
+    def test_camera_filename_stays_a_plain_alt(self):
+        self.assertEqual(GENERATOR.deterministic_attachment_alt({"filename": "IMG_1234.jpg"}), "Dirigo race photo.")
+
+    def test_word_filename_is_used_in_the_alt(self):
+        alt = GENERATOR.deterministic_attachment_alt({"filename": "beach-to-beacon-finish.jpg"})
+        self.assertEqual(alt, "Dirigo race photo from beach to beacon finish.")
+
+
 if __name__ == "__main__":
     unittest.main()
