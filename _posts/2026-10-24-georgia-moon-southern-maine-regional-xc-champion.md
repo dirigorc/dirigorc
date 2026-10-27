@@ -1,5 +1,5 @@
 ---
-title: "Georgia Moon wins Southern Maine Regional (Class A)"
+title: "Dirigo Youth Athlete Georgia Moon wins Southern Maine Regional (Class A)"
 date: 2026-10-24
 category: "Results"
 layout_style: "single"
