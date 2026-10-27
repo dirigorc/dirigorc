@@ -958,15 +958,26 @@ def replace_image_alt_for_path(content: str, image_path: str, alt_text: str) -> 
     return "\n".join(lines) + ("\n" if content.endswith("\n") else "") if changed else content
 
 
+def descriptive_filename(filename_slug: str) -> bool:
+    if not filename_slug:
+        return False
+    if re.fullmatch(r"(img|image|photo|attachment|screenshot|pxl|dsc|img-\d+|image-\d+|attachment-\d+)", filename_slug):
+        return False
+    if re.search(r"\d{5,}", filename_slug):
+        return False
+    words = [part for part in filename_slug.split("-") if part.isalpha() and len(part) > 2]
+    return len(words) >= 2
+
+
 def deterministic_attachment_alt(item: dict[str, str], fallback: str = "Dirigo race photo.") -> str:
     filename = Path(str(item.get("filename") or "")).stem
-    filename_slug = slugify(filename)
-    if filename_slug and not re.fullmatch(r"(img|image|photo|attachment|screenshot|pxl|dsc|img-\d+|image-\d+|attachment-\d+)", filename_slug):
-        readable = re.sub(r"[-_]+", " ", filename).strip()
-        readable = re.sub(r"\s+", " ", readable)
-        if readable:
-            return f"Dirigo race photo from {readable}."
-    return fallback
+    if not descriptive_filename(slugify(filename)):
+        return fallback
+    readable = re.sub(r"[-_]+", " ", filename).strip()
+    readable = re.sub(r"\s+", " ", readable)
+    if not readable:
+        return fallback
+    return f"Dirigo race photo from {readable}."
 
 
 def renamed_attachment_path(old_path: str, files: list[dict[str, str]], used_names: set[str]) -> str:
