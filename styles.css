@@ -1612,6 +1612,7 @@ body.has-lightbox {
 .calendar-event h3 {
   margin-bottom: 0.35rem;
   font-size: clamp(1.45rem, 2.5vw, 2rem);
+  line-height: 1.45;
 }
 
 .calendar-event p {
