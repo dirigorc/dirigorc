@@ -1612,7 +1612,7 @@ Change only the files below. Apply this instruction and return each full file:
                 raise ValueError(f"{path} changes the date: line.")
         elif date_value(date_line(content)) != filename_date:
             raise ValueError(f"{path} date: line must be {filename_date}.")
-        edited.append({"path": path, "content": content})
+        edited.append({"path": path, "content": normalize_front_matter(content)})
     missing = [path for path in texts if path not in seen]
     if missing:
         raise ValueError(f"Correction omitted {missing[0]}.")

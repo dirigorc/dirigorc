@@ -383,8 +383,8 @@ class CorrectionEditTests(unittest.TestCase):
         }):
             files = GENERATOR.edit_existing(wire, {series: source})
         self.assertEqual(files, [
-            {"path": series, "content": kept},
-            {"path": one_off, "content": created},
+            {"path": series, "content": GENERATOR.normalize_front_matter(kept)},
+            {"path": one_off, "content": GENERATOR.normalize_front_matter(created)},
         ])
 
     def test_calendar_correction_refuses_a_one_off_on_the_wrong_date(self):
@@ -408,6 +408,26 @@ class CorrectionEditTests(unittest.TestCase):
         }):
             with self.assertRaisesRegex(ValueError, "date: line must be 2026-10-31"):
                 GENERATOR.edit_existing(wire, {series: source})
+
+    def test_edit_existing_quotes_a_note_that_contains_a_colon(self):
+        source = "---\ndate: 2026-07-18\nteam_note: Meet at Payson.\n---\n"
+        note = (
+            "Dave Ouellette leads the weekly run. Note: On 2026-10-31 we will be running in Freeport "
+            "— meet at Leon Gorman Park at 8:00 AM."
+        )
+        updated = f"---\ndate: 2026-07-18\nteam_note: {note}\n---\n"
+        path = "_events/2026-07-18-payson-park-long-run.md"
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [{"path": path, "content": updated}],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }):
+            files = GENERATOR.edit_existing(self.wire(), {path: source})
+        content = files[0]["content"]
+        self.assertIn(f"team_note: {GENERATOR.yaml_double_quoted(note)}", content)
+        self.assertIn("date: 2026-07-18", content)
 
     def test_write_pr_body_appends_the_correction_marker(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(
