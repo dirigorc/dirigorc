@@ -433,16 +433,14 @@ async function resolvePublishedPage(
 			return { kind: "event", path: eventPath };
 		}
 		case "calendar-anchor": {
-			const names = (await listRepoDir(env, ref, "_events")).filter((name) => name.startsWith(`${query.date}-`) && name.endsWith(".md"));
-			const matches: EventPath[] = [];
-			for (const name of names) {
-				const path = `_events/${name}`;
-				if (!isEventPath(path)) continue;
-				const text = await readRepoText(env, ref, path);
-				if (text !== null && jekyllSlug(frontMatterTitle(text)) === query.titleSlug) matches.push(path);
-			}
-			if (matches.length !== 1) return { reason: `${matches.length} calendar events match that anchor.` };
-			return { kind: "event", path: matches[0] };
+			const names = (await listRepoDir(env, ref, "_events")).filter((name) => name.endsWith(".md"));
+			const dated = names.filter((name) => name.startsWith(`${query.date}-`));
+			const matches = await calendarFilesMatchingTitle(env, ref, dated, query.titleSlug);
+			const resolved = matches.length > 0
+				? matches
+				: await calendarFilesOccurringOn(env, ref, names.filter((name) => !name.startsWith(`${query.date}-`)), query.date, query.titleSlug);
+			if (resolved.length !== 1) return { reason: `${resolved.length} calendar events match that anchor.` };
+			return { kind: "event", path: resolved[0] };
 		}
 		default: {
 			const unreachable: never = query;
@@ -624,6 +622,100 @@ function reviseModal(customId: string): Response {
 			}],
 		},
 	}), { headers: { "content-type": "application/json" } });
+}
+
+async function calendarFilesMatchingTitle(
+	env: WorkerEnv,
+	ref: string,
+	names: readonly string[],
+	titleSlug: string,
+): Promise<EventPath[]> {
+	const matches: EventPath[] = [];
+	for (const name of names) {
+		const path = `_events/${name}`;
+		if (!isEventPath(path)) continue;
+		const text = await readRepoText(env, ref, path);
+		if (text !== null && jekyllSlug(frontMatterTitle(text)) === titleSlug) matches.push(path);
+	}
+	return matches;
+}
+
+// A later week of a recurring series keeps the series file. The calendar card's
+// anchor uses that week's date, the same way calendar/index.html decides which
+// weeks to show.
+async function calendarFilesOccurringOn(
+	env: WorkerEnv,
+	ref: string,
+	names: readonly string[],
+	iso: string,
+	titleSlug: string,
+): Promise<EventPath[]> {
+	const matches: EventPath[] = [];
+	for (const name of names) {
+		const path = `_events/${name}`;
+		if (!isEventPath(path)) continue;
+		const text = await readRepoText(env, ref, path);
+		if (text === null || jekyllSlug(frontMatterTitle(text)) !== titleSlug) continue;
+		if (eventOccursOn(text, iso)) matches.push(path);
+	}
+	return matches;
+}
+
+function eventOccursOn(markdown: string, iso: string): boolean {
+	const block = frontMatterBlock(markdown);
+	if (block === null) return false;
+	const start = isoDate(frontMatterValue(block, "date"));
+	if (!start || skipDates(block).has(iso)) return false;
+	if (start === iso) return true;
+	const end = isoDate(frontMatterValue(block, "end_date"));
+	if (!end || !frontMatterValue(block, "recurrence")) return false;
+	if (iso < start || iso > end) return false;
+	return weekday(iso) === weekday(start);
+}
+
+function frontMatterBlock(markdown: string): string | null {
+	const lines = markdown.split("\n");
+	if (lines[0]?.trim() !== "---") return null;
+	const body: string[] = [];
+	for (const line of lines.slice(1)) {
+		if (line.trim() === "---") return body.join("\n");
+		body.push(line.replace(/\r$/, ""));
+	}
+	return null;
+}
+
+function frontMatterValue(block: string, key: string): string {
+	const match = new RegExp(`^${key}:\\s*(.*)$`, "m").exec(block);
+	if (!match) return "";
+	return unquote(match[1].trim());
+}
+
+function isoDate(value: string): string {
+	const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+	return match?.[1] ?? "";
+}
+
+function skipDates(block: string): Set<string> {
+	const dates = new Set<string>();
+	let inList = false;
+	for (const line of block.split("\n")) {
+		if (/^skip_dates:\s*$/.test(line)) {
+			inList = true;
+			continue;
+		}
+		if (!inList) continue;
+		if (/^\S/.test(line)) break;
+		const item = /^\s*-\s+(.+?)\s*$/.exec(line);
+		if (!item) continue;
+		const iso = isoDate(unquote(item[1].trim()));
+		if (iso) dates.add(iso);
+	}
+	return dates;
+}
+
+function weekday(iso: string): number {
+	const [year, month, day] = iso.split("-").map((part) => Number(part));
+	return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
 // Jekyll's default slugify, the same filter _includes/calendar-event-card.html uses for the anchor.

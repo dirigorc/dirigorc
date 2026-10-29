@@ -1538,13 +1538,19 @@ def edit_existing(wire: dict[str, Any], texts: dict[str, str]) -> list[dict[str,
     if not texts:
         raise ValueError("There is no existing file to correct.")
     blocks = [f"## {path}\n\n{content}" for path, content in texts.items()]
+    one_date = ""
+    if wire.get("mode") == "calendar-event":
+        one_date = (
+            "If the instruction changes one date of a recurring event, add that date to skip_dates "
+            "and leave the usual location, time, and recurrence in place.\n"
+        )
     prompt = f"""
 Change only the files below. Apply this instruction and return each full file:
 
 {wire["instruction"]}
 
 Do not create a file. Do not change a date: line. Keep exactly one front-matter pair of --- fences.
-
+{one_date}
 {chr(10).join(blocks)}
 """
     result = call_openai(prompt, os.environ.get("OPENAI_MODEL", "gpt-5-mini"))

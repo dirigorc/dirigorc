@@ -11,7 +11,7 @@
     <div class="calendar-event-meta">
       <span>{{ event.type }}</span>
     </div>
-    <h3>{{ event.title }}</h3>
+    <h3><a class="update-title-link" href="{{ '/calendar/' | relative_url }}#{{ event_anchor }}">{{ event.title }}</a></h3>
     <p>{{ event.summary }}</p>
     {% if event.image %}
     <figure class="calendar-media">

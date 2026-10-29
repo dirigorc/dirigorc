@@ -337,9 +337,28 @@ class CorrectionEditTests(unittest.TestCase):
     def test_edit_existing_returns_the_existing_file(self):
         source = "---\ndate: 2026-01-02\n---\n\nHi\n"
         updated = "---\ndate: 2026-01-02\n---\n\nHello\n"
-        with mock.patch.object(GENERATOR, "call_openai", return_value=self.model(updated)):
+        with mock.patch.object(GENERATOR, "call_openai", return_value=self.model(updated)) as call:
             files = GENERATOR.edit_existing(self.wire(), {"_posts/2026-01-02-a.md": source})
         self.assertEqual(files, [{"path": "_posts/2026-01-02-a.md", "content": updated}])
+        self.assertNotIn("skip_dates", call.call_args.args[0])
+
+    def test_calendar_correction_keeps_one_date_off_the_series_location(self):
+        source = "---\ndate: 2026-07-18\n---\n\nHi\n"
+        updated = "---\ndate: 2026-07-18\n---\n\nHello\n"
+        path = "_events/2026-07-18-payson-park-long-run.md"
+        wire = self.wire()
+        wire["mode"] = "calendar-event"
+        wire["path"] = path
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [{"path": path, "content": updated}],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }) as call:
+            files = GENERATOR.edit_existing(wire, {path: source})
+        self.assertEqual(files, [{"path": path, "content": updated}])
+        self.assertIn("skip_dates", call.call_args.args[0])
 
     def test_write_pr_body_appends_the_correction_marker(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(
