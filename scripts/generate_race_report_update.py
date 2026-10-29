@@ -1582,7 +1582,7 @@ Do not create a file. Do not change a date: line. Keep exactly one front-matter 
             raise ValueError(f"{path} does not contain exactly one front-matter pair.")
         if date_line(content) != date_line(texts[path]):
             raise ValueError(f"{path} changes the date: line.")
-        edited.append({"path": path, "content": content})
+        edited.append({"path": path, "content": normalize_front_matter(content)})
     return edited
 
 

@@ -360,6 +360,26 @@ class CorrectionEditTests(unittest.TestCase):
         self.assertEqual(files, [{"path": path, "content": updated}])
         self.assertIn("skip_dates", call.call_args.args[0])
 
+    def test_edit_existing_quotes_a_note_that_contains_a_colon(self):
+        source = "---\ndate: 2026-07-18\nteam_note: Meet at Payson.\n---\n"
+        note = (
+            "Dave Ouellette leads the weekly run. Note: On 2026-10-31 we will be running in Freeport "
+            "— meet at Leon Gorman Park at 8:00 AM."
+        )
+        updated = f"---\ndate: 2026-07-18\nteam_note: {note}\n---\n"
+        path = "_events/2026-07-18-payson-park-long-run.md"
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [{"path": path, "content": updated}],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }):
+            files = GENERATOR.edit_existing(self.wire(), {path: source})
+        content = files[0]["content"]
+        self.assertIn(f"team_note: {GENERATOR.yaml_double_quoted(note)}", content)
+        self.assertIn("date: 2026-07-18", content)
+
     def test_write_pr_body_appends_the_correction_marker(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(
             GENERATOR, "PR_BODY_PATH", Path(directory) / "body.md"
