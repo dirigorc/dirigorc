@@ -5,7 +5,7 @@ import {
 	SELF,
 } from "cloudflare:test";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { handleRecapReaction, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
+import { handleCalendarReaction, handleRecapReaction, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
 import worker, { discordAttachments, routeDiscordInteraction, runDiscordBackgroundTask } from "../src/index";
 
 // For now, you'll need to do something like this to get a correctly-typed
@@ -302,6 +302,71 @@ describe("Dirigo email ingest worker", () => {
 		expect(reply).toBeUndefined();
 		const ack = github.calls.find((call) => call.method === "PUT" && call.url.includes("/reactions/"));
 		expect(ack?.url).toContain(`/channels/12345678901234567/messages/12345678901234568/reactions/${encodeURIComponent("✅")}/@me`);
+	});
+
+	it("starts a calendar event from a calendar reaction", async () => {
+		const github = mockGithub({
+			message: {
+				content: "Saturday long run at Payson Park, 8:00 AM. Meet at the usual lot. https://dirigorc.com/calendar/",
+				timestamp: "2026-10-29T15:00:00.000Z",
+				author: { id: "1227055686295359519", username: "seth", global_name: "Seth", bot: false },
+				attachments: [],
+			},
+		});
+		const outcome = await handleCalendarReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "📅",
+			reactor: { id: "459385898992140288", displayName: "Crow" },
+		});
+
+		expect(outcome).toBe("started");
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as {
+			event_type: string;
+			client_payload: { command?: string; body?: string; links?: string[]; report?: { trigger?: string; authored_by?: string } };
+		};
+		expect(payload.event_type).toBe("calendar-event-email");
+		expect(payload.client_payload.command).toBe("event");
+		expect(payload.client_payload.body).toContain("Payson Park");
+		expect(payload.client_payload.links).toEqual(["https://dirigorc.com/calendar/"]);
+		expect(payload.client_payload.report?.trigger).toBe("reaction");
+		expect(payload.client_payload.report?.authored_by).toContain("Seth");
+		const ack = github.calls.find((call) => call.method === "PUT" && call.url.includes("/reactions/"));
+		expect(ack?.url).toContain(`/reactions/${encodeURIComponent("📌")}/@me`);
+	});
+
+	it("asks for a date instead of drafting a calendar event", async () => {
+		const github = mockGithub({
+			message: {
+				content: "Long run at the usual park",
+				timestamp: "2026-10-29T15:00:00.000Z",
+				author: { id: "1227055686295359519", username: "seth", global_name: "Seth", bot: false },
+				attachments: [],
+			},
+		});
+		const outcome = await handleCalendarReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "📅",
+			reactor: { id: "459385898992140288", displayName: "Crow" },
+		});
+
+		expect(outcome).toBe("needs-detail");
+		expect(github.calls.find(isGithubDispatch)).toBeUndefined();
+		const reply = github.calls.find((call) => call.method === "POST" && call.url.includes("/channels/12345678901234567/messages"));
+		expect(reply?.body).toContain("event date");
 	});
 
 	it("keeps a reacted message verbatim when it already names the athlete", async () => {
@@ -1103,6 +1168,189 @@ recurrence: Wednesdays through August 26
 		expect(payload.client_payload.correction.path).toBe(path);
 	});
 
+	it("revises the event that occurs on the day named in the instruction", async () => {
+		const path = "_events/2026-07-18-payson-park-long-run.md";
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-07-18-payson-park-long-run.md", type: "file" },
+					{ name: "2026-10-17-bug-light-long-run.md", type: "file" },
+				],
+			},
+			files: {
+				[`main:${path}`]: `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+skip_dates:
+  - 2026-10-17
+---
+`,
+				"main:_events/2026-10-17-bug-light-long-run.md": "---\ntitle: Saturday Long Run at Bug Light\ndate: 2026-10-17\n---\n",
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction({
+			type: 2,
+			application_id: "discord-app",
+			token: "revise-token",
+			data: {
+				name: "revise",
+				options: [{ name: "change", value: "On 2026-10-31 meet at Freeport instead of the usual spot." }],
+			},
+			member: { user: { id: "7", username: "member", global_name: "Guild Member" } },
+		}, reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { path: string; mode: string } } };
+		expect(payload.client_payload.correction.path).toBe(path);
+		expect(payload.client_payload.correction.mode).toBe("calendar-event");
+	});
+
+	it("revises from a loose date in the page field", async () => {
+		const path = "_events/2026-07-18-payson-park-long-run.md";
+		const github = mockCorrection({
+			directory: {
+				_events: [{ name: "2026-07-18-payson-park-long-run.md", type: "file" }],
+			},
+			files: {
+				[`main:${path}`]: `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+---
+`,
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand("Oct 31, 2026", "Meet at Freeport instead of the usual spot.", "7"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { path: string } } };
+		expect(payload.client_payload.correction.path).toBe(path);
+	});
+
+	it("picks the named event when the day alone is shared", async () => {
+		const payson = "_events/2026-07-18-payson-park-long-run.md";
+		const falmouth = "_events/2026-07-11-falmouth-community-park-long-run.md";
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-07-18-payson-park-long-run.md", type: "file" },
+					{ name: "2026-07-11-falmouth-community-park-long-run.md", type: "file" },
+				],
+			},
+			files: {
+				[`main:${payson}`]: `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+---
+`,
+				[`main:${falmouth}`]: `---
+title: Saturday Long Run at Falmouth Community Park
+date: 2026-07-11
+end_date: 2026-12-26
+recurrence: Saturdays
+---
+`,
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand("Payson", "On 2026-10-31 meet at Freeport instead of the usual spot.", "7"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { path: string } } };
+		expect(payload.client_payload.correction.path).toBe(payson);
+	});
+
+	it("asks which event when the day matches more than one", async () => {
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-07-18-payson-park-long-run.md", type: "file" },
+					{ name: "2026-07-11-falmouth-community-park-long-run.md", type: "file" },
+				],
+			},
+			files: {
+				"main:_events/2026-07-18-payson-park-long-run.md": `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+---
+`,
+				"main:_events/2026-07-11-falmouth-community-park-long-run.md": `---
+title: Saturday Long Run at Falmouth Community Park
+date: 2026-07-11
+end_date: 2026-12-26
+recurrence: Saturdays
+---
+`,
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand("", "On 2026-10-31 move the start to 7:30 AM.", "7"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(github.calls.find(isGithubDispatch)).toBeUndefined();
+		const reply = discordMessages(github.calls).at(-1)?.content || "";
+		expect(reply).toContain("Payson Park");
+		expect(reply).toContain("Falmouth");
+	});
+
+	it("revises the one-off that replaced a skipped week", async () => {
+		const bugLight = "_events/2026-10-17-bug-light-long-run.md";
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-07-18-payson-park-long-run.md", type: "file" },
+					{ name: "2026-10-17-bug-light-long-run.md", type: "file" },
+				],
+			},
+			files: {
+				"main:_events/2026-07-18-payson-park-long-run.md": `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+skip_dates:
+  - 2026-10-17
+---
+`,
+				[`main:${bugLight}`]: "---\ntitle: Saturday Long Run at Bug Light\ndate: 2026-10-17\n---\n",
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand("10/17/2026", "Meet at the park entrance instead.", "7"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { path: string } } };
+		expect(payload.client_payload.correction.path).toBe(bugLight);
+	});
+
+	it("revises the post published on the named day", async () => {
+		const path = "_posts/2026-10-26-back-cove-5k.md";
+		const github = mockCorrection({
+			directory: {
+				_posts: [{ name: "2026-10-26-back-cove-5k.md", type: "file" }],
+			},
+			files: {
+				[`main:${path}`]: "---\ntitle: Back Cove 5K\ndate: 2026-10-26\n---\n",
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand("", "On 2026-10-26 the winning time is 17:53, not 17:55.", "7"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { path: string; mode: string } } };
+		expect(payload.client_payload.correction.path).toBe(path);
+		expect(payload.client_payload.correction.mode).toBe("race-report");
+	});
+
 	it("refuses a pull correction from someone who is not a reviewer", async () => {
 		const github = mockCorrection();
 		const ctx = createExecutionContext();
@@ -1677,6 +1925,28 @@ describe("reaction scan", () => {
 			emojiPath: "🏁",
 			key: reactionStorageKey("111111111111111111", "222222222222222222", "🏁"),
 		}]);
+	});
+
+	it("does not treat a recap check mark as acknowledgement of a calendar reaction", () => {
+		const plan = planReactionScan(
+			[{
+				channelId: "111111111111111111",
+				messageId: "222222222222222222",
+				guildId: "333333333333333333",
+				reactions: [
+					{ emoji: { name: "📅", id: null } },
+					{ me: true, emoji: { name: "✅", id: null } },
+				],
+			}],
+			new Map(),
+			"📅",
+			now,
+			"📌",
+		);
+
+		expect(plan.start).toHaveLength(1);
+		expect(plan.start[0]?.emojiName).toBe("📅");
+		expect(plan.release).toEqual([]);
 	});
 
 	it("leaves a finished flag alone and clears the key once the flag is gone", () => {

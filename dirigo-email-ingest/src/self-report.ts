@@ -106,6 +106,11 @@ export function recapEmojiName(configured: string | undefined): string {
 	return name || "🏁";
 }
 
+export function calendarEmojiName(configured: string | undefined): string {
+	const name = configured?.trim();
+	return name || "📅";
+}
+
 export function emojiMatches(name: string, configured: string | undefined): boolean {
 	const expected = recapEmojiName(configured);
 	return name === expected || name.toLowerCase() === expected.toLowerCase();

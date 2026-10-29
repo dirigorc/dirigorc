@@ -1,17 +1,21 @@
 import { DurableObject } from "cloudflare:workers";
 
 import {
+	acknowledgeCalendar,
 	acknowledgeRecap,
+	calendarAckEmoji,
+	handleCalendarReaction,
 	handleRecapReaction,
 	pendingReactionValue,
 	planReactionScan,
 	reactionClaimable,
 	reactionStorageKey,
+	releaseCalendarAck,
 	releaseRecapAck,
 	type ReactionScanMessage,
 } from "./discord-reaction";
 import type { WorkerEnv } from "./dispatch";
-import { emojiMatches, reporterFromUser } from "./self-report";
+import { calendarEmojiName, emojiMatches, recapEmojiName, reporterFromUser } from "./self-report";
 
 const GUILD_INTENT = 1 << 0;
 const REACTION_INTENT = 1 << 10;
@@ -258,7 +262,8 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		if (!payload) return;
 		const emoji = record(payload.emoji);
 		const emojiName = emoji && typeof emoji.name === "string" ? emoji.name : "";
-		if (!emojiMatches(emojiName, this.env.DISCORD_RECAP_EMOJI)) return;
+		const role = reactionRole(emojiName, this.env);
+		if (!role) return;
 		const userId = typeof payload.user_id === "string" ? payload.user_id : "";
 		const channelId = typeof payload.channel_id === "string" ? payload.channel_id : "";
 		const messageId = typeof payload.message_id === "string" ? payload.message_id : "";
@@ -269,7 +274,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		const member = record(payload.member);
 		const user = member ? record(member.user) : null;
 		try {
-			const outcome = await handleRecapReaction(this.env, {
+			const outcome = await this.dispatchReaction(role, {
 				channelId,
 				messageId,
 				guildId,
@@ -284,7 +289,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		} catch (error) {
 			await this.ctx.storage.delete(key);
 			console.error(JSON.stringify({
-				message: "Discord reaction recap failed",
+				message: role === "calendar" ? "Discord reaction calendar failed" : "Discord reaction recap failed",
 				error: error instanceof Error ? error.message : String(error),
 			}));
 		}
@@ -295,12 +300,24 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		if (!payload) return;
 		const emoji = record(payload.emoji);
 		const emojiName = emoji && typeof emoji.name === "string" ? emoji.name : "";
-		if (!emojiMatches(emojiName, this.env.DISCORD_RECAP_EMOJI)) return;
+		const role = reactionRole(emojiName, this.env);
+		if (!role) return;
 		const channelId = typeof payload.channel_id === "string" ? payload.channel_id : "";
 		const messageId = typeof payload.message_id === "string" ? payload.message_id : "";
 		if (!channelId || !messageId) return;
 		await this.ctx.storage.delete(reactionStorageKey(channelId, messageId, emojiName));
-		await releaseRecapAck(this.env, channelId, messageId);
+		switch (role) {
+			case "recap":
+				await releaseRecapAck(this.env, channelId, messageId);
+				break;
+			case "calendar":
+				await releaseCalendarAck(this.env, channelId, messageId);
+				break;
+			default: {
+				const unreachable: never = role;
+				throw new Error(`Unexpected reaction role: ${String(unreachable)}`);
+			}
+		}
 	}
 
 	private async onClose(code: number): Promise<void> {
@@ -414,11 +431,30 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		for (const [key, value] of listed) {
 			if (typeof value === "string") states.set(key, value);
 		}
-		const plan = planReactionScan(messages, states, this.env.DISCORD_RECAP_EMOJI, now);
-		for (const key of plan.clear) await this.ctx.storage.delete(key);
-		for (const item of plan.release) await releaseRecapAck(this.env, item.channelId, item.messageId);
-		for (const item of plan.acknowledge) await acknowledgeRecap(this.env, item.channelId, item.messageId);
+		const recapPlan = planReactionScan(messages, states, this.env.DISCORD_RECAP_EMOJI, now);
+		const calendar = calendarEmojiName(this.env.DISCORD_CALENDAR_EMOJI);
+		const calendarPlan = calendar.toLowerCase() === recapEmojiName(this.env.DISCORD_RECAP_EMOJI).toLowerCase()
+			? { start: [], clear: [], acknowledge: [], release: [] }
+			: planReactionScan(messages, states, calendar, now, calendarAckEmoji(this.env.DISCORD_CALENDAR_EMOJI));
+		const started = await this.applyReactionPlan(recapPlan, "recap");
+		const calendarStarted = await this.applyReactionPlan(calendarPlan, "calendar");
+		console.log(JSON.stringify({
+			message: "Discord reaction scan",
+			channels: batch.length,
+			flagged: recapPlan.start.length,
+			started,
+			calendarFlagged: calendarPlan.start.length,
+			calendarStarted,
+		}));
+	}
 
+	private async applyReactionPlan(
+		plan: ReturnType<typeof planReactionScan>,
+		role: "recap" | "calendar",
+	): Promise<number> {
+		for (const key of plan.clear) await this.ctx.storage.delete(key);
+		for (const item of plan.release) await this.releaseAck(role, item.channelId, item.messageId);
+		for (const item of plan.acknowledge) await this.acknowledge(role, item.channelId, item.messageId);
 		let started = 0;
 		for (const item of plan.start) {
 			if (!(await this.claimReaction(item.key))) continue;
@@ -431,7 +467,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 				continue;
 			}
 			try {
-				const outcome = await handleRecapReaction(this.env, {
+				const outcome = await this.dispatchReaction(role, {
 					channelId: item.channelId,
 					messageId: item.messageId,
 					guildId: item.guildId,
@@ -443,17 +479,64 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 			} catch (error) {
 				await this.ctx.storage.delete(item.key);
 				console.error(JSON.stringify({
-					message: "Discord reaction recap failed",
+					message: role === "calendar" ? "Discord reaction calendar failed" : "Discord reaction recap failed",
 					error: error instanceof Error ? error.message : String(error),
 				}));
 			}
 		}
-		console.log(JSON.stringify({
-			message: "Discord reaction scan",
-			channels: batch.length,
-			flagged: plan.start.length,
-			started,
-		}));
+		return started;
+	}
+
+	private async releaseAck(role: "recap" | "calendar", channelId: string, messageId: string): Promise<void> {
+		switch (role) {
+			case "recap":
+				await releaseRecapAck(this.env, channelId, messageId);
+				return;
+			case "calendar":
+				await releaseCalendarAck(this.env, channelId, messageId);
+				return;
+			default: {
+				const unreachable: never = role;
+				throw new Error(`Unexpected reaction role: ${String(unreachable)}`);
+			}
+		}
+	}
+
+	private async acknowledge(role: "recap" | "calendar", channelId: string, messageId: string): Promise<void> {
+		switch (role) {
+			case "recap":
+				await acknowledgeRecap(this.env, channelId, messageId);
+				return;
+			case "calendar":
+				await acknowledgeCalendar(this.env, channelId, messageId);
+				return;
+			default: {
+				const unreachable: never = role;
+				throw new Error(`Unexpected reaction role: ${String(unreachable)}`);
+			}
+		}
+	}
+
+	private dispatchReaction(
+		role: "recap" | "calendar",
+		reaction: {
+			channelId: string;
+			messageId: string;
+			guildId: string;
+			emojiName: string;
+			reactor: ReturnType<typeof reporterFromUser>;
+		},
+	): Promise<"started" | "skipped" | "needs-detail"> {
+		switch (role) {
+			case "recap":
+				return handleRecapReaction(this.env, reaction);
+			case "calendar":
+				return handleCalendarReaction(this.env, reaction);
+			default: {
+				const unreachable: never = role;
+				throw new Error(`Unexpected reaction role: ${String(unreachable)}`);
+			}
+		}
 	}
 
 	private async discordGet<T>(path: string): Promise<T | null> {
@@ -497,6 +580,14 @@ async function gatewayText(data: unknown): Promise<string> {
 function gatewayErrorDetail(event: Event): string {
 	if ("message" in event && typeof event.message === "string") return event.message;
 	return "";
+}
+
+function reactionRole(emojiName: string, env: WorkerEnv): "recap" | "calendar" | null {
+	if (emojiMatches(emojiName, env.DISCORD_RECAP_EMOJI)) return "recap";
+	const calendar = calendarEmojiName(env.DISCORD_CALENDAR_EMOJI);
+	if (calendar.toLowerCase() === recapEmojiName(env.DISCORD_RECAP_EMOJI).toLowerCase()) return null;
+	if (emojiName === calendar || emojiName.toLowerCase() === calendar.toLowerCase()) return "calendar";
+	return null;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
