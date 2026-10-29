@@ -11,7 +11,7 @@
     <p class="calendar-event-meta">
       <span>{{ event.type }}</span>
     </p>
-    <h3>{{ event.title }}</h3>
+    <h3><a class="update-title-link" href="{{ '/calendar/' | relative_url }}#{{ event_anchor }}">{{ event.title }}</a></h3>
     <p>{{ event.team_note | default: event.summary }}</p>
     <a class="text-link" href="{{ '/calendar/' | relative_url }}#{{ event_anchor }}">Details</a>
   </div>

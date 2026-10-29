@@ -13,6 +13,7 @@ The site uses:
    - Compare against existing events provided in the prompt.
    - Update an existing event when the new details improve time, location, recurrence, URL, image, or team note.
    - Create a new event only for distinct public dates or series.
+   - A different location or time for one date of a recurring series is a new event for that date. Add the date to the series `skip_dates`. Leave the series date, end date, recurrence, and usual location in place.
 
 2. Keep calendar content actionable.
    - Include public races, recurring series, public group runs, public meets, team-visible deadlines, and board-approved public team dates.
@@ -53,6 +54,8 @@ location: City, ME
 summary: One concise public sentence.
 team_note: Human, specific Dirigo context when useful.
 recurrence: Wednesdays through August 26
+skip_dates:
+  - YYYY-MM-DD
 event_url: https://example.com/
 registration_url: https://example.com/register
 results_url: https://example.com/results

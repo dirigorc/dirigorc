@@ -1000,6 +1000,109 @@ describe("Dirigo email ingest worker", () => {
 		expect(discordMessages(github.calls).at(-1)?.content).toBe("2 calendar events match that anchor.");
 	});
 
+	it("revises a recurring series from a later week's calendar link", async () => {
+		const path = "_events/2026-07-18-payson-park-long-run.md";
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-07-18-payson-park-long-run.md", type: "file" },
+					{ name: "2026-10-17-bug-light-long-run.md", type: "file" },
+				],
+			},
+			files: {
+				[`main:${path}`]: `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+skip_dates:
+  - 2026-10-17
+---
+`,
+				"main:_events/2026-10-17-bug-light-long-run.md": "---\ntitle: Saturday Long Run at Bug Light\ndate: 2026-10-17\n---\n",
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand(
+			"https://dirigorc.com/calendar/#2026-10-31-saturday-long-run-at-payson-park",
+			"Meet at Bug Light this Saturday only.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { event_type: string; client_payload: { correction: { path: string; mode: string } } };
+		expect(payload.event_type).toBe("calendar-event-email");
+		expect(payload.client_payload.correction.path).toBe(path);
+		expect(payload.client_payload.correction.mode).toBe("calendar-event");
+	});
+
+	it("does not treat a skipped week as the recurring series", async () => {
+		const github = mockCorrection({
+			directory: {
+				_events: [
+					{ name: "2026-07-18-payson-park-long-run.md", type: "file" },
+					{ name: "2026-07-08-weekly-back-cove-series.md", type: "file" },
+				],
+			},
+			files: {
+				"main:_events/2026-07-18-payson-park-long-run.md": `---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+recurrence: Saturdays
+skip_dates:
+  - 2026-10-17
+---
+`,
+				"main:_events/2026-07-08-weekly-back-cove-series.md": `---
+title: Weekly Back Cove 5K Series
+date: 2026-05-27
+end_date: 2026-08-26
+recurrence: Wednesdays through August 26
+---
+`,
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand(
+			"https://dirigorc.com/calendar/#2026-10-17-saturday-long-run-at-payson-park",
+			"Meet at Bug Light this Saturday only.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(github.calls.filter(isGithubDispatch)).toEqual([]);
+		expect(discordMessages(github.calls).at(-1)?.content).toBe("0 calendar events match that anchor.");
+	});
+
+	it("revises a series whose filename is a middle week", async () => {
+		const path = "_events/2026-07-08-weekly-back-cove-series.md";
+		const github = mockCorrection({
+			directory: {
+				_events: [{ name: "2026-07-08-weekly-back-cove-series.md", type: "file" }],
+			},
+			files: {
+				[`main:${path}`]: `---
+title: Weekly Back Cove 5K Series
+date: 2026-05-27
+end_date: 2026-08-26
+recurrence: Wednesdays through August 26
+---
+`,
+			},
+		});
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviseCommand(
+			"https://dirigorc.com/calendar/#2026-07-22-weekly-back-cove-5k-series",
+			"Start time is 6:15 PM.",
+			"7",
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { client_payload: { correction: { path: string } } };
+		expect(payload.client_payload.correction.path).toBe(path);
+	});
+
 	it("refuses a pull correction from someone who is not a reviewer", async () => {
 		const github = mockCorrection();
 		const ctx = createExecutionContext();
