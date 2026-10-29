@@ -34,7 +34,8 @@
 	"vars": {
 		"GITHUB_REPO": "dirigorc/dirigorc",
 		"DISCORD_PR_APPROVER_IDS": "1227055686295359519,459385898992140288",
-		"DISCORD_RECAP_EMOJI": "🏁"
+		"DISCORD_RECAP_EMOJI": "🏁",
+		"DISCORD_CALENDAR_EMOJI": "📅"
 	},
 	"triggers": {
 		"crons": ["*/5 * * * *"]

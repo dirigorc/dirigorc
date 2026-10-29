@@ -359,6 +359,55 @@ class CorrectionEditTests(unittest.TestCase):
             files = GENERATOR.edit_existing(wire, {path: source})
         self.assertEqual(files, [{"path": path, "content": updated}])
         self.assertIn("skip_dates", call.call_args.args[0])
+        self.assertIn("new event", call.call_args.args[0])
+        self.assertIn("team_note", call.call_args.args[0])
+
+    def test_calendar_correction_adds_the_one_off_event(self):
+        series = "_events/2026-07-18-payson-park-long-run.md"
+        one_off = "_events/2026-10-31-leon-gorman-park-long-run.md"
+        source = "---\ndate: 2026-07-18\nlocation: Payson Park\n---\n"
+        kept = "---\ndate: 2026-07-18\nlocation: Payson Park\nskip_dates:\n  - 2026-10-31\n---\n"
+        created = "---\ndate: 2026-10-31\nlocation: Leon Gorman Park, Freeport, ME\n---\n"
+        wire = self.wire()
+        wire["mode"] = "calendar-event"
+        wire["path"] = series
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [
+                {"path": series, "content": kept},
+                {"path": one_off, "content": created},
+            ],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }):
+            files = GENERATOR.edit_existing(wire, {series: source})
+        self.assertEqual(files, [
+            {"path": series, "content": kept},
+            {"path": one_off, "content": created},
+        ])
+
+    def test_calendar_correction_refuses_a_one_off_on_the_wrong_date(self):
+        series = "_events/2026-07-18-payson-park-long-run.md"
+        one_off = "_events/2026-10-31-leon-gorman-park-long-run.md"
+        source = "---\ndate: 2026-07-18\n---\n"
+        kept = "---\ndate: 2026-07-18\n---\n"
+        created = "---\ndate: 2026-11-07\n---\n"
+        wire = self.wire()
+        wire["mode"] = "calendar-event"
+        wire["path"] = series
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [
+                {"path": series, "content": kept},
+                {"path": one_off, "content": created},
+            ],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }):
+            with self.assertRaisesRegex(ValueError, "date: line must be 2026-10-31"):
+                GENERATOR.edit_existing(wire, {series: source})
 
     def test_write_pr_body_appends_the_correction_marker(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(

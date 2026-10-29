@@ -23,6 +23,7 @@ import {
 	type EmailPayload,
 	type WorkerEnv,
 } from "./dispatch";
+import { chooseRevision, describeRevision, revisionScore, type RevisionCandidate } from "./revise-when";
 
 type Snowflake = string & { readonly __brand: "Snowflake" };
 
@@ -70,7 +71,8 @@ type TargetQuery =
 	| { kind: "post"; path: PostPath }
 	| { kind: "event-file"; path: EventPath }
 	| { kind: "stem"; stem: string }
-	| { kind: "calendar-anchor"; date: string; titleSlug: string };
+	| { kind: "calendar-anchor"; date: string; titleSlug: string }
+	| { kind: "described"; text: string };
 
 type ReviewControl =
 	| { kind: "decision"; action: "publish" | "hold"; pullNumber: number; sibling?: ReviewMessageRef }
@@ -186,10 +188,10 @@ function reviewModal(
 function reviewCommand(interaction: DiscordInteraction, env: WorkerEnv, ctx: ExecutionContext): Response {
 	ctx.waitUntil(runCorrection(interaction, env, async () => {
 		const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-		const query = parseTargetQuery(String(discordOption(interaction, "page") || ""), repo);
-		if ("reason" in query) return query.reason;
 		const instruction = parseInstruction(String(discordOption(interaction, "change") || ""));
 		if (!instruction) return "Write one instruction, from 12 to 1000 characters.";
+		const query = parseTargetQuery(String(discordOption(interaction, "page") || ""), repo);
+		if ("reason" in query) return query.reason;
 		if (query.kind === "pull") {
 			const reviewer = requireReviewer(interaction, env);
 			if (reviewer instanceof Response) return "You can't review this draft.";
@@ -198,7 +200,9 @@ function reviewCommand(interaction: DiscordInteraction, env: WorkerEnv, ctx: Exe
 			const result = await applyCorrection(env, resolved, discordCallback(interaction));
 			return correctionFollowup(env, result, query.pullNumber);
 		}
-		const page = await resolvePublishedPage(env, query);
+		const page = query.kind === "described"
+			? await resolveDescribed(env, [query.text, instruction].filter(Boolean).join("\n"), Date.now())
+			: await resolvePublishedPage(env, query);
 		if ("reason" in page) return page.reason;
 		const correction: Correction = {
 			kind: "published",
@@ -321,7 +325,7 @@ function parseReviseModal(
 
 function parseTargetQuery(input: string, repo: string): TargetQuery | { reason: string } {
 	const raw = input.trim();
-	if (!raw) return { reason: "Say which page to correct." };
+	if (!raw) return { kind: "described", text: "" };
 	if (/^https?:\/\//i.test(raw)) return parseUrl(raw, repo);
 	if (raw.startsWith("_posts/") || raw.startsWith("_events/")) {
 		const page = contentPath(raw);
@@ -329,7 +333,7 @@ function parseTargetQuery(input: string, repo: string): TargetQuery | { reason: 
 	}
 	const stem = /^(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)$/.exec(raw);
 	if (stem) return { kind: "stem", stem: stem[1] };
-	return { reason: "That page is not a post, calendar event, or pull request." };
+	return { kind: "described", text: raw };
 }
 
 function parseUrl(raw: string, repo: string): TargetQuery | { reason: string } {
@@ -409,9 +413,55 @@ function sha256Hex(value: string): string {
 	return createHash("sha256").update(value).digest("hex");
 }
 
+async function resolveDescribed(
+	env: WorkerEnv,
+	text: string,
+	nowMs: number,
+): Promise<SitePage | { reason: string }> {
+	const described = describeRevision(text, nowMs);
+	if (!described.date && described.words.length === 0) return { reason: "Say which page to correct, or name a day like Saturday or Oct 31." };
+	const ref = env.GITHUB_REF || "main";
+	const candidates: RevisionCandidate[] = [];
+	for (const name of (await listRepoDir(env, ref, "_events")).filter((item) => item.endsWith(".md"))) {
+		const path = `_events/${name}`;
+		if (!isEventPath(path)) continue;
+		const markdown = await readRepoText(env, ref, path);
+		if (markdown === null) continue;
+		if (described.date && !eventOccursOn(markdown, described.date)) continue;
+		const title = frontMatterTitle(markdown) || name.replace(/\.md$/, "");
+		if (!described.date && revisionScore(title, described.words) === 0) continue;
+		candidates.push({ kind: "event", path, title });
+	}
+	for (const name of (await listRepoDir(env, ref, "_posts")).filter((item) => item.endsWith(".md"))) {
+		const fileDate = /^\d{4}-\d{2}-\d{2}/.exec(name)?.[0] || "";
+		if (described.date && fileDate !== described.date) continue;
+		if (!described.date && revisionScore(name, described.words) === 0) continue;
+		const path = `_posts/${name}`;
+		if (!isPostPath(path)) continue;
+		const markdown = await readRepoText(env, ref, path);
+		if (markdown === null) continue;
+		const title = frontMatterTitle(markdown) || name.replace(/\.md$/, "").slice(11);
+		candidates.push({ kind: "post", path, title });
+	}
+	const chosen = chooseRevision(candidates, described.words, described.date);
+	if ("reason" in chosen) return chosen;
+	switch (chosen.kind) {
+		case "post":
+			if (!isPostPath(chosen.path)) return { reason: "That file is not a post or calendar event." };
+			return { kind: "post", path: chosen.path };
+		case "event":
+			if (!isEventPath(chosen.path)) return { reason: "That file is not a post or calendar event." };
+			return { kind: "event", path: chosen.path };
+		default: {
+			const unreachable: never = chosen.kind;
+			return { reason: `Unexpected page: ${String(unreachable)}` };
+		}
+	}
+}
+
 async function resolvePublishedPage(
 	env: WorkerEnv,
-	query: Exclude<TargetQuery, { kind: "pull" }>,
+	query: Exclude<TargetQuery, { kind: "pull" } | { kind: "described" }>,
 ): Promise<SitePage | { reason: string }> {
 	const ref = env.GITHUB_REF || "main";
 	switch (query.kind) {

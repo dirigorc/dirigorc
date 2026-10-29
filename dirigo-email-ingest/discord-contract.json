@@ -132,9 +132,9 @@
   "options": [
     {
       "name": "page",
-      "description": "Update link, calendar link, YYYY-MM-DD-slug, or pull request URL.",
+      "description": "Optional. A link, a day like Saturday or Oct 31, or the event name.",
       "type": 3,
-      "required": true
+      "required": false
     },
     {
       "name": "change",

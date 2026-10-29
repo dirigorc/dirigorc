@@ -1545,22 +1545,44 @@ def date_line(content: str) -> str | None:
     return None
 
 
+EVENT_FILE = re.compile(r"^_events/(\d{4}-\d{2}-\d{2})-[a-z0-9-]+\.md$")
+
+
+def event_filename_date(path: str) -> str | None:
+    match = EVENT_FILE.fullmatch(path)
+    return match.group(1) if match else None
+
+
+def date_value(line: str | None) -> str:
+    if not line or ":" not in line:
+        return ""
+    return line.split(":", 1)[1].strip()[:10]
+
+
 def edit_existing(wire: dict[str, Any], texts: dict[str, str]) -> list[dict[str, str]]:
     if not texts:
         raise ValueError("There is no existing file to correct.")
+    calendar = wire.get("mode") == "calendar-event"
     blocks = [f"## {path}\n\n{content}" for path, content in texts.items()]
+    create_rule = "Do not create a file."
     one_date = ""
-    if wire.get("mode") == "calendar-event":
+    if calendar:
+        create_rule = (
+            "You may create a new _events/YYYY-MM-DD-slug.md when one date of a recurring event moves. "
+            "Do not create any other file."
+        )
         one_date = (
-            "If the instruction changes one date of a recurring event, add that date to skip_dates "
-            "and leave the usual location, time, and recurrence in place.\n"
+            "If the instruction changes the location or time for one date of a recurring event, "
+            "add that date to skip_dates and leave the series date, end date, recurrence, and usual location in place. "
+            "Do not put the one-off location in the series team_note. "
+            "Put that location on the new event, and set its date: line to that date.\n"
         )
     prompt = f"""
 Change only the files below. Apply this instruction and return each full file:
 
 {wire["instruction"]}
 
-Do not create a file. Do not change a date: line. Keep exactly one front-matter pair of --- fences.
+{create_rule} Do not change a date: line on an existing file. Keep exactly one front-matter pair of --- fences.
 {one_date}
 {chr(10).join(blocks)}
 """
@@ -1569,20 +1591,31 @@ Do not create a file. Do not change a date: line. Keep exactly one front-matter 
     if not isinstance(files, list):
         raise ValueError("Model returned invalid files list.")
     edited: list[dict[str, str]] = []
+    seen: set[str] = set()
     for item in files:
         if not isinstance(item, dict):
             raise ValueError("Model returned an invalid file.")
         path = str(item.get("path") or "")
         content = item.get("content")
-        if path not in texts:
+        filename_date = event_filename_date(path)
+        if path not in texts and (not calendar or filename_date is None):
             raise ValueError(f"Correction tried to write {path}, which is not an existing file.")
         if not isinstance(content, str):
             raise ValueError(f"Correction returned no text for {path}.")
+        if path in seen:
+            raise ValueError(f"Correction returned {path} more than once.")
+        seen.add(path)
         if front_matter_fences(content) != 2:
             raise ValueError(f"{path} does not contain exactly one front-matter pair.")
-        if date_line(content) != date_line(texts[path]):
-            raise ValueError(f"{path} changes the date: line.")
+        if path in texts:
+            if date_line(content) != date_line(texts[path]):
+                raise ValueError(f"{path} changes the date: line.")
+        elif date_value(date_line(content)) != filename_date:
+            raise ValueError(f"{path} date: line must be {filename_date}.")
         edited.append({"path": path, "content": content})
+    missing = [path for path in texts if path not in seen]
+    if missing:
+        raise ValueError(f"Correction omitted {missing[0]}.")
     return edited
 
 

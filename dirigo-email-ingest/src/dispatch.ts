@@ -18,6 +18,7 @@ export interface WorkerEnv {
 	DISCORD_BOT_TOKEN?: string;
 	DISCORD_GUILD_ID?: string;
 	DISCORD_RECAP_EMOJI?: string;
+	DISCORD_CALENDAR_EMOJI?: string;
 	DISCORD_GATEWAY?: DurableObjectNamespace;
 }
 
