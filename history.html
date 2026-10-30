@@ -110,9 +110,11 @@ og_image_height=1440
           <h2>Season archives.</h2>
           <p>Year-by-year results from the current season back through the records recovered from the earlier site.</p>
         </div>
+      </div>
+      <div class="year-toolbar">
+        {% include year-nav.html label="Season archives" %}
         <a class="text-link" href="{{ '/updates/all/' | relative_url }}">Every update</a>
       </div>
-      {% include year-nav.html label="Season archives" %}
     </section>
 
     <section class="section section-light pattern-legacy">

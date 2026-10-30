@@ -16,18 +16,18 @@ description=page.description
   {% include site-header.html current='updates' %}
 
   <main id="main">
-    <section class="section pattern-news updates-archive">
+    <section class="section pattern-news updates-archive updates-index">
       <div class="section-header">
         <div>
           <h1>Updates by year.</h1>
           <p>Race results and club notes from the current season back through the recovered archives.</p>
         </div>
-        <div class="section-header-links">
-          <a class="text-link" href="{{ '/updates/' | relative_url }}">Recent updates</a>
-        </div>
       </div>
 
-      {% include year-nav.html label="Jump to a year" anchors_only=true %}
+      <div class="year-toolbar">
+        {% include year-nav.html label="Jump to a year" anchors_only=true %}
+        <a class="text-link" href="{{ '/updates/' | relative_url }}">Recent updates</a>
+      </div>
       {% include updates-by-year.html %}
     </section>
   </main>
