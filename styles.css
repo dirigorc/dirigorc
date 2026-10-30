@@ -1385,6 +1385,96 @@ body.has-lightbox {
   padding-top: 1.5rem;
 }
 
+.updates-year-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem 1.25rem;
+  align-items: baseline;
+  margin: 0 0 1.75rem;
+}
+
+.updates-year-row .eyebrow {
+  margin: 0;
+}
+
+#seasons .section-header p {
+  max-width: 640px;
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+}
+
+.year-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin: 0 0 1.75rem;
+}
+
+.updates-year-row .year-nav {
+  margin: 0;
+}
+
+.year-nav a {
+  color: var(--dirigo-blue);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.year-nav a[aria-current="page"] {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.year-index {
+  display: grid;
+  gap: 2.25rem;
+}
+
+.updates-archive .year-index h2 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+}
+
+.year-index ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--ink);
+}
+
+.year-index li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.year-index a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 87, 184, 0.34);
+  text-underline-offset: 0.18em;
+}
+
+.year-index a:hover,
+.year-index a:focus-visible {
+  color: var(--dirigo-blue);
+  text-decoration-color: currentColor;
+}
+
+.year-index time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.section-footer-action {
+  gap: 1.25rem;
+}
+
 .search-shell {
   display: grid;
   gap: 0.7rem;
@@ -2296,6 +2386,22 @@ body.has-lightbox {
   }
 
   .section-header-links {
+    justify-content: flex-start;
+  }
+
+  .updates-year-row {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .year-index li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+
+  .section-footer-action {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 

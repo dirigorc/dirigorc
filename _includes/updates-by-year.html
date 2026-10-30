@@ -1,0 +1,25 @@
+{%- assign indexed_posts = site.posts | sort: "date" | reverse -%}
+{%- assign indexed_year = "" -%}
+<div class="year-index">
+  {%- for post in indexed_posts -%}
+  {%- assign post_year = post.date | date: "%Y" -%}
+  {%- if post_year != indexed_year -%}
+  {%- if indexed_year != "" -%}
+  </ul>
+  </section>
+  {%- endif -%}
+  {%- assign indexed_year = post_year -%}
+  <section id="y-{{ post_year }}">
+    <h2>{{ post_year }}</h2>
+    <ul>
+  {%- endif -%}
+      <li>
+        <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+        <time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: "%b %-d, %Y" }}</time>
+      </li>
+  {%- endfor -%}
+  {%- if indexed_year != "" -%}
+    </ul>
+  </section>
+  {%- endif -%}
+</div>

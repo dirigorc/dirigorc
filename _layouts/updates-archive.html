@@ -37,6 +37,12 @@ og_image_height=4000
         </div>
       </div>
 
+      <div class="updates-year-row">
+        <p class="eyebrow">By year</p>
+        {% include year-nav.html label="Updates by year" %}
+        <a class="text-link" href="{{ '/updates/all/' | relative_url }}">Every update</a>
+      </div>
+
       <div id="updates-search-panel" class="updates-search-panel" hidden>
         <form class="search-shell" role="search" action="{{ '/updates/' | relative_url }}" method="get">
           <label for="updates-search">Search updates</label>

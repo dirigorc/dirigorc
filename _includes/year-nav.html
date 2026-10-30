@@ -1,0 +1,26 @@
+{%- assign year_posts = site.posts | sort: "date" | reverse -%}
+{%- assign year_archives = site.posts | where: "category", "Archive" -%}
+{%- assign seen_years = "" -%}
+<nav class="year-nav" aria-label="{{ include.label | default: 'Updates by year' }}">
+  {%- for post in year_posts -%}
+  {%- assign year = post.date | date: "%Y" -%}
+  {%- capture year_token %}|{{ year }}|{% endcapture -%}
+  {%- unless seen_years contains year_token -%}
+  {%- assign seen_years = seen_years | append: year_token -%}
+  {%- assign year_href = "" -%}
+  {%- unless include.anchors_only -%}
+  {%- for archive in year_archives -%}
+  {%- assign archive_year = archive.date | date: "%Y" -%}
+  {%- if archive_year == year -%}
+  {%- assign year_href = archive.url -%}
+  {%- break -%}
+  {%- endif -%}
+  {%- endfor -%}
+  {%- endunless -%}
+  {%- if year_href == "" -%}
+  {%- capture year_href %}/updates/all/#y-{{ year }}{% endcapture -%}
+  {%- endif -%}
+  <a href="{{ year_href | relative_url }}"{% if include.current_url == year_href %} aria-current="page"{% endif %}>{{ year }}</a>
+  {%- endunless -%}
+  {%- endfor -%}
+</nav>
