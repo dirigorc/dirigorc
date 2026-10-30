@@ -4,43 +4,57 @@ permalink: /sitemap.xml
 ---
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  {%- assign newest_post = site.posts | sort: 'date' | reverse | first -%}
+  {%- assign content_lastmod = newest_post.date | date_to_xmlschema -%}
+  {%- assign history_page = site.pages | where: "path", "history.html" | first -%}
   <url>
     <loc>{{ '/' | absolute_url }}</loc>
-    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <lastmod>{{ content_lastmod }}</lastmod>
   </url>
   <url>
     <loc>{{ '/join.html' | absolute_url }}</loc>
-    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>{{ '/history.html' | absolute_url }}</loc>
-    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    {%- if history_page.last_modified_at %}
+    <lastmod>{{ history_page.last_modified_at | date_to_xmlschema }}</lastmod>
+    {%- endif %}
   </url>
   <url>
     <loc>{{ '/updates/' | absolute_url }}</loc>
-    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>{{ content_lastmod }}</lastmod>
+  </url>
+  <url>
+    <loc>{{ '/updates/all/' | absolute_url }}</loc>
+    <lastmod>{{ content_lastmod }}</lastmod>
   </url>
   <url>
     <loc>{{ '/calendar/' | absolute_url }}</loc>
-    <lastmod>{{ site.time | date_to_xmlschema }}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>{{ content_lastmod }}</lastmod>
   </url>
-  {% assign posts = site.posts | sort: 'date' | reverse %}
-  {% for post in posts %}
+  {%- assign per_page = site.paginate | default: 6 -%}
+  {%- assign post_count = site.posts | size -%}
+  {%- assign page_count = post_count | divided_by: per_page -%}
+  {%- assign page_remainder = post_count | modulo: per_page -%}
+  {%- if page_remainder > 0 -%}
+  {%- assign page_count = page_count | plus: 1 -%}
+  {%- endif -%}
+  {%- if page_count > 1 -%}
+  {%- for page_number in (2..30) -%}
+  {%- if page_number <= page_count %}
+  <url>
+    <loc>{{ '/updates/page/' | append: page_number | append: '/' | absolute_url }}</loc>
+    <lastmod>{{ content_lastmod }}</lastmod>
+  </url>
+  {%- endif -%}
+  {%- endfor -%}
+  {%- endif -%}
+  {%- assign posts = site.posts | sort: 'date' | reverse -%}
+  {%- for post in posts -%}
+  {%- assign post_lastmod = post.last_modified_at | default: post.date %}
   <url>
     <loc>{{ post.url | absolute_url }}</loc>
-    <lastmod>{{ post.date | date_to_xmlschema }}</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>{{ post_lastmod | date_to_xmlschema }}</lastmod>
   </url>
-  {% endfor %}
+  {%- endfor %}
 </urlset>
