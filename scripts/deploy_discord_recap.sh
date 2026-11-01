@@ -15,6 +15,20 @@ LAST_COMMAND_ERROR_CODE=0
 
 cd "$(dirname "$0")/.."
 
+# Discord rejects a command when a required option follows an optional one.
+if jq -e '
+  any(.commands[].registration;
+    ((.options // []) | reduce .[] as $opt ({seen_optional: false, bad: false};
+      if $opt.required == true and .seen_optional then .bad = true
+      elif $opt.required != true then .seen_optional = true
+      else . end
+    ) | .bad)
+  )
+' "$CONTRACT_FILE" >/dev/null; then
+  echo "Discord command options are invalid: required options must come before optional options." >&2
+  exit 1
+fi
+
 cd "$WORKER_DIR"
 npx wrangler deploy --name "$WORKER_NAME"
 
@@ -36,6 +50,10 @@ cleanup_dirigo_commands() {
   endpoint="$1"
   list_file="$(mktemp)"
   api_get "$endpoint" > "$list_file"
+  if ! jq -e 'type == "array"' "$list_file" >/dev/null; then
+    rm -f "$list_file"
+    return 0
+  fi
   jq -r '.commands[].name' "$CONTRACT_FILE" | while IFS= read -r command_name; do
     [ -n "$command_name" ] || continue
     jq -r --arg name "$command_name" '.[] | select(.name == $name) | .id' "$list_file" | while IFS= read -r command_id; do
@@ -46,17 +64,19 @@ cleanup_dirigo_commands() {
   rm -f "$list_file"
 }
 
-create_command() {
+put_commands() {
   endpoint="$1"
-  payload_file="$2"
+  payload_file="$(mktemp)"
   response_file="$(mktemp)"
-  http_code="$(curl -sS -o "$response_file" -w '%{http_code}' -X POST "https://discord.com/api/v10${endpoint}" \
+  jq -c '[.commands[].registration]' "$CONTRACT_FILE" > "$payload_file"
+  http_code="$(curl -sS -o "$response_file" -w '%{http_code}' -X PUT "https://discord.com/api/v10${endpoint}" \
     -H "Authorization: Bot ${DISCORD_BOT_TOKEN}" \
     -H "Content-Type: application/json" \
     --data-binary "@${payload_file}")"
+  rm -f "$payload_file"
 
   if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-    cat "$response_file" | jq
+    jq . "$response_file"
     rm -f "$response_file"
     LAST_COMMAND_ERROR_CODE=0
     return 0
@@ -68,50 +88,33 @@ create_command() {
     return 1
   fi
 
-  cat "$response_file" | jq
+  jq . "$response_file"
   rm -f "$response_file"
   LAST_COMMAND_ERROR_CODE="$http_code"
   return 1
 }
 
-create_commands() {
-  endpoint="$1"
-  lines_file="$(mktemp)"
-  jq -c '.commands[].registration' "$CONTRACT_FILE" > "$lines_file"
-  status=0
-  while IFS= read -r registration || [ -n "$registration" ]; do
-    [ -n "$registration" ] || continue
-    payload_file="$(mktemp)"
-    printf '%s\n' "$registration" > "$payload_file"
-    if ! create_command "$endpoint" "$payload_file"; then
-      status=1
-      rm -f "$payload_file"
-      break
-    fi
-    rm -f "$payload_file"
-  done < "$lines_file"
-  rm -f "$lines_file"
-  return "$status"
-}
-
+# Replace a scope in one request. Discord leaves the previous commands in place
+# when the body is invalid, so a rejected /revise cannot delete the live one.
 if [ "$COMMAND_SCOPE" = "global" ]; then
-  cleanup_dirigo_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"
-  cleanup_dirigo_commands "/applications/${DISCORD_APPLICATION_ID}/commands"
-  create_commands "/applications/${DISCORD_APPLICATION_ID}/commands"
-else
-  cleanup_dirigo_commands "/applications/${DISCORD_APPLICATION_ID}/commands"
-  cleanup_dirigo_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"
-  if create_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"; then
+  if put_commands "/applications/${DISCORD_APPLICATION_ID}/commands"; then
+    cleanup_dirigo_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"
     exit 0
   fi
-
-  if [ "$LAST_COMMAND_ERROR_CODE" -eq 50001 ]; then
-    echo "Guild registration returned Discord Missing Access (50001). Falling back to a global command registration." >&2
-    if create_commands "/applications/${DISCORD_APPLICATION_ID}/commands"; then
-      exit 0
-    fi
-    exit 1
-  fi
-
   exit 1
 fi
+
+if put_commands "/applications/${DISCORD_APPLICATION_ID}/guilds/${DISCORD_GUILD_ID}/commands"; then
+  cleanup_dirigo_commands "/applications/${DISCORD_APPLICATION_ID}/commands"
+  exit 0
+fi
+
+if [ "$LAST_COMMAND_ERROR_CODE" -eq 50001 ]; then
+  echo "Guild registration returned Discord Missing Access (50001). Falling back to a global command registration." >&2
+  if put_commands "/applications/${DISCORD_APPLICATION_ID}/commands"; then
+    exit 0
+  fi
+  exit 1
+fi
+
+exit 1

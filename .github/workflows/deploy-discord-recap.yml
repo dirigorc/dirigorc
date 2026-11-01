@@ -9,6 +9,7 @@ on:
       - dirigo-email-ingest/wrangler.jsonc
       - dirigo-email-ingest/package.json
       - dirigo-email-ingest/package-lock.json
+      - dirigo-email-ingest/discord-contract.json
       - scripts/deploy_discord_recap.sh
       - automation/cloudflare-race-report-worker.js
   pull_request:
@@ -21,6 +22,7 @@ on:
       - dirigo-email-ingest/wrangler.jsonc
       - dirigo-email-ingest/package.json
       - dirigo-email-ingest/package-lock.json
+      - dirigo-email-ingest/discord-contract.json
       - scripts/deploy_discord_recap.sh
       - automation/cloudflare-race-report-worker.js
 

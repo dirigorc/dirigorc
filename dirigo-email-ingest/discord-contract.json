@@ -131,17 +131,17 @@
   "type": 1,
   "options": [
     {
-      "name": "page",
-      "description": "Optional. A link, a day like Saturday or Oct 31, or the event name.",
-      "type": 3,
-      "required": false
-    },
-    {
       "name": "change",
       "description": "What to correct. One instruction, not a new recap.",
       "type": 3,
       "required": true,
       "max_length": 1000
+    },
+    {
+      "name": "page",
+      "description": "Optional. A link, a day like Saturday or Oct 31, or the event name.",
+      "type": 3,
+      "required": false
     }
   ]
 }
