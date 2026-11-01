@@ -1,0 +1,19 @@
+---
+title: "Bethanie Brown 1:13:59 at Cambridgeside Cambridge Half — big half PR"
+date: 2026-11-01
+category: "Results"
+layout_style: "single"
+summary: "Bethanie Brown ran a huge half-marathon PR of 1:13:59 at the Cambridgeside Cambridge Half Marathon, placing 72nd overall, 3rd among women, and 2nd in the women's 30–39 age group."
+tags:
+  - "Cambridge Half Marathon"
+  - "Bethanie Brown"
+links:
+  - label: "Discord recap"
+    url: "https://discord.com/channels/1135212426166550558/1165772385614577806/1566483412989247500"
+---
+
+Bethanie Brown ran a huge half-marathon PR at the Cambridgeside Cambridge Half Marathon, stopping the clock in 1:13:59 (about 5:39 min/mile).
+
+According to the posted timing card, she finished 72nd overall out of 8,783, 3rd among the 4,354 women in the race, and 2nd in the F30–39 division (913 entrants in that age group). Results listed as preliminary on the timing card.
+
+Huge congrats to Bethanie for a standout performance and a big new marker for the season.
