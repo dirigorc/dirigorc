@@ -568,6 +568,7 @@ async function applyDraftCorrection(
 		readFrom: "branch",
 		reviewMessages: correction.messages.map((message) => ({ channelId: message.channelId, messageId: message.messageId })),
 		mode,
+		target: "draft",
 	}, callback);
 	return { kind: "accepted", branch: correction.head };
 }
@@ -598,6 +599,7 @@ async function applyPublishedCorrection(
 		readFrom: existing ? "branch" : "main",
 		reviewMessages: [],
 		mode,
+		target: "published",
 	}, callback);
 	return { kind: "accepted", branch };
 }

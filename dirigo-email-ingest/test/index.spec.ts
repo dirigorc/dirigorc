@@ -1010,11 +1010,12 @@ describe("Dirigo email ingest worker", () => {
 		expect(await response.json()).toEqual({ type: 5, data: { flags: 64 } });
 		const dispatch = github.calls.find(isGithubDispatch);
 		expect(dispatch).toBeTruthy();
-		const payload = JSON.parse(dispatch?.body || "{}") as { event_type: string; client_payload: { correction: { path: string; branch: string; readFrom: string; mode: string } } };
+		const payload = JSON.parse(dispatch?.body || "{}") as { event_type: string; client_payload: { correction: { path: string; branch: string; readFrom: string; mode: string; target: string } } };
 		expect(payload.event_type).toBe("race-report-email");
 		expect(payload.client_payload.correction.path).toBe(path);
 		expect(payload.client_payload.correction.branch).toMatch(/^automation\/race-report-\d{15}$/);
 		expect(payload.client_payload.correction.readFrom).toBe("main");
+		expect(payload.client_payload.correction.target).toBe("published");
 		expect(payload.client_payload.correction.mode).toBe("race-report");
 		const staged = decodedPut(github.calls.find((call) => call.method === "PUT" && call.url.includes("/payload.json"))!).content as { email: { correction: { path: string } } };
 		expect(staged.email.correction.path).toBe(path);
@@ -1443,7 +1444,7 @@ skip_dates:
 		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as {
 			event_type: string;
 			client_payload: {
-				correction: { path: string; readFrom: string; branch: string; reviewMessages: { channelId: string; messageId: string }[] };
+				correction: { path: string; readFrom: string; branch: string; target: string; reviewMessages: { channelId: string; messageId: string }[] };
 				discord_callback: { application_id: string; token: string };
 			};
 		};
@@ -1451,6 +1452,7 @@ skip_dates:
 		expect(payload.client_payload.correction).toMatchObject({
 			path: "_posts/2026-01-02-beach-to-beacon.md",
 			readFrom: "branch",
+			target: "draft",
 			branch: "automation/race-report-99",
 			reviewMessages: [{ channelId: "111", messageId: "222" }],
 		});

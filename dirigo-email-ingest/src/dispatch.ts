@@ -52,6 +52,7 @@ export type CorrectionWire = {
 	readFrom: "main" | "branch";
 	reviewMessages: { channelId: string; messageId: string }[];
 	mode: "race-report" | "calendar-event";
+	target: "published" | "draft";
 };
 
 export class CorrectionIngestError extends Error {

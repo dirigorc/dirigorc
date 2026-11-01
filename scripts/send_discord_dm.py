@@ -19,6 +19,14 @@ PREVIEW_SKIP_LINES = {
     "## Site preview",
     "_Roughly how this will appear on the public site._",
 }
+REVIEW_COMMENT = re.compile(r"<!-- dirigo-review: (published-post|published-event|draft-post|draft-event) -->")
+REVIEW_ACTIONS = {
+    "published-post": "This revises a post already on the site. Publish replaces that post. Hold leaves the live post unchanged.",
+    "published-event": "This revises a calendar event already on the site. Publish replaces that event. Hold leaves the live event unchanged.",
+    "draft-post": "This revises the open draft. Publish puts the revised draft on the site. Hold leaves the draft open.",
+    "draft-event": "This revises the open calendar draft. Publish puts the revised draft on the site. Hold leaves the draft open.",
+}
+NEW_DRAFT_ACTION = "Publish puts this on the site. Hold leaves the draft open."
 
 
 def discord_post(
@@ -103,7 +111,7 @@ def discord_preview(pr_body: str) -> tuple[str, list[str]]:
     lines: list[str] = []
     for raw_line in text.splitlines():
         line = raw_line.strip()
-        if line in PREVIEW_SKIP_LINES:
+        if line in PREVIEW_SKIP_LINES or REVIEW_COMMENT.fullmatch(line):
             continue
         lines.append(line)
     description = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
@@ -167,14 +175,31 @@ def message_id(payload: dict[str, Any]) -> str:
     return value
 
 
+def review_kind(pr_body: str) -> str:
+    match = REVIEW_COMMENT.search(pr_body)
+    return match.group(1) if match else ""
+
+
+def review_change(pr_body: str) -> str:
+    preview = pr_body.split("<details>", 1)[0]
+    match = re.search(r"^\*\*Change:\*\*\s*(.+?)(?:\n## |\n<!-- |\Z)", preview, flags=re.M | re.S)
+    if not match:
+        return ""
+    return re.sub(r"\s+", " ", match.group(1)).strip()
+
+
 def build_review_message(title: str, url: str, pr_number: str, pr_body: str) -> dict[str, Any]:
     heading = title or "Dirigo update"
+    kind = review_kind(pr_body)
     description, images = discord_preview(pr_body)
-    content = clip_text(
-        f"**{heading}**\nPublish puts this on the site. Hold leaves the draft open.\n{url}",
-        2000,
-    )
-    embeds: list[dict[str, Any]] = [{"title": clip_text(heading, 256), "url": url}]
+    lines = [f"**{heading}**", REVIEW_ACTIONS.get(kind, NEW_DRAFT_ACTION)]
+    change = review_change(pr_body)
+    if change:
+        lines.append(f"Change: {change}")
+    lines.append(url)
+    content = clip_text("\n".join(lines), 2000)
+    embed_title = f"Revision: {heading}" if kind else heading
+    embeds: list[dict[str, Any]] = [{"title": clip_text(embed_title, 256), "url": url}]
     if description:
         embeds[0]["description"] = description
     embeds.extend({"image": {"url": image}} for image in images)

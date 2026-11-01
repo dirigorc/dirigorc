@@ -441,9 +441,29 @@ class CorrectionEditTests(unittest.TestCase):
                 [],
                 "race-report",
                 marker="<!-- dirigo-correction: _posts/2026-01-02-a.md abc -->",
+                revision="published",
             )
             body = GENERATOR.PR_BODY_PATH.read_text(encoding="utf-8")
+        self.assertTrue(body.startswith("<!-- dirigo-review: published-post -->\n\nThis revises a post already on the site (`_posts/2026-01-02-a.md`).\n\n**Change:** Corrected the time.\n"))
         self.assertTrue(body.rstrip().endswith("<!-- dirigo-correction: _posts/2026-01-02-a.md abc -->"))
+
+    def test_write_pr_body_marks_a_published_calendar_revision(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            GENERATOR, "PR_BODY_PATH", Path(directory) / "body.md"
+        ):
+            GENERATOR.write_pr_body(
+                {"summary": "Meet at Freeport."},
+                [],
+                {"source": "discord", "command": "event", "from": "Jonah", "subject": "Correction"},
+                [],
+                [],
+                "calendar-event",
+                marker="<!-- dirigo-correction: _events/2026-10-31-payson.md abc -->",
+                revision="published",
+            )
+            body = GENERATOR.PR_BODY_PATH.read_text(encoding="utf-8")
+        self.assertIn("<!-- dirigo-review: published-event -->", body)
+        self.assertIn("This revises a calendar event already on the site (`_events/2026-10-31-payson.md`).", body)
 
     def wire(self):
         return {
