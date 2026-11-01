@@ -7,9 +7,6 @@ summary: "Bethanie Brown ran a huge half-marathon PR of 1:13:59 at the Cambridge
 tags:
   - "Cambridge Half Marathon"
   - "Bethanie Brown"
-links:
-  - label: "Discord recap"
-    url: "https://discord.com/channels/1135212426166550558/1165772385614577806/1566483412989247500"
 ---
 
 Bethanie Brown ran a huge half-marathon PR at the Cambridgeside Cambridge Half Marathon, stopping the clock in 1:13:59 (about 5:39 min/mile).
