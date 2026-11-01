@@ -97,10 +97,58 @@ class DiscordDmTests(unittest.TestCase):
             message["content"],
             "**Beach to Beacon**\nPublish puts this on the site. Hold leaves the draft open.\nhttps://github.com/dirigorc/dirigorc/pull/41",
         )
+        self.assertEqual(message["embeds"][0]["title"], "Beach to Beacon")
         self.assertIn("Dirigo took the women's top ten.", message["embeds"][0]["description"])
         self.assertNotIn("do not show", message["embeds"][0]["description"])
         self.assertNotIn("Site preview", message["embeds"][0]["description"])
         self.assertEqual(message["embeds"][1], {"image": {"url": "https://raw.githubusercontent.com/dirigorc/dirigorc/automation/race-report-1/photo.jpg"}})
+
+    def test_review_message_says_a_published_post_is_a_revision(self):
+        body = "\n".join(
+            [
+                "<!-- dirigo-review: published-post -->",
+                "",
+                "This revises a post already on the site (`_posts/2026-10-26-beach.md`).",
+                "",
+                "**Change:** Winning time is 17:53, not 17:55.",
+                "",
+                "## Site preview",
+                "",
+                "_Roughly how this will appear on the public site._",
+                "",
+                "# Beach to Beacon",
+                "",
+                "Dirigo took the women's top ten.",
+                "",
+                "<details>",
+                "<summary>Automation notes</summary>",
+                "do not show",
+                "</details>",
+            ]
+        )
+        message = NOTIFIER.build_review_message(
+            "Beach to Beacon",
+            "https://github.com/dirigorc/dirigorc/pull/41",
+            "41",
+            body,
+        )
+
+        self.assertEqual(
+            message["content"],
+            "\n".join(
+                [
+                    "**Beach to Beacon**",
+                    "This revises a post already on the site. Publish replaces that post. Hold leaves the live post unchanged.",
+                    "Change: Winning time is 17:53, not 17:55.",
+                    "https://github.com/dirigorc/dirigorc/pull/41",
+                ]
+            ),
+        )
+        self.assertEqual(message["embeds"][0]["title"], "Revision: Beach to Beacon")
+        self.assertIn("already on the site", message["embeds"][0]["description"])
+        self.assertIn("Winning time is 17:53, not 17:55.", message["embeds"][0]["description"])
+        self.assertNotIn("dirigo-review", message["embeds"][0]["description"])
+        self.assertNotIn("do not show", message["embeds"][0]["description"])
         self.assertEqual(
             message["components"],
             [

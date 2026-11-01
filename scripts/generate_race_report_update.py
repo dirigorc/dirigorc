@@ -1363,9 +1363,32 @@ def enforce_discord_verbatim_copy(files: list[dict[str, str]], email: dict[str, 
     posts[0]["content"] = f"---\n{front_matter}\n---\n\n{body}\n"
 
 
-def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str], mode: str, marker: str = "") -> None:
+def correction_banner(marker: str, revision: str, instruction: str, mode: str) -> list[str]:
+    path_match = re.search(r"<!-- dirigo-correction:\s+(\S+)", marker)
+    path = path_match.group(1) if path_match else ""
+    event = path.startswith("_events/") or (path in {"", "*"} and mode == "calendar-event")
+    kind = "event" if event else "post"
+    scope = "published" if revision == "published" else "draft"
+    noun = "calendar event" if event else "post"
+    located = f" (`{path}`)" if path and path != "*" else ""
+    if scope == "published":
+        sentence = f"This revises a {noun} already on the site{located}."
+    elif located:
+        sentence = f"This revises the open draft of this {noun}{located}."
+    else:
+        sentence = f"This revises the open draft of this {noun}."
+    lines = [f"<!-- dirigo-review: {scope}-{kind} -->", "", sentence, ""]
+    change = instruction.strip()
+    if change:
+        lines.extend([f"**Change:** {change}", ""])
+    return lines
+
+
+def write_pr_body(result: dict[str, Any], written: list[str], email: dict[str, Any], staged: list[dict[str, str]], kept: list[str], mode: str, marker: str = "", revision: str = "") -> None:
     PR_BODY_PATH.parent.mkdir(parents=True, exist_ok=True)
     sections: list[str] = []
+    if marker and revision in {"published", "draft"}:
+        sections.extend(correction_banner(marker, revision, str(result.get("summary") or ""), mode))
 
     preview_paths = content_files_for_preview(written)
     if preview_paths:
@@ -1645,7 +1668,19 @@ def main() -> int:
         pr_title = derive_pr_title({"summary": str(wire["instruction"])}, files, email)
         write_pr_title(pr_title)
         write_generated_files_manifest(written)
-        write_pr_body({"summary": str(wire["instruction"])}, written, email, [], [], args.mode, marker=str(wire["marker"]))
+        revision = str(wire.get("target") or "")
+        if revision not in {"published", "draft"}:
+            revision = "published" if wire.get("readFrom") == "main" else "draft"
+        write_pr_body(
+            {"summary": str(wire["instruction"])},
+            written,
+            email,
+            [],
+            [],
+            args.mode,
+            marker=str(wire["marker"]),
+            revision=revision,
+        )
         print(f"Wrote {len(written)} file(s).")
         print(f"PR title: {pr_title}")
         for path in written:
