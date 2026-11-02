@@ -2,7 +2,7 @@
 title: "Bethanie Brown 1:13:59 at Cambridgeside Cambridge Half — big half PR"
 date: 2026-11-01
 category: "Results"
-layout_style: "single"
+layout_style: "feature"
 image:
   src: "assets/images/email/2026-11-02/bethanie-brown-cambridge-half-pr-bethanielily13-1793573442-4021107814289544756-412070443.jpg"
   alt: "Dirigo race photo."
