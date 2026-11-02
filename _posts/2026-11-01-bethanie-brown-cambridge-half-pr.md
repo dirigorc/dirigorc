@@ -5,7 +5,7 @@ category: "Results"
 layout_style: "single"
 image:
   src: "assets/images/email/2026-11-02/bethanie-brown-cambridge-half-pr-bethanielily13-1793573442-4021107814289544756-412070443.jpg"
-  alt: "Dirigo race photo."
+  alt: "Bethanie Brown smiles in a Dirigo R.C. singlet, bib 2405, after the Cambridgeside Cambridge Half Marathon."
 summary: "Bethanie Brown ran a huge half-marathon PR of 1:13:59 at the Cambridgeside Cambridge Half Marathon, placing 72nd overall, 3rd among women, and 2nd in the women's 30–39 age group."
 tags:
   - "Cambridge Half Marathon"
