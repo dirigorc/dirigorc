@@ -379,6 +379,34 @@ class CorrectionEditTests(unittest.TestCase):
         self.assertIn(photo["path"], files[0]["content"])
         self.assertIn("layout_style: single", files[0]["content"])
         self.assertIn("image:", files[0]["content"])
+        self.assertIn(f"  src: {photo['path']}", files[0]["content"])
+
+    def test_correction_rewrites_a_bare_image_string_path(self):
+        path = "_posts/2026-11-01-bethanie-brown-cambridge-half-pr.md"
+        photo_path = "assets/images/email/2026-11-02/bethanie-finish.jpg"
+        source = (
+            "---\n"
+            "date: 2026-11-01\n"
+            "layout_style: single\n"
+            f'image: "{photo_path}"\n'
+            "---\n\n"
+            "Bethanie Brown\n"
+        )
+        photo = {
+            "path": photo_path,
+            "filename": "bethanie-finish.jpg",
+            "alt": "Dirigo race photo.",
+        }
+        files = [{"path": path, "content": source}]
+        result = {"assumptions": [], "missing": []}
+        GENERATOR.ensure_attached_images_used([photo], files, result)
+        content = files[0]["content"]
+        self.assertIn("image:", content)
+        self.assertIn(f"  src: {photo_path}", content)
+        self.assertRegex(content, r'(?m)^  alt: ".+"$')
+        self.assertNotIn(f'image: "{photo_path}"', content)
+        self.assertTrue(GENERATOR.image_path_has_src(content, photo_path))
+        self.assertIn("image.src", result["assumptions"][0])
 
     def test_calendar_correction_keeps_one_date_off_the_series_location(self):
         source = "---\ndate: 2026-07-18\n---\n\nHi\n"
