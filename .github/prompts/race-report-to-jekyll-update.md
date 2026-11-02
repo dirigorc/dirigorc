@@ -63,7 +63,7 @@ The site uses:
    - If submitted attachments are included, err toward using them. Do not drop usable submitted images just because one photo would be enough.
    - If an attached image fits a generated update or event, reference its local path exactly in `image.src` or `images[].src`.
    - Attachment paths shown in the prompt are temporary staging names. The automation will rename used attachments to content-specific filenames before opening the PR.
-   - Do not invent detailed alt text for email/Discord attachments. Use a plain placeholder such as `Dirigo race photo.`. The automation keeps that placeholder when the filename is a camera name or an id, and uses the filename only when it is words.
+   - For email/Discord attachments, write a short alt that names the athlete and race or briefly describes the picture (lightbox captions use this string). Do not spell out camera filenames or Discord attachment ids as alt text. If the picture contents are unclear, prefer `Name at the Race.` from the post facts over a generic placeholder.
    - Use multiple attachments when they support the same generated public update; prefer `layout_style: image-row` with `images:` for 2-4 relevant photos, or more when the sender clearly intended a gallery-style update.
    - For a single attached race photo, prefer `layout_style: feature` (image beside the result copy), especially for portrait finish photos. Reserve `layout_style: single` for a landscape photo that should stay full width.
    - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.

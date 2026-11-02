@@ -898,7 +898,7 @@ def ensure_attached_images_used(staged: list[dict[str, str]], files: list[dict[s
     for item in missing:
         if item["path"] in seen_paths:
             continue
-        images.append({"path": item["path"], "alt": deterministic_attachment_alt(item)})
+        images.append({"path": item["path"], "alt": attachment_caption(content, item)})
         seen_paths.add(item["path"])
 
     front_matter = remove_front_matter_blocks(front_matter, {"layout_style", "image", "images"})
@@ -990,6 +990,93 @@ def deterministic_attachment_alt(item: dict[str, str], fallback: str = "Dirigo r
     return f"Dirigo race photo from {readable}."
 
 
+WEAK_ATTACHMENT_ALT = re.compile(
+    r"^(dirigo race photo\.?|dirigo race photo from .+)$",
+    flags=re.IGNORECASE,
+)
+RACE_TAG_HINT = re.compile(
+    r"(marathon|half|5k|10k|15k|mile|relay|championship|classic|invite|fest|xc|cross.?country|\brun\b)",
+    flags=re.IGNORECASE,
+)
+
+
+def is_weak_attachment_alt(alt: str) -> bool:
+    return not alt.strip() or bool(WEAK_ATTACHMENT_ALT.fullmatch(alt.strip()))
+
+
+def front_matter_field(front_matter: str, key: str) -> str:
+    match = re.search(rf"(?m)^{re.escape(key)}:\s*(.+?)\s*$", front_matter)
+    if not match:
+        return ""
+    return unquote_yaml_scalar(match.group(1))
+
+
+def front_matter_tag_list(front_matter: str) -> list[str]:
+    lines = front_matter.splitlines()
+    tags: list[str] = []
+    in_tags = False
+    for line in lines:
+        if re.match(r"^tags:\s*$", line):
+            in_tags = True
+            continue
+        if in_tags:
+            item = re.match(r"^\s*-\s+(.+?)\s*$", line)
+            if item:
+                tags.append(unquote_yaml_scalar(item.group(1)))
+                continue
+            if line and not line.startswith((" ", "\t")):
+                break
+    return tags
+
+
+def person_and_race_from_content(content: str) -> tuple[str, str]:
+    match = re.match(r"\A---\s*\n(.*?)\n---", content, flags=re.DOTALL)
+    if not match:
+        return "", ""
+    front_matter = match.group(1)
+    tags = front_matter_tag_list(front_matter)
+    people = [tag for tag in tags if " " in tag and not RACE_TAG_HINT.search(tag)]
+    races = [tag for tag in tags if RACE_TAG_HINT.search(tag)]
+    person = people[0] if people else ""
+    race = races[0] if races else ""
+    if person and race:
+        return person, race
+    title = front_matter_field(front_matter, "title")
+    if not title:
+        return person, race
+    at_match = re.search(r"^(?P<who>.+?)\s+(?:\d[:\d.].*?\s+)?at\s+(?P<where>.+)$", title, flags=re.IGNORECASE)
+    if at_match:
+        who = re.sub(r"\s+\d[:\d.].*$", "", at_match.group("who")).strip(" -—")
+        where = at_match.group("where").strip(" -—")
+        where = re.sub(r"\s*[—-].*$", "", where).strip()
+        return person or who, race or where
+    return person, race
+
+
+def attachment_caption(content: str, item: dict[str, str], fallback: str = "Dirigo race photo.") -> str:
+    person, race = person_and_race_from_content(content)
+    if person and race:
+        return f"{person} at the {race}."
+    if person:
+        return f"{person} at a Dirigo race."
+    if race:
+        return f"Dirigo runner at the {race}."
+    return deterministic_attachment_alt(item, fallback=fallback)
+
+
+def current_image_alt_for_path(content: str, image_path: str) -> str:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if image_path not in line:
+            continue
+        search_indexes = list(range(index, min(len(lines), index + 6))) + list(range(max(0, index - 4), index))
+        for candidate_index in search_indexes:
+            alt_match = re.match(r"^\s*-?\s*alt:\s+(.+?)\s*$", lines[candidate_index])
+            if alt_match:
+                return unquote_yaml_scalar(alt_match.group(1))
+    return ""
+
+
 def renamed_attachment_path(old_path: str, files: list[dict[str, str]], used_names: set[str]) -> str:
     staged_path = ROOT / old_path
     suffix = staged_path.suffix.lower() or ".jpg"
@@ -1033,9 +1120,13 @@ def rename_kept_attachments(staged: list[dict[str, str]], files: list[dict[str, 
             for generated in files:
                 generated["content"] = generated.get("content", "").replace(old_path, new_path)
             item["renamed_path"] = new_path
-        safe_alt = deterministic_attachment_alt(item)
         for generated in files:
-            generated["content"] = replace_image_alt_for_path(generated.get("content", ""), new_path, safe_alt)
+            content = generated.get("content", "")
+            current_alt = current_image_alt_for_path(content, new_path)
+            if not is_weak_attachment_alt(current_alt):
+                continue
+            safe_alt = attachment_caption(content, item)
+            generated["content"] = replace_image_alt_for_path(content, new_path, safe_alt)
         renamed.append(new_path)
 
     return renamed
@@ -1625,7 +1716,9 @@ def edit_existing(
             "layout_style: feature\n"
             "image:\n"
             "  src: assets/images/email/YYYY-MM-DD/example.jpg\n"
-            "  alt: Dirigo race photo.\n"
+            "  alt: Bethanie Brown at the Cambridge Half Marathon.\n"
+            "Write a short alt that names the athlete and race or briefly describes the picture. "
+            "Do not spell out camera filenames or Discord attachment ids. "
             "For more than one photo use layout_style: image-row with images: list entries that each have src and alt. "
             "Never write image as a plain string path. Do not invent other image paths.\n"
         )

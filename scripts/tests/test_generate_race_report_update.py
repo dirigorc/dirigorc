@@ -386,15 +386,19 @@ class CorrectionEditTests(unittest.TestCase):
         photo_path = "assets/images/email/2026-11-02/bethanie-finish.jpg"
         source = (
             "---\n"
+            'title: "Bethanie Brown 1:13:59 at Cambridgeside Cambridge Half — big half PR"\n'
             "date: 2026-11-01\n"
             "layout_style: single\n"
             f'image: "{photo_path}"\n'
+            "tags:\n"
+            '  - "Cambridge Half Marathon"\n'
+            '  - "Bethanie Brown"\n'
             "---\n\n"
             "Bethanie Brown\n"
         )
         photo = {
             "path": photo_path,
-            "filename": "bethanie-finish.jpg",
+            "filename": "bethanielily13-1793573442-4021107814289544756-412070443.jpg",
             "alt": "Dirigo race photo.",
         }
         files = [{"path": path, "content": source}]
@@ -403,7 +407,7 @@ class CorrectionEditTests(unittest.TestCase):
         content = files[0]["content"]
         self.assertIn("image:", content)
         self.assertIn(f"  src: {photo_path}", content)
-        self.assertRegex(content, r'(?m)^  alt: ".+"$')
+        self.assertIn('  alt: "Bethanie Brown at the Cambridge Half Marathon."', content)
         self.assertNotIn(f'image: "{photo_path}"', content)
         self.assertTrue(GENERATOR.image_path_has_src(content, photo_path))
         self.assertIn("image.src", result["assumptions"][0])
@@ -739,6 +743,84 @@ class AttachmentAltTests(unittest.TestCase):
     def test_word_filename_is_used_in_the_alt(self):
         alt = GENERATOR.deterministic_attachment_alt({"filename": "beach-to-beacon-finish.jpg"})
         self.assertEqual(alt, "Dirigo race photo from beach to beacon finish.")
+
+    def test_attachment_caption_uses_person_and_race_tags(self):
+        content = (
+            "---\n"
+            'title: "Bethanie Brown 1:13:59 at Cambridgeside Cambridge Half — big half PR"\n'
+            "tags:\n"
+            '  - "Cambridge Half Marathon"\n'
+            '  - "Bethanie Brown"\n'
+            "---\n\n"
+            "Body.\n"
+        )
+        alt = GENERATOR.attachment_caption(content, {
+            "filename": "bethanielily13-1793573442-4021107814289544756-412070443.jpg",
+        })
+        self.assertEqual(alt, "Bethanie Brown at the Cambridge Half Marathon.")
+
+    def test_rename_keeps_a_descriptive_alt(self):
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        old_path = "assets/images/email/2026-11-02/photo.jpg"
+        content = (
+            "---\n"
+            'title: "Bethanie Brown at Cambridge Half"\n'
+            "layout_style: single\n"
+            "image:\n"
+            f"  src: {old_path}\n"
+            '  alt: "Bethanie Brown smiles after the Cambridge Half Marathon."\n'
+            "tags:\n"
+            '  - "Cambridge Half Marathon"\n'
+            '  - "Bethanie Brown"\n'
+            "---\n\n"
+            "Body.\n"
+        )
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GENERATOR, "ROOT", Path(directory)):
+            (Path(directory) / old_path).parent.mkdir(parents=True, exist_ok=True)
+            (Path(directory) / old_path).write_bytes(tiny_png)
+            staged = [{
+                "path": old_path,
+                "filename": "bethanielily13-1793573442.jpg",
+                "content_type": "image/png",
+                "size": "12",
+            }]
+            files = [{"path": "_posts/2026-11-01-bethanie.md", "content": content}]
+            GENERATOR.rename_kept_attachments(staged, files, [old_path])
+        self.assertIn('alt: "Bethanie Brown smiles after the Cambridge Half Marathon."', files[0]["content"])
+
+    def test_rename_replaces_a_weak_alt_with_person_and_race(self):
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        old_path = "assets/images/email/2026-11-02/photo.jpg"
+        content = (
+            "---\n"
+            'title: "Bethanie Brown at Cambridge Half"\n'
+            "layout_style: single\n"
+            "image:\n"
+            f"  src: {old_path}\n"
+            '  alt: "Dirigo race photo."\n'
+            "tags:\n"
+            '  - "Cambridge Half Marathon"\n'
+            '  - "Bethanie Brown"\n'
+            "---\n\n"
+            "Body.\n"
+        )
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GENERATOR, "ROOT", Path(directory)):
+            (Path(directory) / old_path).parent.mkdir(parents=True, exist_ok=True)
+            (Path(directory) / old_path).write_bytes(tiny_png)
+            staged = [{
+                "path": old_path,
+                "filename": "bethanielily13-1793573442.jpg",
+                "content_type": "image/png",
+                "size": "12",
+            }]
+            files = [{"path": "_posts/2026-11-01-bethanie.md", "content": content}]
+            GENERATOR.rename_kept_attachments(staged, files, [old_path])
+        self.assertIn('alt: "Bethanie Brown at the Cambridge Half Marathon."', files[0]["content"])
+        self.assertNotIn('alt: "Dirigo race photo."', files[0]["content"])
 
 
 if __name__ == "__main__":
