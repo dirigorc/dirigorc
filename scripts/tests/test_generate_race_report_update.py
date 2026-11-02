@@ -342,6 +342,44 @@ class CorrectionEditTests(unittest.TestCase):
         self.assertEqual(files, [{"path": "_posts/2026-01-02-a.md", "content": updated}])
         self.assertNotIn("skip_dates", call.call_args.args[0])
 
+    def test_edit_existing_lists_submitted_photos_in_the_prompt(self):
+        path = "_posts/2026-11-01-bethanie-brown-cambridge-half-pr.md"
+        source = "---\ndate: 2026-11-01\nlayout_style: single\n---\n\nBethanie Brown\n"
+        updated = "---\ndate: 2026-11-01\nlayout_style: single\n---\n\nBethanie Brown\n"
+        staged = [{
+            "path": "assets/images/email/2026-11-01/bethanie-finish.jpg",
+            "filename": "bethanie-finish.jpg",
+            "content_type": "image/jpeg",
+            "size": "12",
+            "alt": "Dirigo race photo.",
+        }]
+        with mock.patch.object(GENERATOR, "call_openai", return_value={
+            "files": [{"path": path, "content": updated}],
+            "summary": "",
+            "assumptions": [],
+            "skipped_duplicates": [],
+            "missing": [],
+        }) as call:
+            GENERATOR.edit_existing(self.wire(), {path: source}, staged_attachments=staged)
+        prompt = call.call_args.args[0]
+        self.assertIn("assets/images/email/2026-11-01/bethanie-finish.jpg", prompt)
+        self.assertIn("Submitted image attachments are listed below", prompt)
+
+    def test_correction_adds_a_forgotten_photo_to_the_existing_post(self):
+        path = "_posts/2026-11-01-bethanie-brown-cambridge-half-pr.md"
+        source = "---\ndate: 2026-11-01\nlayout_style: single\n---\n\nBethanie Brown\n"
+        photo = {
+            "path": "assets/images/email/2026-11-01/bethanie-finish.jpg",
+            "filename": "bethanie-finish.jpg",
+            "alt": "Dirigo race photo.",
+        }
+        files = [{"path": path, "content": source}]
+        result = {"assumptions": [], "missing": []}
+        GENERATOR.ensure_attached_images_used([photo], files, result)
+        self.assertIn(photo["path"], files[0]["content"])
+        self.assertIn("layout_style: single", files[0]["content"])
+        self.assertIn("image:", files[0]["content"])
+
     def test_calendar_correction_keeps_one_date_off_the_series_location(self):
         source = "---\ndate: 2026-07-18\n---\n\nHi\n"
         updated = "---\ndate: 2026-07-18\n---\n\nHello\n"

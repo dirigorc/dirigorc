@@ -22,6 +22,14 @@
  * - DISCORD_GUILD_ID: Optional guild id. When set, reactions in other servers are ignored.
  */
 
+import {
+	type DiscordAttachmentSummary,
+	type DiscordResolvedAttachment,
+	attachmentContentType,
+	discordAttachmentFromOption,
+	discordAttachments,
+	discordRequestedAttachmentCount,
+} from "./discord-attachments";
 import { loadDiscordContract } from "./discord-contract";
 import {
 	DISCORD_INTERACTION_APPLICATION_COMMAND,
@@ -67,11 +75,8 @@ import {
 } from "./self-report";
 
 loadDiscordContract();
-const DISCORD_IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 const DISCORD_TEXT_CONTENT_TYPES = new Set(["text/plain", "text/markdown", "message/rfc822", "application/octet-stream"]);
-const MAX_DISCORD_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const MAX_DISCORD_TEXT_ATTACHMENT_BYTES = 256 * 1024;
-const DISCORD_ATTACHMENT_OPTION_NAMES = ["image1", "image2", "image3", "image4", "image5"];
 const DISCORD_TEXT_ATTACHMENT_OPTION_NAME = "recap_file";
 const DISCORD_MODAL_BODY_MAX = 4000;
 const DISCORD_RECAP_MODAL_ID = "recap_modal_v1";
@@ -80,12 +85,6 @@ const DISCORD_LONG_RECAP_MESSAGE = "Run /recap with an empty body and continue i
 const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, submit the recap text first, attach a .txt/.md file with recap_file, or use the HTTP test endpoint in the README.";
 
 export { DiscordGateway };
-
-interface DiscordAttachmentSummary {
-	attachments: EmailAttachment[];
-	skipped: string[];
-	requested: number;
-}
 
 interface DiscordTextAttachmentSummary {
 	text: string;
@@ -147,14 +146,6 @@ async function verifyDiscordRequest(request: Request, rawBody: Uint8Array, env: 
 		);
 	}
 	return crypto.subtle.verify(key.algorithm, key, signature, messageBytes);
-}
-
-interface DiscordResolvedAttachment {
-	id?: string;
-	filename?: string;
-	content_type?: string;
-	size?: number;
-	url?: string;
 }
 
 function discordPolishEnabled(interaction: DiscordInteraction): boolean {
@@ -237,17 +228,6 @@ function bytesToBase64(bytes: Uint8Array): string {
 	return btoa(binary);
 }
 
-function discordAttachmentFromOption(interaction: DiscordInteraction, optionName: string): DiscordResolvedAttachment | null {
-	const rawId = discordOption(interaction, optionName);
-	if (rawId === "" || rawId === false) return null;
-	const id = String(rawId);
-	return interaction.data?.resolved?.attachments?.[id] || null;
-}
-
-function attachmentContentType(item: DiscordResolvedAttachment): string {
-	return String(item.content_type || "").split(";")[0].trim().toLowerCase();
-}
-
 function attachmentExtension(filename: string): string {
 	const match = filename.toLowerCase().match(/\.([a-z0-9]+)$/);
 	return match ? match[1] : "";
@@ -255,63 +235,6 @@ function attachmentExtension(filename: string): string {
 
 function discordTextAttachmentFromOption(interaction: DiscordInteraction): DiscordResolvedAttachment | null {
 	return discordAttachmentFromOption(interaction, DISCORD_TEXT_ATTACHMENT_OPTION_NAME);
-}
-
-function discordRequestedAttachmentCount(interaction: DiscordInteraction): number {
-	return DISCORD_ATTACHMENT_OPTION_NAMES
-		.map((optionName) => discordAttachmentFromOption(interaction, optionName))
-		.filter(Boolean).length;
-}
-
-async function discordAttachments(interaction: DiscordInteraction): Promise<DiscordAttachmentSummary> {
-	const selected = DISCORD_ATTACHMENT_OPTION_NAMES.map((optionName) => discordAttachmentFromOption(interaction, optionName)).filter((item): item is DiscordResolvedAttachment => Boolean(item));
-
-	const attachments: EmailAttachment[] = [];
-	const skipped: string[] = [];
-	for (const item of selected) {
-		const contentType = attachmentContentType(item);
-		const filename = item.filename || "attachment";
-		const size = Number(item.size || 0);
-		const url = item.url || "";
-		if (!url) {
-			skipped.push(`${filename}: missing Discord attachment URL`);
-			continue;
-		}
-		if (!DISCORD_IMAGE_CONTENT_TYPES.has(contentType)) {
-			skipped.push(`${filename}: unsupported file type`);
-			continue;
-		}
-		if (size <= 0 || size > MAX_DISCORD_ATTACHMENT_BYTES) {
-			skipped.push(`${filename}: over the 8 MB per-image limit`);
-			continue;
-		}
-
-		let response: Response;
-		try {
-			response = await fetch(url);
-		} catch {
-			skipped.push(`${filename}: could not fetch from Discord`);
-			continue;
-		}
-		if (!response.ok) {
-			skipped.push(`${filename}: Discord returned ${response.status}`);
-			continue;
-		}
-
-		const bytes = new Uint8Array(await response.arrayBuffer());
-		if (bytes.length === 0 || bytes.length > MAX_DISCORD_ATTACHMENT_BYTES) {
-			skipped.push(`${filename}: empty or over the 8 MB per-image limit`);
-			continue;
-		}
-
-		attachments.push({
-			filename,
-			content_type: contentType,
-			data: bytesToBase64(bytes),
-		});
-	}
-
-	return { attachments, skipped, requested: selected.length };
 }
 
 export { discordAttachments };
