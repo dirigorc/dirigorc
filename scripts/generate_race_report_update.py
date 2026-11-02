@@ -1582,7 +1582,12 @@ def date_value(line: str | None) -> str:
     return line.split(":", 1)[1].strip()[:10]
 
 
-def edit_existing(wire: dict[str, Any], texts: dict[str, str]) -> list[dict[str, str]]:
+def edit_existing(
+    wire: dict[str, Any],
+    texts: dict[str, str],
+    staged_attachments: list[dict[str, str]] | None = None,
+    screenshot_notes: list[dict[str, str]] | None = None,
+) -> list[dict[str, str]]:
     if not texts:
         raise ValueError("There is no existing file to correct.")
     calendar = wire.get("mode") == "calendar-event"
@@ -1600,13 +1605,26 @@ def edit_existing(wire: dict[str, Any], texts: dict[str, str]) -> list[dict[str,
             "Do not put the one-off location in the series team_note. "
             "Put that location on the new event, and set its date: line to that date.\n"
         )
+    photo_rule = ""
+    if staged_attachments:
+        photo_rule = (
+            "Submitted image attachments are listed below. When the instruction adds a photo, or photos are "
+            "clearly meant for this page, set layout_style and image/images front matter using those local paths exactly. "
+            "Prefer layout_style: single with image: for one photo, or layout_style: image-row with images: for more. "
+            "Do not invent other image paths.\n"
+        )
     prompt = f"""
 Change only the files below. Apply this instruction and return each full file:
 
 {wire["instruction"]}
 
 {create_rule} Do not change a date: line on an existing file. Keep exactly one front-matter pair of --- fences.
-{one_date}
+{one_date}{photo_rule}
+# Email Image Attachments
+
+{attachment_context(staged_attachments or [])}
+
+{stats_screenshot_context(screenshot_notes or [])}
 {chr(10).join(blocks)}
 """
     result = call_openai(prompt, os.environ.get("OPENAI_MODEL", "gpt-5-mini"))
@@ -1659,24 +1677,33 @@ def main() -> int:
 
     email = normalize_email_payload(payload)
     wire = correction_wire(payload)
+    today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
     if wire is not None:
         if wire["mode"] != args.mode:
             raise SystemExit(f"correction.mode {wire['mode']} does not match {args.mode}")
         texts = current_texts(wire)
-        files = edit_existing(wire, texts)
+        staged_attachments = stage_email_attachments(email, today)
+        staged_attachments, screenshot_notes = separate_results_screenshots(staged_attachments, args.model)
+        result: dict[str, Any] = {"summary": str(wire["instruction"]), "assumptions": [], "missing": []}
+        merge_screenshot_assumptions(result, screenshot_notes)
+        files = edit_existing(wire, texts, staged_attachments, screenshot_notes)
+        ensure_attached_images_used(staged_attachments, files, result)
+        kept_attachments = prune_unused_attachments(staged_attachments, files)
+        kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)
         written = write_files(files)
-        pr_title = derive_pr_title({"summary": str(wire["instruction"])}, files, email)
+        written.extend(path for path in kept_attachments if path not in written)
+        pr_title = derive_pr_title(result, files, email)
         write_pr_title(pr_title)
         write_generated_files_manifest(written)
         revision = str(wire.get("target") or "")
         if revision not in {"published", "draft"}:
             revision = "published" if wire.get("readFrom") == "main" else "draft"
         write_pr_body(
-            {"summary": str(wire["instruction"])},
+            result,
             written,
             email,
-            [],
-            [],
+            staged_attachments,
+            kept_attachments,
             args.mode,
             marker=str(wire["marker"]),
             revision=revision,
@@ -1687,7 +1714,6 @@ def main() -> int:
             print(path)
         return 0
 
-    today = dt.datetime.now(dt.timezone.utc).astimezone().strftime("%Y-%m-%d")
     staged_attachments = stage_email_attachments(email, today)
     staged_attachments, screenshot_notes = separate_results_screenshots(staged_attachments, args.model)
 

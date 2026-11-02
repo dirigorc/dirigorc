@@ -1010,17 +1010,58 @@ describe("Dirigo email ingest worker", () => {
 		expect(await response.json()).toEqual({ type: 5, data: { flags: 64 } });
 		const dispatch = github.calls.find(isGithubDispatch);
 		expect(dispatch).toBeTruthy();
-		const payload = JSON.parse(dispatch?.body || "{}") as { event_type: string; client_payload: { correction: { path: string; branch: string; readFrom: string; mode: string; target: string } } };
+		const payload = JSON.parse(dispatch?.body || "{}") as { event_type: string; client_payload: { correction: { path: string; branch: string; readFrom: string; mode: string; target: string }; has_attachments: boolean } };
 		expect(payload.event_type).toBe("race-report-email");
 		expect(payload.client_payload.correction.path).toBe(path);
 		expect(payload.client_payload.correction.branch).toMatch(/^automation\/race-report-\d{15}$/);
 		expect(payload.client_payload.correction.readFrom).toBe("main");
 		expect(payload.client_payload.correction.target).toBe("published");
 		expect(payload.client_payload.correction.mode).toBe("race-report");
+		expect(payload.client_payload.has_attachments).toBe(false);
 		const staged = decodedPut(github.calls.find((call) => call.method === "PUT" && call.url.includes("/payload.json"))!).content as { email: { correction: { path: string } } };
 		expect(staged.email.correction.path).toBe(path);
 		const followup = discordMessages(github.calls).at(-1);
 		expect(followup?.content).toBe("Correction sent for review.");
+	});
+
+	it("stages a photo when revising a live results page", async () => {
+		const path = "_posts/2026-11-01-bethanie-brown-cambridge-half-pr.md";
+		const imageBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+		const github = mockCorrection({
+			files: { [`main:${path}`]: "---\ndate: 2026-11-01\n---\n\nBethanie Brown\n" },
+			imageBytes,
+		});
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(reviseCommand(
+			"https://dirigorc.com/results/2026/11/01/bethanie-brown-cambridge-half-pr.html",
+			"Add this finish photo to the Cambridge Half result.",
+			"7",
+			[{
+				option: "image1",
+				id: "finish-photo",
+				filename: "bethanie-finish.jpg",
+				content_type: "image/jpeg",
+				size: imageBytes.length,
+				url: "https://cdn.discord.test/bethanie-finish.jpg",
+			}],
+		), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(await response.json()).toEqual({ type: 5, data: { flags: 64 } });
+		expect(github.calls.some((call) => call.url === "https://cdn.discord.test/bethanie-finish.jpg")).toBe(true);
+		const dispatch = github.calls.find(isGithubDispatch);
+		const payload = JSON.parse(dispatch?.body || "{}") as { client_payload: { has_attachments: boolean; correction: { instructionHash: string } } };
+		expect(payload.client_payload.has_attachments).toBe(true);
+		expect(payload.client_payload.correction.instructionHash).not.toBe("43129171e1bcdd1a460e1e612488516510749feada6ea0ead6d745b5f3be55c2");
+		const staged = decodedPut(github.calls.find((call) => call.method === "PUT" && call.url.includes("/payload.json"))!).content as {
+			email: { attachments: Array<{ filename: string; content_type: string; data: string }> };
+		};
+		expect(staged.email.attachments).toEqual([
+			{ filename: "bethanie-finish.jpg", content_type: "image/jpeg", data: "/9j/2Q==" },
+		]);
+		expect(discordMessages(github.calls).at(-1)?.content).toBe(
+			"Correction sent for review.\n\n1/1 image attachment(s) accepted.",
+		);
 	});
 
 	it("uses one stable branch for a known live post", async () => {
@@ -1810,17 +1851,39 @@ function reviewPull(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function reviseCommand(page: string, change: string, userId: string) {
+function reviseCommand(
+	page: string,
+	change: string,
+	userId: string,
+	images: Array<{
+		option: string;
+		id: string;
+		filename: string;
+		content_type: string;
+		size: number;
+		url: string;
+	}> = [],
+) {
+	const options = [
+		{ name: "page", value: page },
+		{ name: "change", value: change },
+		...images.map((image) => ({ name: image.option, value: image.id })),
+	];
+	const attachments = Object.fromEntries(images.map((image) => [image.id, {
+		id: image.id,
+		filename: image.filename,
+		content_type: image.content_type,
+		size: image.size,
+		url: image.url,
+	}]));
 	return {
 		type: 2,
 		application_id: "discord-app",
 		token: "revise-token",
 		data: {
 			name: "revise",
-			options: [
-				{ name: "page", value: page },
-				{ name: "change", value: change },
-			],
+			options,
+			...(images.length ? { resolved: { attachments } } : {}),
 		},
 		member: { user: { id: userId, username: "member", global_name: "Guild Member" } },
 	};
@@ -1832,6 +1895,7 @@ function mockCorrection(options: {
 	openPulls?: Record<string, unknown>[];
 	pullFiles?: { filename: string }[];
 	directory?: Record<string, { name: string; type: string }[]>;
+	imageBytes?: Uint8Array;
 } = {}) {
 	const calls: FetchCall[] = [];
 	const files = new Map<string, { sha: string; text: string }>();
@@ -1841,6 +1905,12 @@ function mockCorrection(options: {
 		const method = (init?.method || "GET").toUpperCase();
 		const body = typeof init?.body === "string" ? init.body : undefined;
 		calls.push({ url, method, body });
+		if (url.startsWith("https://cdn.discord.test/")) {
+			return new Response(options.imageBytes || new Uint8Array(), {
+				status: 200,
+				headers: { "content-type": "image/jpeg" },
+			});
+		}
 		if (url.includes("discord.com")) return new Response(null, { status: 204 });
 		if (isGithubDispatch({ url, method, body })) return new Response(null, { status: 204 });
 		if (url.includes("/git/ref/heads/")) return Response.json({ object: { sha: "base-sha" } });

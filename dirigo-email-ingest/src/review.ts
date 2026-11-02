@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+	type DiscordAttachmentSummary,
+	attachmentAcceptanceNote,
+	discordAttachments,
+} from "./discord-attachments";
 import { loadDiscordContract, type DiscordContract } from "./discord-contract";
 import {
 	DISCORD_INTERACTION_APPLICATION_COMMAND,
@@ -20,6 +25,7 @@ import {
 	dispatchToGitHub,
 	githubFetch,
 	type CorrectionWire,
+	type EmailAttachment,
 	type EmailPayload,
 	type WorkerEnv,
 } from "./dispatch";
@@ -58,12 +64,14 @@ type Correction =
 		pages: readonly SitePage[];
 		instruction: Instruction;
 		messages: readonly ReviewMessageRef[];
+		attachments: readonly EmailAttachment[];
 	}
 	| {
 		kind: "published";
 		submittedBy: string;
 		page: SitePage;
 		instruction: Instruction;
+		attachments: readonly EmailAttachment[];
 	};
 
 type TargetQuery =
@@ -177,7 +185,7 @@ function reviewModal(
 	const instruction = parseInstruction(discordModalField(interaction, "change"));
 	if (!instruction) return discordAck("Write one instruction, from 12 to 1000 characters.");
 	ctx.waitUntil(runCorrection(interaction, env, async () => {
-		const resolved = await resolveDraft(env, parsed.pullNumber, reviewer, instruction, parsed.messages);
+		const resolved = await resolveDraft(env, parsed.pullNumber, reviewer, instruction, parsed.messages, []);
 		if ("reason" in resolved) return resolved.reason;
 		const result = await applyCorrection(env, resolved, discordCallback(interaction));
 		return correctionFollowup(env, result, parsed.pullNumber);
@@ -190,15 +198,19 @@ function reviewCommand(interaction: DiscordInteraction, env: WorkerEnv, ctx: Exe
 		const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
 		const instruction = parseInstruction(String(discordOption(interaction, "change") || ""));
 		if (!instruction) return "Write one instruction, from 12 to 1000 characters.";
+		const photos = await discordAttachments(interaction);
+		if (photos.requested > 0 && photos.attachments.length === 0) {
+			return `I could not use those photos. ${attachmentAcceptanceNote(photos)}`;
+		}
 		const query = parseTargetQuery(String(discordOption(interaction, "page") || ""), repo);
 		if ("reason" in query) return query.reason;
 		if (query.kind === "pull") {
 			const reviewer = requireReviewer(interaction, env);
 			if (reviewer instanceof Response) return "You can't review this draft.";
-			const resolved = await resolveDraft(env, query.pullNumber, reviewer, instruction, []);
+			const resolved = await resolveDraft(env, query.pullNumber, reviewer, instruction, [], photos.attachments);
 			if ("reason" in resolved) return resolved.reason;
 			const result = await applyCorrection(env, resolved, discordCallback(interaction));
-			return correctionFollowup(env, result, query.pullNumber);
+			return correctionFollowup(env, result, query.pullNumber, photos);
 		}
 		const page = query.kind === "described"
 			? await resolveDescribed(env, [query.text, instruction].filter(Boolean).join("\n"), Date.now())
@@ -209,9 +221,10 @@ function reviewCommand(interaction: DiscordInteraction, env: WorkerEnv, ctx: Exe
 			submittedBy: discordSubmittedBy(interaction).slice(0, 120),
 			page,
 			instruction,
+			attachments: photos.attachments,
 		};
 		const result = await applyCorrection(env, correction, discordCallback(interaction));
-		return correctionFollowup(env, result);
+		return correctionFollowup(env, result, undefined, photos);
 	}));
 	return discordDeferredAck();
 }
@@ -240,14 +253,17 @@ function correctionFollowup(
 	env: WorkerEnv,
 	result: { kind: "accepted"; branch: AutomationHead } | { kind: "unchanged"; url: string } | { kind: "refused"; reason: string },
 	pullNumber?: number,
+	photos?: DiscordAttachmentSummary,
 ): string {
 	if (result.kind === "refused") return result.reason;
-	if (result.kind === "unchanged") return `That correction is already in review.\n${result.url}`;
+	const photoNote = photos ? attachmentAcceptanceNote(photos) : "";
+	const withPhotos = (message: string): string => (photoNote ? `${message}\n\n${photoNote}` : message);
+	if (result.kind === "unchanged") return withPhotos(`That correction is already in review.\n${result.url}`);
 	if (pullNumber) {
 		const repo = env.GITHUB_REPO || "dirigorc/dirigorc";
-		return `Correction in review.\nhttps://github.com/${repo}/pull/${pullNumber}`;
+		return withPhotos(`Correction in review.\nhttps://github.com/${repo}/pull/${pullNumber}`);
 	}
-	return "Correction sent for review.";
+	return withPhotos("Correction sent for review.");
 }
 
 function discordCallback(interaction: DiscordInteraction): DiscordCallback | undefined {
@@ -505,6 +521,7 @@ async function resolveDraft(
 	reviewer: Reviewer,
 	instruction: Instruction,
 	messages: readonly ReviewMessageRef[],
+	attachments: readonly EmailAttachment[],
 ): Promise<Extract<Correction, { kind: "draft" }> | { reason: string }> {
 	const loaded = await loadPull(env, pullNumber);
 	if ("reason" in loaded) return loaded;
@@ -527,6 +544,7 @@ async function resolveDraft(
 		pages,
 		instruction,
 		messages,
+		attachments,
 	};
 }
 
@@ -555,13 +573,14 @@ async function applyDraftCorrection(
 	const loaded = await loadPull(env, correction.pullNumber);
 	if ("reason" in loaded) return { kind: "refused", reason: loaded.reason };
 	const path = correction.pages.length === 1 ? correction.pages[0].path : "*";
-	const marker = correctionMarker(path, sha256Hex(correction.instruction));
+	const instructionHash = correctionFingerprint(correction.instruction, correction.attachments);
+	const marker = correctionMarker(path, instructionHash);
 	const url = pullUrl(env, loaded.pull, correction.pullNumber);
 	if ((loaded.pull.body || "").includes(marker)) return { kind: "unchanged", url };
 	const mode = headMode(correction.head);
 	await dispatchCorrection(env, correction, {
 		instruction: correction.instruction,
-		instructionHash: sha256Hex(correction.instruction),
+		instructionHash,
 		marker,
 		branch: correction.head,
 		path,
@@ -583,7 +602,7 @@ async function applyPublishedCorrection(
 	| { kind: "refused"; reason: string }
 > {
 	const branch = correctionBranch(correction.page);
-	const instructionHash = sha256Hex(correction.instruction);
+	const instructionHash = correctionFingerprint(correction.instruction, correction.attachments);
 	const marker = correctionMarker(correction.page.path, instructionHash);
 	const existing = await findOpenPull(env, branch);
 	if (existing && (existing.body || "").includes(marker)) {
@@ -622,6 +641,7 @@ async function dispatchCorrection(
 		text: correction.instruction,
 		body: correction.instruction,
 		raw: "",
+		attachments: [...correction.attachments],
 		links: [],
 		correction: wire,
 		discord_application_id: callback?.applicationId || "",
@@ -631,6 +651,11 @@ async function dispatchCorrection(
 		eventType: wire.mode === "calendar-event" ? "calendar-event-email" : "race-report-email",
 		correction: wire,
 	});
+}
+
+function correctionFingerprint(instruction: string, attachments: readonly EmailAttachment[]): string {
+	const parts = [instruction, ...attachments.map((item) => `${item.filename}\n${item.content_type}\n${item.data}`)];
+	return sha256Hex(parts.join("\n"));
 }
 
 function headMode(head: AutomationHead): "race-report" | "calendar-event" {

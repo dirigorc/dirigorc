@@ -142,6 +142,36 @@
       "description": "Optional. A link, a day like Saturday or Oct 31, or the event name.",
       "type": 3,
       "required": false
+    },
+    {
+      "name": "image1",
+      "description": "Optional photo to add to the existing post or event.",
+      "type": 11,
+      "required": false
+    },
+    {
+      "name": "image2",
+      "description": "Optional second photo attachment.",
+      "type": 11,
+      "required": false
+    },
+    {
+      "name": "image3",
+      "description": "Optional third photo attachment.",
+      "type": 11,
+      "required": false
+    },
+    {
+      "name": "image4",
+      "description": "Optional fourth photo attachment.",
+      "type": 11,
+      "required": false
+    },
+    {
+      "name": "image5",
+      "description": "Optional fifth photo attachment.",
+      "type": 11,
+      "required": false
     }
   ]
 }
