@@ -7,6 +7,7 @@ import {
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { handleRecapReaction, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
 import worker, { discordAttachments, routeDiscordInteraction, runDiscordBackgroundTask } from "../src/index";
+import { incompleteMemberNameReason } from "../src/self-report";
 
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
@@ -15,6 +16,14 @@ const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 describe("Dirigo email ingest worker", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it("accepts Nate Madeira as a full member name", () => {
+		const body = "Board member & dedicated masters runner Dan Bannon ran a 4:56 mile at the Falmouth HS track on Sunday and had great Dirigo support with Nick Denari pacing him and Nate Madeira through 3 laps, with Nate running a 4:54 and Nick a 4:44. Happy birthday Dan!";
+		expect(incompleteMemberNameReason(body)).toBe("");
+		expect(incompleteMemberNameReason("Nate Priest ran 4:54.")).toBe("");
+		expect(incompleteMemberNameReason("Nathan Madeira ran 2:46:11.")).toBe("");
+		expect(incompleteMemberNameReason("Nate ran 4:54.")).toContain("Nate Madeira");
 	});
 
 	it("explains POST-only usage (unit style)", async () => {

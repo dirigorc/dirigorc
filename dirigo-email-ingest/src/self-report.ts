@@ -31,7 +31,7 @@ const MEMBER_NAMES: MemberName[] = [
 	{ pattern: /\bDenari\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
 	{ pattern: /\bHarmon\b/i, replacements: ["Chris Harmon"] },
 	{ pattern: /\bChad\b/i, replacements: ["Chad Boucher"] },
-	{ pattern: /\bNate\b/i, replacements: ["Nate Priest"] },
+	{ pattern: /\bNate\b/i, replacements: ["Nate Priest", "Nate Madeira", "Nathan Madeira"] },
 	{ pattern: /\bSeth\b/i, replacements: ["Seth Crockett"] },
 	{ pattern: /\bCrow\b/i, replacements: ["Crow Norlander"] },
 	{ pattern: /\bMarah\b/i, replacements: ["Marah Borgman"] },
