@@ -795,8 +795,10 @@ def sanitize_public_body_text(files: list[dict[str, str]], result: dict[str, Any
 def image_front_matter_block(images: list[dict[str, str]]) -> list[str]:
     if len(images) == 1:
         item = images[0]
+        # One Discord/email finish photo is usually a portrait. Prefer feature so
+        # the home feed and result cards do not stack full-width singles.
         return [
-            "layout_style: single",
+            "layout_style: feature",
             "image:",
             f"  src: {item['path']}",
             f"  alt: {yaml_double_quoted(item['alt'])}",
@@ -1618,8 +1620,9 @@ def edit_existing(
         photo_rule = (
             "Submitted image attachments are listed below. When the instruction adds a photo, or photos are "
             "clearly meant for this page, set layout_style and image/images front matter using those local paths exactly. "
-            "For one photo use:\n"
-            "layout_style: single\n"
+            "For one photo prefer layout_style: feature (image beside the result copy), especially for portrait "
+            "finish photos. Use layout_style: single only for a landscape shot that should stay full width:\n"
+            "layout_style: feature\n"
             "image:\n"
             "  src: assets/images/email/YYYY-MM-DD/example.jpg\n"
             "  alt: Dirigo race photo.\n"

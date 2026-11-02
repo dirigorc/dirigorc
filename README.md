@@ -150,7 +150,17 @@ Useful optional fields:
 
 ## Update Layout Options
 
-Use `layout_style: single` for one large image:
+Use `layout_style: feature` for one race photo beside the result copy (preferred for portrait finish photos):
+
+```yaml
+layout_style: feature
+stat: "17:11 | 1st overall"
+image:
+  src: assets/images/example.jpg
+  alt: Short image description.
+```
+
+Use `layout_style: single` for one full-width image when the photo is landscape and should stay large:
 
 ```yaml
 layout_style: single
@@ -158,6 +168,8 @@ image:
   src: assets/images/example.jpg
   alt: Short image description.
 ```
+
+On the home page, portrait `single` cards (and later `single` cards after one full-width single already appeared) render as `feature` so tall finish photos do not stack.
 
 Use `layout_style: image-row` for two side-by-side images:
 
@@ -168,16 +180,6 @@ images:
     alt: First image description.
   - src: assets/images/example-2.jpg
     alt: Second image description.
-```
-
-Use `layout_style: feature` for a smaller image beside result copy:
-
-```yaml
-layout_style: feature
-stat: "17:11 | 1st overall"
-image:
-  src: assets/images/example.jpg
-  alt: Short image description.
 ```
 
 ## Image Notes

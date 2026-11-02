@@ -65,6 +65,7 @@ The site uses:
    - Attachment paths shown in the prompt are temporary staging names. The automation will rename used attachments to content-specific filenames before opening the PR.
    - Do not invent detailed alt text for email/Discord attachments. Use a plain placeholder such as `Dirigo race photo.`. The automation keeps that placeholder when the filename is a camera name or an id, and uses the filename only when it is words.
    - Use multiple attachments when they support the same generated public update; prefer `layout_style: image-row` with `images:` for 2-4 relevant photos, or more when the sender clearly intended a gallery-style update.
+   - For a single attached race photo, prefer `layout_style: feature` (image beside the result copy), especially for portrait finish photos. Reserve `layout_style: single` for a landscape photo that should stay full width.
    - Preserve source, result, photographer, Instagram, Facebook, race, and gallery links in front matter.
    - When a usable link exists, prefer a `links:` front matter entry or a direct image/gallery reference rather than a sentence that merely says the link was shared or posted elsewhere.
    - Do not end a post with a sentence like "Full results were shared with the team via ..." if a real result or gallery link is available. Put the link in front matter and keep the body focused on the facts.
@@ -81,7 +82,7 @@ Use existing site conventions:
 title: Short headline.
 date: YYYY-MM-DD
 category: Results
-layout_style: single
+layout_style: feature
 image:
   src: assets/images/example.jpg
   alt: Short image description.

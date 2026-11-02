@@ -261,8 +261,8 @@
   width: 1440
   height: 1920
 - src: "assets/images/email/2026-07-05/karley-piers.jpg"
-  width: 4024
-  height: 6048
+  width: 6048
+  height: 4024
 - src: "assets/images/email/2026-07-05/late-may-june-2025-racing-roundup-heather-gallant-4th-of-july.jpg"
   width: 1363
   height: 2672
@@ -272,12 +272,81 @@
 - src: "assets/images/email/2026-07-05/taylor-bickford-market-square.jpg"
   width: 1440
   height: 1918
+- src: "assets/images/email/2026-08-24/heather-gallant-triple-crown-l-a-bridge-run-2.jpg"
+  width: 1202
+  height: 1602
+- src: "assets/images/email/2026-08-24/heather-gallant-triple-crown-l-a-bridge-run.jpg"
+  width: 1350
+  height: 1800
+- src: "assets/images/email/2026-08-30/weekly-back-cove-season-finale-weekly-back-cove-season-finale.jpeg"
+  width: 1164
+  height: 2080
+- src: "assets/images/email/2026-09-01/jon-clement-wins-tunnel-to-towers-back-bay.jpg"
+  width: 1206
+  height: 906
+- src: "assets/images/email/2026-09-01/jon-clement-wins-tunnel-to-towers-back-bay.png"
+  width: 509
+  height: 495
+- src: "assets/images/email/2026-09-16/dave-ouellette-bradbury-series-final-4th.jpg"
+  width: 1350
+  height: 1800
+- src: "assets/images/email/2026-10-05/seth-crockett-wins-wilmington-fall-fest-5k.png"
+  width: 1170
+  height: 1410
+- src: "assets/images/email/2026-10-13/bethanie-brown-alexis-wilbert-boston-2.png"
+  width: 1170
+  height: 1895
+- src: "assets/images/email/2026-10-13/bethanie-brown-alexis-wilbert-boston-3.png"
+  width: 1170
+  height: 1885
+- src: "assets/images/email/2026-10-13/bethanie-brown-alexis-wilbert-boston-4.png"
+  width: 1150
+  height: 1092
+- src: "assets/images/email/2026-10-13/bethanie-brown-alexis-wilbert-boston.png"
+  width: 1170
+  height: 1717
+- src: "assets/images/email/2026-10-15/keri-mayo-chicago-marathon.jpg"
+  width: 1515
+  height: 2017
+- src: "assets/images/email/2026-10-15/keri-mayo-chicago-marathon.png"
+  width: 1170
+  height: 1559
+- src: "assets/images/email/2026-10-20/eric-sofen-bay-state-christie-barnes-mdi-marathon-cachedmedia-2.jpg"
+  width: 1080
+  height: 1620
+- src: "assets/images/email/2026-10-20/eric-sofen-bay-state-christie-barnes-mdi-marathon-cachedmedia.jpg"
+  width: 1080
+  height: 1620
+- src: "assets/images/email/2026-10-20/eric-sofen-bay-state-christie-barnes-mdi-marathon.jpg"
+  width: 2160
+  height: 2880
+- src: "assets/images/email/2026-10-20/rich-alff-concord-new-england-half.jpg"
+  width: 1067
+  height: 1600
+- src: "assets/images/email/2026-10-27/georgia-moon-southern-maine-regional-xc-champion-mainetrack-xc-1792879719-4015288571166528503-1445532972.jpg"
+  width: 1080
+  height: 1350
+- src: "assets/images/email/2026-11-02/bethanie-brown-cambridge-half-pr-bethanielily13-1793573442-4021107814289544756-412070443.jpg"
+  width: 3024
+  height: 4032
 - src: "assets/images/Eric-Sofen-b2b-25.jpg"
   width: 911
   height: 1214
 - src: "assets/images/eric-sofen-clamfest-55404766144_3d2e1d5f49_o.jpg"
-  width: 2624
-  height: 3936
+  width: 3936
+  height: 2624
+- src: "assets/images/fairgrounds/IMG_6588.jpeg"
+  width: 4032
+  height: 3024
+- src: "assets/images/fairgrounds/IMG_6598.JPG"
+  width: 764
+  height: 1639
+- src: "assets/images/fairgrounds/IMG_6606.jpeg"
+  width: 1170
+  height: 1549
+- src: "assets/images/fairgrounds/IMG_6607.jpeg"
+  width: 1170
+  height: 1003
 - src: "assets/images/favicon-96x96.png"
   width: 96
   height: 96
@@ -404,6 +473,24 @@
 - src: "assets/images/ll-bean-10k-2025-will-spaulding.jpg"
   width: 2400
   height: 1600
+- src: "assets/images/mainemarathon/maine-half-2026-dirigo-course-action.jpeg"
+  width: 1170
+  height: 695
+- src: "assets/images/mainemarathon/maine-half-2026-finish-line.jpeg"
+  width: 1170
+  height: 848
+- src: "assets/images/mainemarathon/maine-half-2026-pardi-postrace.jpeg"
+  width: 1170
+  height: 1888
+- src: "assets/images/mainemarathon/maine-half-2026-race-and-medal-collage.jpeg"
+  width: 1170
+  height: 1924
+- src: "assets/images/mainemarathon/maine-marathon-2026-dirigo-finish-group.jpeg"
+  width: 1170
+  height: 855
+- src: "assets/images/mainemarathon/maine-marathon-2026-masters-relay-awards.jpeg"
+  width: 640
+  height: 480
 - src: "assets/images/Marah-Borgman-b2b-25.jpg"
   width: 882
   height: 1176
@@ -411,8 +498,8 @@
   width: 1719
   height: 2048
 - src: "assets/images/nedicus-swain-clamfest-55404765539_15e5af9be7_o.jpg"
-  width: 2624
-  height: 3936
+  width: 3936
+  height: 2624
 - src: "assets/images/nick-denari-b2b25.jpg"
   width: 683
   height: 910
@@ -426,14 +513,14 @@
   width: 1440
   height: 811
 - src: "assets/images/robert-ashby-clamfest-55404714248_a26938101f_o.jpg"
-  width: 2624
-  height: 3936
+  width: 3936
+  height: 2624
 - src: "assets/images/romayn.jpg"
   width: 921
   height: 1151
 - src: "assets/images/ryan-morrison-clamfest-55404714528_8ec5c43925_o.jpg"
-  width: 2624
-  height: 3936
+  width: 3936
+  height: 2624
 - src: "assets/images/sammy-mills-2025-maine_marathon_3.webp"
   width: 2048
   height: 1491
@@ -441,8 +528,8 @@
   width: 3936
   height: 2624
 - src: "assets/images/seth-mecta.jpg"
-  width: 2624
-  height: 3936
+  width: 3936
+  height: 2624
 - src: "assets/images/taylor-bickford-b2b-25.jpg"
   width: 738
   height: 983
@@ -450,8 +537,8 @@
   width: 1560
   height: 1170
 - src: "assets/images/updates/2024-maine-half-marathon-54047916568_c67f301c86_o.jpg"
-  width: 4000
-  height: 6000
+  width: 6000
+  height: 4000
 - src: "assets/images/updates/77922300-IMG_1097-150x150-2018.jpg"
   width: 150
   height: 150
@@ -564,8 +651,8 @@
   width: 1080
   height: 1426
 - src: "assets/images/updates/great-pumpkin-2024-gretchen-speed-54096945012_086273a0a2_o.jpg"
-  width: 4000
-  height: 6000
+  width: 6000
+  height: 4000
 - src: "assets/images/updates/greely-turkey-trot-2024-54170557531_bea35c1127_o.jpg"
   width: 4107
   height: 1705
@@ -585,11 +672,11 @@
   width: 427
   height: 640
 - src: "assets/images/updates/mtc-turkey-trot-clement-2024-54162321190_4155f72019_o.jpg"
-  width: 4000
-  height: 6000
+  width: 6000
+  height: 4000
 - src: "assets/images/updates/mtc-turkey-trot-Tebbets-2024-54163573522_9edcde8235_o.jpg"
-  width: 4024
-  height: 6048
+  width: 6048
+  height: 4024
 - src: "assets/images/updates/Norfolk-Wrentham-Times-1024x576-2019.png"
   width: 1024
   height: 576
@@ -600,8 +687,8 @@
   width: 991
   height: 879
 - src: "assets/images/updates/thanksgiving-4-miler-2024-54174649824_1d9ea68d22_o.jpg"
-  width: 4024
-  height: 6048
+  width: 6048
+  height: 4024
 - src: "assets/images/valor-track-meet/729589850_18024404378837074_7641894536964394979_n.jpg"
   width: 1170
   height: 1382
@@ -623,21 +710,3 @@
 - src: "assets/images/web-app-manifest-512x512.png"
   width: 512
   height: 512
-- src: "assets/images/mainemarathon/maine-half-2026-dirigo-course-action.jpeg"
-  width: 1170
-  height: 695
-- src: "assets/images/mainemarathon/maine-half-2026-finish-line.jpeg"
-  width: 1170
-  height: 848
-- src: "assets/images/mainemarathon/maine-half-2026-pardi-postrace.jpeg"
-  width: 1170
-  height: 1888
-- src: "assets/images/mainemarathon/maine-half-2026-race-and-medal-collage.jpeg"
-  width: 1170
-  height: 1924
-- src: "assets/images/mainemarathon/maine-marathon-2026-dirigo-finish-group.jpeg"
-  width: 1170
-  height: 855
-- src: "assets/images/mainemarathon/maine-marathon-2026-masters-relay-awards.jpeg"
-  width: 480
-  height: 640

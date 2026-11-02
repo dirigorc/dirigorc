@@ -13,9 +13,28 @@
   <div class="activity-list">
     {% assign updates = site.posts | sort: "date" | reverse %}
     {% assign shown_results = 0 %}
+    {% assign home_used_full_single = false %}
     {% for update in updates %}
       {% if shown_results < 3 %}
-        {% include update-item.html update=update homepage=true %}
+        {% assign home_force_feature = false %}
+        {% if update.layout_style == "single" and update.image and update.image.src %}
+          {% include assign-image-meta.html src=update.image.src %}
+          {% assign home_is_portrait = false %}
+          {% if image_meta and image_meta.height > image_meta.width %}
+            {% assign home_is_portrait = true %}
+          {% endif %}
+          {% comment %}
+            Full-width singles are fine occasionally on the home feed, but portrait
+            finish photos stack too tall when every card uses them. Prefer feature
+            for portraits, and for later singles once one full single already showed.
+          {% endcomment %}
+          {% if home_is_portrait or home_used_full_single %}
+            {% assign home_force_feature = true %}
+          {% else %}
+            {% assign home_used_full_single = true %}
+          {% endif %}
+        {% endif %}
+        {% include update-item.html update=update homepage=true force_feature=home_force_feature %}
         {% assign shown_results = shown_results | plus: 1 %}
       {% endif %}
     {% endfor %}

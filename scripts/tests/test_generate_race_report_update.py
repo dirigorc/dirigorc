@@ -161,7 +161,7 @@ class VerbatimRecapTests(unittest.TestCase):
             self.assertEqual(len(renamed), 1)
             self.assertTrue((Path(directory) / renamed[0]).is_file())
             self.assertIn(renamed[0], files[0]["content"])
-            self.assertIn("layout_style: single\nimage:", files[0]["content"])
+            self.assertIn("layout_style: feature\nimage:", files[0]["content"])
             self.assertTrue(files[0]["content"].endswith(f"---\n\n{body}\n"))
             self.assertIn("Included submitted image attachments", result["assumptions"][0])
 
@@ -377,7 +377,7 @@ class CorrectionEditTests(unittest.TestCase):
         result = {"assumptions": [], "missing": []}
         GENERATOR.ensure_attached_images_used([photo], files, result)
         self.assertIn(photo["path"], files[0]["content"])
-        self.assertIn("layout_style: single", files[0]["content"])
+        self.assertIn("layout_style: feature", files[0]["content"])
         self.assertIn("image:", files[0]["content"])
         self.assertIn(f"  src: {photo['path']}", files[0]["content"])
 

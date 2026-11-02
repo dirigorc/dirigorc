@@ -1,11 +1,15 @@
 {% assign update = include.update %}
+{% assign card_layout = update.layout_style %}
+{% if include.force_feature and update.image %}
+{% assign card_layout = "feature" %}
+{% endif %}
 <article class="activity-item">
   <p class="activity-meta">
     <span>{{ update.category }}</span>
     <time datetime="{{ update.date | date: '%Y-%m-%d' }}">{{ update.date | date: "%b %-d, %Y" }}</time>
   </p>
   <div>
-    {% if update.layout_style == "feature" %}
+    {% if card_layout == "feature" and update.image %}
     <div class="activity-feature">
       <img src="{{ update.image.src | relative_url }}" alt="{{ update.image.alt }}"
         {% include image-attributes.html src=update.image.src loading="lazy" decoding="async" %}>
@@ -25,7 +29,7 @@
       </div>
     </div>
     {% else %}
-    {% if update.layout_style == "image-row" and update.images %}
+    {% if card_layout == "image-row" and update.images %}
     {% assign gallery_image_limit = update.images.size %}
     {% if include.homepage %}
     {% assign gallery_image_limit = 3 %}
