@@ -854,13 +854,14 @@ def remove_front_matter_blocks(front_matter: str, keys: set[str]) -> str:
     return "\n".join(kept)
 
 
+def image_path_has_src(content: str, path: str) -> bool:
+    """True when path is wired as image.src / images[].src, not a bare image: scalar."""
+    escaped = re.escape(path)
+    return bool(re.search(rf'(?m)^\s*-?\s*src:\s+["\']?{escaped}["\']?\s*$', content))
+
+
 def ensure_attached_images_used(staged: list[dict[str, str]], files: list[dict[str, str]], result: dict[str, Any]) -> None:
     if not staged:
-        return
-
-    generated_text = "\n".join(item.get("content", "") for item in files)
-    missing = [item for item in staged if item["path"] not in generated_text]
-    if not missing:
         return
 
     target = next(
@@ -878,7 +879,12 @@ def ensure_attached_images_used(staged: list[dict[str, str]], files: list[dict[s
         result.setdefault("missing", []).append("Image attachments were provided, but no generated post or event was available to attach them to.")
         return
 
-    match = re.match(r"\A---\s*\n(.*?)\n---(\s*\n.*)?\Z", target.get("content", ""), flags=re.DOTALL)
+    content = target.get("content", "")
+    missing = [item for item in staged if not image_path_has_src(content, item["path"])]
+    if not missing:
+        return
+
+    match = re.match(r"\A---\s*\n(.*?)\n---(\s*\n.*)?\Z", content, flags=re.DOTALL)
     if not match:
         result.setdefault("missing", []).append("Image attachments were provided, but the generated post had no editable front matter.")
         return
@@ -896,7 +902,9 @@ def ensure_attached_images_used(staged: list[dict[str, str]], files: list[dict[s
     front_matter = remove_front_matter_blocks(front_matter, {"layout_style", "image", "images"})
     front_matter = front_matter.rstrip() + "\n" + "\n".join(image_front_matter_block(images))
     target["content"] = "---\n" + front_matter + "\n---" + body
-    result.setdefault("assumptions", []).append("Included submitted image attachments because the source provided them and the generated update did not reference all of them.")
+    result.setdefault("assumptions", []).append(
+        "Included submitted image attachments because the source provided them and the generated update did not wire all of them as image.src / images[].src."
+    )
 
 
 def write_files(files: list[dict[str, str]]) -> list[str]:
@@ -1610,8 +1618,13 @@ def edit_existing(
         photo_rule = (
             "Submitted image attachments are listed below. When the instruction adds a photo, or photos are "
             "clearly meant for this page, set layout_style and image/images front matter using those local paths exactly. "
-            "Prefer layout_style: single with image: for one photo, or layout_style: image-row with images: for more. "
-            "Do not invent other image paths.\n"
+            "For one photo use:\n"
+            "layout_style: single\n"
+            "image:\n"
+            "  src: assets/images/email/YYYY-MM-DD/example.jpg\n"
+            "  alt: Dirigo race photo.\n"
+            "For more than one photo use layout_style: image-row with images: list entries that each have src and alt. "
+            "Never write image as a plain string path. Do not invent other image paths.\n"
         )
     prompt = f"""
 Change only the files below. Apply this instruction and return each full file:
