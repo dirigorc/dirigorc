@@ -23,33 +23,36 @@ export interface PreparedRecap {
 interface MemberName {
 	pattern: RegExp;
 	replacements: string[];
+	kind: "given" | "family" | "abbrev";
 }
 
 const MEMBER_NAMES: MemberName[] = [
-	{ pattern: /\bDave\s+O\b/i, replacements: ["Dave Ouellette"] },
-	{ pattern: /\bAshby\b/i, replacements: ["Robert Ashby", "Rob Ashby"] },
-	{ pattern: /\bDenari\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
-	{ pattern: /\bHarmon\b/i, replacements: ["Chris Harmon"] },
-	{ pattern: /\bChad\b/i, replacements: ["Chad Boucher"] },
-	{ pattern: /\bNate\b/i, replacements: ["Nate Priest", "Nate Madeira", "Nathan Madeira"] },
-	{ pattern: /\bSeth\b/i, replacements: ["Seth Crockett"] },
-	{ pattern: /\bCrow\b/i, replacements: ["Crow Norlander"] },
-	{ pattern: /\bMarah\b/i, replacements: ["Marah Borgman"] },
-	{ pattern: /\bKarley\b/i, replacements: ["Karley Piers"] },
-	{ pattern: /\bAly\b/i, replacements: ["Aly Ursiny"] },
-	{ pattern: /\bCliodhna\b/i, replacements: ["Cliodhna O'Malley", "Clíodhna O'Malley"] },
-	{ pattern: /\bVeronica\b/i, replacements: ["Veronica Graziano"] },
-	{ pattern: /\bHeather\b/i, replacements: ["Heather Gallant"] },
-	{ pattern: /\bAdane\b/i, replacements: ["Adane Bewset"] },
-	{ pattern: /\bDeven\b/i, replacements: ["Deven Abrams"] },
-	{ pattern: /\bEric\b/i, replacements: ["Eric Sofen"] },
-	{ pattern: /\bAlexis\b/i, replacements: ["Alexis Wilbert"] },
-	{ pattern: /\bDan\b/i, replacements: ["Dan Bannon"] },
-	{ pattern: /\bNick\b/i, replacements: ["Nick Denari", "Nicholas Denari"] },
-	{ pattern: /\bJorma\b/i, replacements: ["Jorma Kurry"] },
-	{ pattern: /\bLaurel\b/i, replacements: ["Laurel Manville", "Laurel Driscoll"] },
-	{ pattern: /\bJustin\b/i, replacements: ["Justin Freeman", "Justin Tomison"] },
+	{ pattern: /\bDave\s+O\b/i, replacements: ["Dave Ouellette"], kind: "abbrev" },
+	{ pattern: /\bAshby\b/i, replacements: ["Robert Ashby", "Rob Ashby"], kind: "family" },
+	{ pattern: /\bDenari\b/i, replacements: ["Nick Denari", "Nicholas Denari"], kind: "family" },
+	{ pattern: /\bHarmon\b/i, replacements: ["Chris Harmon"], kind: "family" },
+	{ pattern: /\bChad\b/i, replacements: ["Chad Boucher"], kind: "given" },
+	{ pattern: /\bNate\b/i, replacements: ["Nate Priest", "Nate Madeira", "Nathan Madeira"], kind: "given" },
+	{ pattern: /\bSeth\b/i, replacements: ["Seth Crockett"], kind: "given" },
+	{ pattern: /\bCrow\b/i, replacements: ["Crow Norlander"], kind: "given" },
+	{ pattern: /\bMarah\b/i, replacements: ["Marah Borgman"], kind: "given" },
+	{ pattern: /\bKarley\b/i, replacements: ["Karley Piers"], kind: "given" },
+	{ pattern: /\bAly\b/i, replacements: ["Aly Ursiny"], kind: "given" },
+	{ pattern: /\bCliodhna\b/i, replacements: ["Cliodhna O'Malley", "Clíodhna O'Malley"], kind: "given" },
+	{ pattern: /\bVeronica\b/i, replacements: ["Veronica Graziano"], kind: "given" },
+	{ pattern: /\bHeather\b/i, replacements: ["Heather Gallant"], kind: "given" },
+	{ pattern: /\bAdane\b/i, replacements: ["Adane Bewset"], kind: "given" },
+	{ pattern: /\bDeven\b/i, replacements: ["Deven Abrams"], kind: "given" },
+	{ pattern: /\bEric\b/i, replacements: ["Eric Sofen"], kind: "given" },
+	{ pattern: /\bAlexis\b/i, replacements: ["Alexis Wilbert"], kind: "given" },
+	{ pattern: /\bDan\b/i, replacements: ["Dan Bannon"], kind: "given" },
+	{ pattern: /\bNick\b/i, replacements: ["Nick Denari", "Nicholas Denari"], kind: "given" },
+	{ pattern: /\bJorma\b/i, replacements: ["Jorma Kurry"], kind: "given" },
+	{ pattern: /\bLaurel\b/i, replacements: ["Laurel Manville", "Laurel Driscoll"], kind: "given" },
+	{ pattern: /\bJustin\b/i, replacements: ["Justin Freeman", "Justin Tomison"], kind: "given" },
 ];
+
+const GIVEN_NAMES = givenNames(MEMBER_NAMES);
 
 const KNOWN_DISCORD_RUNNERS: Record<string, string> = {
 	"1227055686295359519": "Seth Crockett",
@@ -119,11 +122,13 @@ export function recapStartedMessage(editorialMode: string): string {
 	return "Got it. I started a verbatim-copy website update PR for review.";
 }
 
+// Shorthand is "Nate", "Ashby", or "Dave O". "Nate Madeira" is already complete,
+// including when that last name is not one of the suggested replacements.
 export function incompleteMemberNameReason(body: string): string {
 	const matches: string[] = [];
 	for (const item of MEMBER_NAMES) {
-		if (!item.pattern.test(body)) continue;
-		if (includesFullName(body, item.replacements)) continue;
+		if (occurrences(body, item.pattern).length === 0) continue;
+		if (listedNameIsComplete(body, item)) continue;
 		matches.push(item.replacements.join(" or "));
 	}
 	const unique = [...new Set(matches)];
@@ -210,6 +215,94 @@ function wordCount(text: string): number {
 function includesFullName(text: string, names: string[]): boolean {
 	const normalized = text.toLowerCase();
 	return names.some((name) => normalized.includes(name.toLowerCase()));
+}
+
+const NAME_TOKEN = /^[A-ZÀ-Ý][A-Za-zÀ-ÿ'’-]+$/;
+const FUNCTION_WORDS = new Set([
+	"a", "an", "and", "or", "the", "with", "for", "to", "of", "in", "on", "at", "by", "from",
+	"his", "her", "their", "who", "but", "nor", "via", "through", "into", "over", "after",
+	"before", "then", "than", "that", "this", "these", "those", "our", "your", "its",
+	"was", "were", "had", "has", "have", "also", "again", "just", "still", "very", "too",
+	"ran", "running", "raced", "finished", "won", "placed", "clocked", "took", "posted",
+	"pacing", "paced", "led", "did", "does",
+]);
+
+function givenNames(items: readonly MemberName[]): Set<string> {
+	const names = new Set<string>();
+	for (const item of items) {
+		if (item.kind === "given") {
+			const word = patternWord(item.pattern);
+			if (word) names.add(word.toLowerCase());
+		}
+		for (const replacement of item.replacements) {
+			const first = replacement.split(/\s+/)[0];
+			if (first) names.add(first.toLowerCase());
+		}
+	}
+	return names;
+}
+
+function patternWord(pattern: RegExp): string {
+	return pattern.source.match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]+/)?.[0] ?? "";
+}
+
+function occurrences(body: string, pattern: RegExp): RegExpMatchArray[] {
+	const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+	return [...body.matchAll(new RegExp(pattern.source, flags))];
+}
+
+function cleanToken(raw: string): string {
+	return raw.replace(/^[^A-Za-zÀ-ÿ]+|[^A-Za-zÀ-ÿ'’-]+$/g, "");
+}
+
+function tokenAfter(body: string, index: number): string {
+	const match = /\s*(\S+)/.exec(body.slice(index));
+	return cleanToken(match?.[1] ?? "");
+}
+
+function tokenBefore(body: string, index: number): string {
+	const match = /(\S+)\s*$/.exec(body.slice(0, index));
+	return cleanToken(match?.[1] ?? "");
+}
+
+function isNameToken(token: string): boolean {
+	if (!NAME_TOKEN.test(token)) return false;
+	const folded = token.toLowerCase();
+	return !NON_PERSON_WORDS.has(folded) && !FUNCTION_WORDS.has(folded);
+}
+
+function isSurnameToken(token: string): boolean {
+	return isNameToken(token) && !GIVEN_NAMES.has(token.toLowerCase());
+}
+
+function givenNameIsPaired(body: string, item: MemberName): boolean {
+	return occurrences(body, item.pattern).some((match) => {
+		const start = match.index ?? 0;
+		return isSurnameToken(tokenAfter(body, start + match[0].length));
+	});
+}
+
+function familyNameIsPaired(body: string, item: MemberName): boolean {
+	return occurrences(body, item.pattern).some((match) => {
+		const start = match.index ?? 0;
+		return isNameToken(tokenBefore(body, start));
+	});
+}
+
+function listedNameIsComplete(body: string, item: MemberName): boolean {
+	if (includesFullName(body, item.replacements)) return true;
+	switch (item.kind) {
+		case "abbrev":
+			return false;
+		case "given":
+			return givenNameIsPaired(body, item);
+		case "family":
+			return familyNameIsPaired(body, item);
+		default: {
+			const unexpected: never = item.kind;
+			throw new Error(`Unexpected member name kind: ${String(unexpected)}`);
+		}
+	}
 }
 
 function isTeamNote(text: string): boolean {
