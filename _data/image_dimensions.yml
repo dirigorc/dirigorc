@@ -1,4 +1,10 @@
 # Generated from assets/images so templates can emit width/height attributes.
+- src: "assets/images/2026-11-01/dan-bannon-birthday-mile-1.jpg"
+  width: 1024
+  height: 1024
+- src: "assets/images/2026-11-01/dan-bannon-birthday-mile-2.jpg"
+  width: 1024
+  height: 1024
 - src: "assets/images/2026-longfellow-3k-gretchen-speed.jpg"
   width: 3936
   height: 2624
