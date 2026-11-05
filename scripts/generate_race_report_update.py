@@ -1769,6 +1769,165 @@ Change only the files below. Apply this instruction and return each full file:
     return edited
 
 
+def front_matter_block(content: str) -> str:
+    match = re.match(r"\A---\s*\n(.*?)\n---", content, flags=re.DOTALL)
+    return match.group(1) if match else ""
+
+
+def front_matter_scalar(block: str, key: str) -> str:
+    match = re.search(rf"^{re.escape(key)}:\s*(.*)$", block, flags=re.M)
+    if not match:
+        return ""
+    return unquote_scalar(match.group(1).strip())
+
+
+def unquote_scalar(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def iso_date(value: str) -> str:
+    match = re.match(r"(\d{4}-\d{2}-\d{2})", value.strip())
+    return match.group(1) if match else ""
+
+
+def skip_date_list(block: str) -> list[str]:
+    dates: list[str] = []
+    in_list = False
+    for line in block.splitlines():
+        if re.match(r"^skip_dates:\s*$", line):
+            in_list = True
+            continue
+        if not in_list:
+            continue
+        if re.match(r"^\S", line):
+            break
+        item = re.match(r"^\s*-\s+(.+?)\s*$", line)
+        if not item:
+            continue
+        parsed = iso_date(unquote_scalar(item.group(1).strip()))
+        if parsed:
+            dates.append(parsed)
+    return dates
+
+
+def series_title_stem(title: str) -> str:
+    cleaned = re.sub(r"\s+", " ", title).strip().lower()
+    if " at " not in cleaned:
+        return ""
+    return cleaned.split(" at ", 1)[0].strip()
+
+
+def location_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def event_occurs_on(block: str, iso: str) -> bool:
+    start = iso_date(front_matter_scalar(block, "date"))
+    if not start or iso in skip_date_list(block):
+        return False
+    if start == iso:
+        return True
+    end = iso_date(front_matter_scalar(block, "end_date"))
+    if not end or not front_matter_scalar(block, "recurrence"):
+        return False
+    if iso < start or iso > end:
+        return False
+    return dt.date.fromisoformat(iso).weekday() == dt.date.fromisoformat(start).weekday()
+
+
+def with_skip_date(content: str, iso: str) -> str:
+    match = re.match(r"\A(---\s*\n)(.*?)(\n---)(.*)\Z", content, flags=re.DOTALL)
+    if not match:
+        return content
+    opening, block, closing, rest = match.groups()
+    if iso in skip_date_list(block):
+        return content
+    dates = sorted(set(skip_date_list(block) + [iso]))
+    replacement = "skip_dates:\n" + "\n".join(f"  - {date}" for date in dates)
+    if re.search(r"^skip_dates:\s*$", block, flags=re.M):
+        block = re.sub(
+            r"^skip_dates:[ \t]*(?:\n[ \t]+-\s+[^\n]*)*",
+            replacement,
+            block,
+            count=1,
+            flags=re.M,
+        )
+    elif re.search(r"^recurrence:.*$", block, flags=re.M):
+        block = re.sub(r"^(recurrence:.*)$", rf"\1\n{replacement}", block, count=1, flags=re.M)
+    else:
+        block = block.rstrip("\n") + "\n" + replacement
+    return f"{opening}{block}{closing}{rest}"
+
+
+def load_event_texts() -> dict[str, str]:
+    texts: dict[str, str] = {}
+    folder = ROOT / "_events"
+    if not folder.is_dir():
+        return texts
+    for path in sorted(folder.glob("*.md")):
+        texts[path.relative_to(ROOT).as_posix()] = path.read_text(encoding="utf-8")
+    return texts
+
+
+def omit_replaced_series_dates(
+    files: list[dict[str, str]],
+    existing: dict[str, str],
+    result: dict[str, Any] | None = None,
+) -> None:
+    combined = dict(existing)
+    indexes: dict[str, int] = {}
+    for index, item in enumerate(files):
+        path = str(item.get("path") or "")
+        if path.startswith("_events/") and path.endswith(".md"):
+            combined[path] = str(item.get("content") or "")
+            indexes[path] = index
+
+    for path in list(indexes):
+        content = combined[path]
+        block = front_matter_block(content)
+        if not block or front_matter_scalar(block, "recurrence"):
+            continue
+        iso = iso_date(front_matter_scalar(block, "date"))
+        stem = series_title_stem(front_matter_scalar(block, "title"))
+        if not iso or not stem:
+            continue
+        place = location_key(front_matter_scalar(block, "location"))
+        matches: list[str] = []
+        for series_path, series_content in combined.items():
+            if series_path == path:
+                continue
+            series_block = front_matter_block(series_content)
+            if not series_block or not front_matter_scalar(series_block, "recurrence"):
+                continue
+            if series_title_stem(front_matter_scalar(series_block, "title")) != stem:
+                continue
+            if not event_occurs_on(series_block, iso):
+                continue
+            series_place = location_key(front_matter_scalar(series_block, "location"))
+            if place and series_place and place == series_place:
+                continue
+            matches.append(series_path)
+        if len(matches) != 1:
+            continue
+        series_path = matches[0]
+        updated = with_skip_date(combined[series_path], iso)
+        if updated == combined[series_path]:
+            continue
+        combined[series_path] = updated
+        if series_path in indexes:
+            files[indexes[series_path]]["content"] = updated
+        else:
+            files.append({"path": series_path, "content": updated})
+            indexes[series_path] = len(files) - 1
+        if result is not None:
+            title = front_matter_scalar(block, "title") or path
+            result.setdefault("assumptions", []).append(
+                f"Skipped {iso} on {series_path} because {title} replaces that date of the recurring run."
+            )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event-path", default=os.environ.get("GITHUB_EVENT_PATH"))
@@ -1870,6 +2029,8 @@ Subject: {email['subject']}
     ensure_attached_images_used(staged_attachments, files, result)
     sanitize_public_body_text(files, result)
     normalize_generated_files(files)
+    if args.mode == "calendar-event":
+        omit_replaced_series_dates(files, load_event_texts(), result)
     kept_attachments = prune_unused_attachments(staged_attachments, files)
     kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)
     written = write_files(files)
