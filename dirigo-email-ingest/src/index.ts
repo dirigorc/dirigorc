@@ -18,7 +18,7 @@
  * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish, hold, or revise a draft. Defaults to Seth Crockett and Crow Norlander.
  * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold, and to read a reacted message.
  * - DISCORD_RECAP_EMOJI: Emoji that starts a recap from a message. Defaults to the checkered flag.
- * - DISCORD_CALENDAR_EMOJI: Emoji that starts a calendar event from a message. Defaults to the calendar emoji.
+ * - DISCORD_CALENDAR_EMOJI: Extra emoji that starts a calendar event. 📅, 📆, and 🗓️ always count.
  * - DISCORD_GUILD_ID: Optional guild id. When set, reactions in other servers are ignored.
  */
 
