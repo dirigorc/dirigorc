@@ -2,10 +2,13 @@ import { dispatchToGitHub, type EmailAttachment, type EmailPayload, type WorkerE
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES, NEARBY_LIMIT, draftRecapFromMessages, type ImageRef } from "./recap-window";
 import {
 	DATEISH_PATTERN,
+	calendarEmojiMatches,
 	calendarEmojiName,
+	calendarTriggerNames,
 	emojiMatches,
 	formatReporter,
 	incompleteMemberNameReason,
+	normalizeEmojiName,
 	recapEmojiName,
 	reporterFromUser,
 	type Reporter,
@@ -40,6 +43,18 @@ const STALE_PENDING_MS = 2 * 60 * 1000;
 
 export function reactionStorageKey(channelId: string, messageId: string, emojiName: string): string {
 	return `reaction:${channelId}:${messageId}:${emojiName}`;
+}
+
+export const CALENDAR_REACTION_SLOT = "calendar";
+
+export function calendarReactionKeys(
+	channelId: string,
+	messageId: string,
+	configured: string | undefined,
+	recapConfigured?: string,
+): string[] {
+	const names = [CALENDAR_REACTION_SLOT, ...calendarTriggerNames(configured, recapConfigured)];
+	return [...new Set(names.map((name) => reactionStorageKey(channelId, messageId, name)))];
 }
 
 export function pendingReactionValue(now: number): string {
@@ -100,6 +115,55 @@ export function planReactionScan(
 			emojiName,
 			emojiPath: emojiId ? `${reaction.emoji?.name}:${emojiId}` : emojiName,
 			key,
+		});
+	}
+	return { start, clear, acknowledge, release };
+}
+
+export function planCalendarReactionScan(
+	messages: ReactionScanMessage[],
+	states: ReadonlyMap<string, string>,
+	configured: string | undefined,
+	now: number,
+	recapConfigured?: string,
+): { start: PlannedReaction[]; clear: string[]; acknowledge: PlannedAck[]; release: PlannedAck[] } {
+	const start: PlannedReaction[] = [];
+	const clear: string[] = [];
+	const acknowledge: PlannedAck[] = [];
+	const release: PlannedAck[] = [];
+	const names = calendarTriggerNames(configured, recapConfigured);
+	const ackEmoji = calendarAckEmoji(configured);
+	for (const message of messages) {
+		const keys = calendarReactionKeys(message.channelId, message.messageId, configured, recapConfigured);
+		const reactions = message.reactions || [];
+		const matchedName = names.find((name) => reactions.some((item) => normalizeEmojiName(item.emoji?.name || "") === normalizeEmojiName(name)));
+		const reaction = matchedName
+			? reactions.find((item) => normalizeEmojiName(item.emoji?.name || "") === normalizeEmojiName(matchedName))
+			: undefined;
+		const acknowledged = reactions.some((item) => item.me === true && (item.emoji?.name || "") === ackEmoji);
+		if (!reaction) {
+			for (const key of keys) {
+				if (states.has(key)) clear.push(key);
+			}
+			if (acknowledged) release.push({ channelId: message.channelId, messageId: message.messageId });
+			continue;
+		}
+		if (acknowledged) continue;
+		const recorded = keys.map((key) => states.get(key)).filter((value): value is string => typeof value === "string");
+		if (recorded.includes("done")) {
+			acknowledge.push({ channelId: message.channelId, messageId: message.messageId });
+			continue;
+		}
+		if (recorded.some((value) => !reactionClaimable(value, now))) continue;
+		const emojiName = reaction.emoji?.name || matchedName || names[0] || "📅";
+		const emojiId = reaction.emoji?.id;
+		start.push({
+			channelId: message.channelId,
+			messageId: message.messageId,
+			guildId: message.guildId || "",
+			emojiName,
+			emojiPath: emojiId ? `${emojiName}:${emojiId}` : emojiName,
+			key: reactionStorageKey(message.channelId, message.messageId, CALENDAR_REACTION_SLOT),
 		});
 	}
 	return { start, clear, acknowledge, release };
@@ -184,9 +248,7 @@ export async function handleRecapReaction(env: WorkerEnv, reaction: RecapReactio
 }
 
 export async function handleCalendarReaction(env: WorkerEnv, reaction: RecapReaction): Promise<"started" | "skipped" | "needs-detail"> {
-	const expected = calendarEmojiName(env.DISCORD_CALENDAR_EMOJI);
-	if (expected.toLowerCase() === recapEmojiName(env.DISCORD_RECAP_EMOJI).toLowerCase()) return "skipped";
-	if (reaction.emojiName !== expected && reaction.emojiName.toLowerCase() !== expected.toLowerCase()) return "skipped";
+	if (!calendarEmojiMatches(reaction.emojiName, env.DISCORD_CALENDAR_EMOJI, env.DISCORD_RECAP_EMOJI)) return "skipped";
 	if (env.DISCORD_GUILD_ID && reaction.guildId && reaction.guildId !== env.DISCORD_GUILD_ID) return "skipped";
 	if (!snowflake(reaction.channelId) || !snowflake(reaction.messageId)) return "skipped";
 	if (!env.DISCORD_BOT_TOKEN) throw new Error("DISCORD_BOT_TOKEN is not set.");

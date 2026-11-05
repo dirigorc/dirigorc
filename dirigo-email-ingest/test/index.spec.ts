@@ -5,7 +5,7 @@ import {
 	SELF,
 } from "cloudflare:test";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { handleCalendarReaction, handleRecapReaction, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
+import { CALENDAR_REACTION_SLOT, handleCalendarReaction, handleRecapReaction, planCalendarReactionScan, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
 import worker, { discordAttachments, routeDiscordInteraction, runDiscordBackgroundTask } from "../src/index";
 import { incompleteMemberNameReason } from "../src/self-report";
 
@@ -356,6 +356,48 @@ describe("Dirigo email ingest worker", () => {
 		expect(payload.client_payload.report?.authored_by).toContain("Seth");
 		const ack = github.calls.find((call) => call.method === "PUT" && call.url.includes("/reactions/"));
 		expect(ack?.url).toContain(`/reactions/${encodeURIComponent("📌")}/@me`);
+	});
+
+	it("starts a calendar event from the tear-off calendar", async () => {
+		const github = mockGithub({
+			message: {
+				content: "Saturday long run at Payson Park, 8:00 AM. Meet at the usual lot.",
+				timestamp: "2026-10-29T15:00:00.000Z",
+				author: { id: "1227055686295359519", username: "seth", global_name: "Seth", bot: false },
+				attachments: [],
+			},
+		});
+		const outcome = await handleCalendarReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "📆",
+			reactor: { id: "459385898992140288", displayName: "Crow" },
+		});
+
+		expect(outcome).toBe("started");
+		const payload = JSON.parse(github.calls.find(isGithubDispatch)?.body || "{}") as { event_type: string };
+		expect(payload.event_type).toBe("calendar-event-email");
+	});
+
+	it("ignores a reaction that is not a calendar", async () => {
+		const outcome = await handleCalendarReaction({
+			...env,
+			DISCORD_BOT_TOKEN: "bot-token",
+		}, {
+			channelId: "12345678901234567",
+			messageId: "12345678901234568",
+			guildId: "12345678901234569",
+			emojiName: "👍",
+			reactor: { id: "459385898992140288", displayName: "Crow" },
+		});
+
+		expect(outcome).toBe("skipped");
 	});
 
 	it("asks for a date instead of drafting a calendar event", async () => {
@@ -2036,6 +2078,103 @@ describe("reaction scan", () => {
 		expect(plan.start).toHaveLength(1);
 		expect(plan.start[0]?.emojiName).toBe("📅");
 		expect(plan.release).toEqual([]);
+	});
+
+	it("plans one calendar update for any of the three calendar glyphs", () => {
+		const message = {
+			channelId: "111111111111111111",
+			messageId: "222222222222222222",
+			guildId: "333333333333333333",
+		};
+		for (const emojiName of ["📅", "📆", "🗓️", "\u{1F5D3}"]) {
+			const plan = planCalendarReactionScan(
+				[{ ...message, reactions: [{ emoji: { name: emojiName, id: null } }] }],
+				new Map(),
+				undefined,
+				now,
+			);
+			expect(plan.start).toHaveLength(1);
+			expect(plan.start[0]?.key).toBe(reactionStorageKey(message.channelId, message.messageId, CALENDAR_REACTION_SLOT));
+		}
+	});
+
+	it("plans one update when a message has all three calendars", () => {
+		const plan = planCalendarReactionScan(
+			[{
+				channelId: "111111111111111111",
+				messageId: "222222222222222222",
+				guildId: "333333333333333333",
+				reactions: [
+					{ emoji: { name: "📆", id: null } },
+					{ emoji: { name: "📅", id: null } },
+					{ emoji: { name: "🗓️", id: null } },
+				],
+			}],
+			new Map(),
+			undefined,
+			now,
+		);
+
+		expect(plan.start).toHaveLength(1);
+		expect(plan.start[0]?.emojiName).toBe("📅");
+	});
+
+	it("does not draft again when a pinned message also has the other calendars", () => {
+		const plan = planCalendarReactionScan(
+			[{
+				channelId: "111111111111111111",
+				messageId: "222222222222222222",
+				reactions: [
+					{ emoji: { name: "📆", id: null } },
+					{ emoji: { name: "🗓️", id: null } },
+					{ me: true, emoji: { name: "📌", id: null } },
+				],
+			}],
+			new Map(),
+			undefined,
+			now,
+		);
+
+		expect(plan.start).toEqual([]);
+		expect(plan.release).toEqual([]);
+		expect(plan.clear).toEqual([]);
+	});
+
+	it("restores the pin for a calendar that was already drafted", () => {
+		const key = reactionStorageKey("111111111111111111", "222222222222222222", "📅");
+		const plan = planCalendarReactionScan(
+			[{
+				channelId: "111111111111111111",
+				messageId: "222222222222222222",
+				reactions: [{ emoji: { name: "📆", id: null } }],
+			}],
+			new Map([[key, "done"]]),
+			undefined,
+			now,
+		);
+
+		expect(plan.start).toEqual([]);
+		expect(plan.acknowledge).toEqual([{ channelId: "111111111111111111", messageId: "222222222222222222" }]);
+	});
+
+	it("clears a calendar once every calendar glyph is gone", () => {
+		const channelId = "111111111111111111";
+		const messageId = "222222222222222222";
+		const plan = planCalendarReactionScan(
+			[{ channelId, messageId, reactions: [] }],
+			new Map([
+				[reactionStorageKey(channelId, messageId, CALENDAR_REACTION_SLOT), "done"],
+				[reactionStorageKey(channelId, messageId, "📅"), "done"],
+			]),
+			undefined,
+			now,
+		);
+
+		expect(plan.start).toEqual([]);
+		expect(plan.clear).toEqual([
+			reactionStorageKey(channelId, messageId, CALENDAR_REACTION_SLOT),
+			reactionStorageKey(channelId, messageId, "📅"),
+		]);
 	});
 
 	it("leaves a finished flag alone and clears the key once the flag is gone", () => {
