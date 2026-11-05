@@ -823,5 +823,54 @@ class AttachmentAltTests(unittest.TestCase):
         self.assertNotIn('alt: "Dirigo race photo."', files[0]["content"])
 
 
+class ReplacedSeriesDateTests(unittest.TestCase):
+    SERIES = """---
+title: Saturday Long Run at Payson Park
+date: 2026-07-18
+end_date: 2026-12-26
+location: Inlet Road Parking Lot, Payson Park, Portland, ME
+recurrence: Saturdays
+skip_dates:
+  - 2026-10-17
+  - 2026-10-31
+team_note: Dave Ouellette leads the weekly run.
+---
+"""
+    ONE_OFF = """---
+title: "Saturday Long Run at Dara, Cumberland"
+date: 2026-11-07
+location: "Dara, Cumberland, ME"
+summary: "Saturday morning long run meeting at Dara in Cumberland."
+---
+"""
+
+    def test_a_moved_long_run_skips_that_date_on_the_series(self):
+        files = [{"path": "_events/2026-11-07-saturday-long-run-dara-cumberland.md", "content": self.ONE_OFF}]
+        result: dict = {"assumptions": []}
+        GENERATOR.omit_replaced_series_dates(
+            files,
+            {"_events/2026-07-18-payson-park-long-run.md": self.SERIES},
+            result,
+        )
+        series = next(item for item in files if item["path"].endswith("payson-park-long-run.md"))
+        self.assertIn("  - 2026-11-07\n", series["content"])
+        self.assertIn("  - 2026-10-31\n", series["content"])
+        self.assertIn("team_note: Dave Ouellette leads the weekly run.", series["content"])
+        self.assertIn("Payson Park", series["content"])
+        self.assertTrue(any("2026-11-07" in note for note in result["assumptions"]))
+
+    def test_a_different_event_on_the_same_day_leaves_the_series(self):
+        race = "---\ntitle: USATF New England XC Championships\ndate: 2026-11-07\nlocation: Cumberland, ME\n---\n"
+        files = [{"path": "_events/2026-11-07-xc.md", "content": race}]
+        GENERATOR.omit_replaced_series_dates(files, {"_events/2026-07-18-payson-park-long-run.md": self.SERIES})
+        self.assertEqual([item["path"] for item in files], ["_events/2026-11-07-xc.md"])
+
+    def test_an_already_skipped_week_is_left_alone(self):
+        bug_light = "---\ntitle: Saturday Long Run at Bug Light\ndate: 2026-10-17\nlocation: Bug Light Park, South Portland, ME\n---\n"
+        files = [{"path": "_events/2026-10-17-bug-light-long-run.md", "content": bug_light}]
+        GENERATOR.omit_replaced_series_dates(files, {"_events/2026-07-18-payson-park-long-run.md": self.SERIES})
+        self.assertEqual(len(files), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

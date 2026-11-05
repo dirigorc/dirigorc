@@ -14,6 +14,7 @@ The site uses:
    - Update an existing event when the new details improve time, location, recurrence, URL, image, or team note.
    - Create a new event only for distinct public dates or series.
    - A different location or time for one date of a recurring series is a new event for that date. Add the date to the series `skip_dates`. Leave the series date, end date, recurrence, and usual location in place.
+   - A reminder that the weekly run meets somewhere else this week is that kind of change. Return the updated series file in the same response so the usual place does not also appear that day.
 
 2. Keep calendar content actionable.
    - Include public races, recurring series, public group runs, public meets, team-visible deadlines, and board-approved public team dates.
