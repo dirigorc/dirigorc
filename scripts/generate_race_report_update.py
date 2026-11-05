@@ -1871,6 +1871,69 @@ def load_event_texts() -> dict[str, str]:
     return texts
 
 
+SOURCE_REMINDER = re.compile(
+    r"(?:^|(?<=[.;])\s*)"
+    r"(?:"
+    r"(?:this\s+is\s+)?(?:a\s+|the\s+|our\s+)?(?:weekly\s+|saturday\s+)?discord\s+reminder\b"
+    r"|(?:this\s+is\s+)?(?:a\s+|the\s+|our\s+)?reminder\s+from\s+discord\b"
+    r"|(?:this\s+is\s+)?(?:a\s+|the\s+|our\s+)?weekly\s+reminder\b"
+    r"|this\s+is\s+(?:a\s+|the\s+|our\s+)?reminder\b"
+    r"|(?:a\s+|the\s+)?reminder\s+for\s+the\s+(?:saturday\s+|weekly\s+)?(?:meetup|group\s+run|long\s+run)\b"
+    r")"
+    r"[^.;]*[.;]?\s*",
+    re.IGNORECASE,
+)
+
+
+def strip_source_reminder(text: str) -> str:
+    cleaned = text
+    previous = None
+    while cleaned != previous:
+        previous = cleaned
+        cleaned = SOURCE_REMINDER.sub("", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" \t;.")
+    if not cleaned:
+        return ""
+    if cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    if cleaned[-1] not in ".!?":
+        cleaned += "."
+    return cleaned
+
+
+def omit_source_reminders(files: list[dict[str, str]], result: dict[str, Any] | None = None) -> None:
+    removed: list[str] = []
+    for item in files:
+        path = str(item.get("path") or "")
+        if not path.startswith("_events/"):
+            continue
+        content = str(item.get("content") or "")
+        updated = content
+        for key in ("summary", "team_note"):
+            match = re.search(rf"^{re.escape(key)}:[ \t]*(.+)$", updated, flags=re.M)
+            if not match:
+                continue
+            raw = match.group(1).strip()
+            if raw[:1] in {"|", ">"}:
+                continue
+            original = unquote_yaml_scalar(raw)
+            cleaned = strip_source_reminder(original)
+            if cleaned == original:
+                continue
+            if cleaned:
+                replacement = f"{key}: {yaml_double_quoted(cleaned)}"
+            else:
+                replacement = ""
+            updated = updated[:match.start()] + replacement + updated[match.end():]
+            removed.append(f"{path} {key}")
+        if updated != content:
+            item["content"] = re.sub(r"\n{3,}", "\n\n", updated)
+    if removed and result is not None:
+        result.setdefault("assumptions", []).append(
+            "Removed reminder framing from public calendar copy: " + ", ".join(removed)
+        )
+
+
 def omit_replaced_series_dates(
     files: list[dict[str, str]],
     existing: dict[str, str],
@@ -1955,6 +2018,8 @@ def main() -> int:
         result: dict[str, Any] = {"summary": str(wire["instruction"]), "assumptions": [], "missing": []}
         merge_screenshot_assumptions(result, screenshot_notes)
         files = edit_existing(wire, texts, staged_attachments, screenshot_notes)
+        if args.mode == "calendar-event":
+            omit_source_reminders(files, result)
         ensure_attached_images_used(staged_attachments, files, result)
         kept_attachments = prune_unused_attachments(staged_attachments, files)
         kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)
@@ -2030,6 +2095,7 @@ Subject: {email['subject']}
     sanitize_public_body_text(files, result)
     normalize_generated_files(files)
     if args.mode == "calendar-event":
+        omit_source_reminders(files, result)
         omit_replaced_series_dates(files, load_event_texts(), result)
     kept_attachments = prune_unused_attachments(staged_attachments, files)
     kept_attachments = rename_kept_attachments(staged_attachments, files, kept_attachments)

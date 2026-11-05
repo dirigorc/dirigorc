@@ -26,6 +26,7 @@ The site uses:
    - Do not invent facts.
    - If uncertain, either omit the detail or include the uncertainty in the JSON `missing`/`assumptions`, not in public copy.
    - Remove filler such as "possibly", "expected", "use this as", "calendar target", "natural team target", and "confirm details" unless uncertainty is real and important.
+   - Do not describe the message that carried the details. Leave out greetings and framing such as "Discord reminder", "weekly reminder for the Saturday meetup", "this is the weekly reminder", and "hope everyone's week is going well". The public note starts with the meetup itself.
 
 4. Editorial voice.
    - Keep it concise, specific, and human.
