@@ -823,6 +823,50 @@ class AttachmentAltTests(unittest.TestCase):
         self.assertNotIn('alt: "Dirigo race photo."', files[0]["content"])
 
 
+class SourceReminderTests(unittest.TestCase):
+    def test_a_discord_reminder_clause_is_dropped_from_the_note(self):
+        files = [{
+            "path": "_events/2026-11-07-saturday-long-run-dara-cumberland.md",
+            "content": (
+                "---\n"
+                'title: "Saturday Long Run at Dara, Cumberland"\n'
+                "date: 2026-11-07\n"
+                'team_note: "Discord reminder for the Saturday meetup; meet at Dara around 8:00 AM. '
+                'Routes include multiple loops to accommodate different paces and distances. All paces welcome."\n'
+                "---\n"
+            ),
+        }]
+        result: dict = {"assumptions": []}
+        GENERATOR.omit_source_reminders(files, result)
+        note = GENERATOR.front_matter_scalar(GENERATOR.front_matter_block(files[0]["content"]), "team_note")
+        self.assertEqual(
+            note,
+            "Meet at Dara around 8:00 AM. Routes include multiple loops to accommodate different paces and distances. All paces welcome.",
+        )
+        self.assertTrue(result["assumptions"])
+
+    def test_a_note_that_only_names_the_reminder_is_removed(self):
+        files = [{
+            "path": "_events/2026-11-07-example.md",
+            "content": "---\ntitle: Example\ndate: 2026-11-07\nteam_note: This is the weekly reminder for the group run.\n---\n",
+        }]
+        GENERATOR.omit_source_reminders(files)
+        self.assertNotIn("team_note:", files[0]["content"])
+
+    def test_announcing_changes_on_discord_stays(self):
+        note = (
+            "Dave Ouellette leads the weekly run. Meet at the Inlet Road Parking Lot for whatever distance fits the day; "
+            "occasional location changes are announced on Discord, Instagram stories, and club email."
+        )
+        files = [{
+            "path": "_events/2026-07-18-payson-park-long-run.md",
+            "content": f"---\ntitle: Saturday Long Run at Payson Park\nteam_note: {GENERATOR.yaml_double_quoted(note)}\n---\n",
+        }]
+        GENERATOR.omit_source_reminders(files)
+        kept = GENERATOR.front_matter_scalar(GENERATOR.front_matter_block(files[0]["content"]), "team_note")
+        self.assertEqual(kept, note)
+
+
 class ReplacedSeriesDateTests(unittest.TestCase):
     SERIES = """---
 title: Saturday Long Run at Payson Park
