@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flyer Design"
+  short_description: "Design and refine event flyers and posters"
+  default_prompt: "Use $flyer-design to create or refine an event flyer with verified copy, a distinct visual concept, and editable source."
