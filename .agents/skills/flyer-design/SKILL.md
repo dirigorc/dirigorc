@@ -126,6 +126,16 @@ Read every visible fact against the fact sheet and ensure each format retains es
 
 Do a focused critique: what competes with the title, what is too small, what is redundant, and what can be removed? Refine, re-export, and re-inspect. Prefer one or two purposeful refinement rounds to endless additions; honor further feedback and keep checkpoints. Persistent structural problems require a composition change, not another sticker.
 
+### Revision is not automatically simplification
+
+Distinguish execution problems from concept problems. Fixing spacing, removing decoration, and clarifying hierarchy can improve a flyer without making it compelling. Do not mistake tidiness or compliance for a strong visual idea.
+
+When a design is clear and branded but feels plain, preserve it as the clean option. Develop one alternative with a materially different composition—not merely different colors, added texture, or more accessories. Change the relationship between type, imagery, and space through scale, crop, overlap, rhythm, or an alternative image mode. Choose moves that serve the subject; none is mandatory.
+
+State what makes each direction worth choosing beyond readability. If the alternative offers only novelty or reduced legibility, it has not improved the design.
+
+Preserve accepted strengths. Do not turn every critique into a cleanup pass, every cleanup into a redesign, or every request for energy into distressed “punk” styling. The goal is a more memorable, brand-specific composition with communication and craft intact.
+
 ## 8. Handoff and iteration
 
 Deliver selected social export(s), print PDF when requested, editable source, required assets or an asset manifest, and brief reproduction/export instructions. Include font names, licensing/substitution needs, factual questions and verification limits. Distinguish screen-ready from printer-ready. Never call a flattened image a layered PSD or other native editable document.
