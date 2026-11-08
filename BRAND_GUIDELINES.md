@@ -24,6 +24,22 @@ Avoid:
 - Generic running-stock-photo energy.
 - Copy that makes the club feel closed, elite-only, or overly bureaucratic.
 
+## Identity And Expressive Range
+
+Dirigo should be recognizable without every piece sharing the same layout or mood. The identity can be direct and official, celebratory, raw, playful, or confrontational when the subject calls for it. Punk, graphic, and experimental directions are welcome—not required.
+
+Keep these anchors:
+
+- Authentic, approved Dirigo and partner marks.
+- Signature Dirigo Blue, usually supported by white and Ink.
+- Mandrel Ext black italic as the signature display face; Inter or system sans for readable details.
+- Plainspoken, active, slightly proud language.
+- Accurate facts and clear practical information.
+
+Vary composition, scale, image mode, density, cropping, texture, and supporting color. Not every piece needs every anchor at maximum volume, but the overall result must remain recognizably Dirigo. A logo alone cannot turn an unrelated aesthetic into the brand.
+
+Explicit identity restrictions remain binding. Layout and flyer recipes are examples, not required templates. Propose departures from identity rules explicitly rather than treating creative freedom as permission to ignore them.
+
 ## Logo System
 
 Primary marks:
@@ -94,9 +110,22 @@ Good headline shapes:
 - ON THE CALENDAR.
 - NO TIME STANDARD. JUST A TEAM WORTH SHOWING UP FOR.
 
-## Photography
+## Imagery And Art Direction
 
-Photography is essential. The brand should show real Dirigo runners, real races, real Maine roads/trails/tracks, and the blue singlet.
+Photography, typography, illustration, and collage are equally legitimate starting points. Choose the approach that makes the strongest piece with the available assets—not the one that most closely resembles the website.
+
+A photograph earns its place through expression, relevance, composition, and usable resolution. Real effort, team connection, or a compelling Maine setting can matter more than technical polish. Grainy or historical images can be powerful; an ordinary snapshot is not automatically a strong poster image merely because it is authentic.
+
+Do not force mediocre photography into the lead. Do not reserve illustration or type-led design for situations where photographs are unavailable.
+
+Possible directions include:
+
+- Photo-led posters with a decisive crop and strong type.
+- Typographic posters using scale, rhythm, contrast, and negative space.
+- Illustration with a coherent drawing language and distinctive composition.
+- Collage combining authentic club material, cutouts, type, and controlled texture.
+
+Avoid generic fitness imagery and compulsory Maine clichés. Illustration need not contain a pine tree or lighthouse to belong to Dirigo. Never present generated people or stock photographs as actual club members or event documentation.
 
 Use:
 
@@ -118,6 +147,18 @@ Photo treatment:
 - Put white text over photos only with a strong blue/black overlay.
 - Grayscale historical photos can work well with black, white, and blue.
 - Always credit photographers where known.
+
+## Poster Language, Not Website Furniture
+
+Website components are not the brand itself. Cards, buttons, rounded panels, and date blocks may be useful, but should not be imported automatically into print or social graphics.
+
+Build hierarchy through scale, placement, contrast, spacing, cropping, overlap, and deliberate grouping. Bands, rules, frames, and date blocks are available tools—not a checklist. A centered composition can work; a default stack of boxed sections is not a concept.
+
+Expressive treatments may include oversized type, asymmetric layouts, hard crops, halftone, overprinting, misregistration, and cut-paper edges. Use them when they strengthen the subject, not as a package of effects labeled “punk.”
+
+Roughness must be intentional. Broken anatomy, malformed objects, warped lettering, muddy texture, and inconsistent drawing are defects, not attitude. Protect essential copy and approved marks. Follow existing logo restrictions, including the specifically approved underline edge-bleed.
+
+Never use decorative emphasis-ray clusters: the three-dash/three-tick “shine” marks, or near-identical substitutes with a different number of strokes.
 
 ## Layout
 
@@ -313,7 +354,9 @@ Before publishing a flyer or graphic:
 - Does it use Dirigo blue, white, and black clearly?
 - Is the Dirigo mark visible and not distorted?
 - Is the headline short and strong?
-- Is the photo real and relevant?
+- Does the chosen visual mode make the strongest use of the available assets?
+- Is the identity carried by the design, rather than just an attached logo?
+- Is the energy appropriate to this piece, rather than automatically safe or automatically edgy?
 - Are date, time, location, and action obvious?
 - Are names complete and spelled correctly?
 - Are photo credits included where needed?
