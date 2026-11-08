@@ -37,6 +37,14 @@ Study a small set of relevant flyers. Record concrete observations: type scale, 
 
 Brand fidelity does not mean copying website navigation or cards. A brand font is not disqualified because a generic design prompt dislikes it.
 
+### Brand rules versus layout examples
+
+Separate binding identity requirements from suggested executions. Approved marks, prescribed typography, color rules, voice, and explicit prohibitions take precedence over this skill's general stylistic permissions. Layout recipes and website components are examples unless explicitly mandatory.
+
+When a guideline limits the strongest direction, identify the conflict and propose a specific exception or guideline revision. Do not silently override it. Once an exception is approved, preserve the remaining identity anchors.
+
+Do not confuse recognizability with repeating a website layout. Brand character can survive substantial variation in composition, image mode, texture, and energy.
+
 ## 3. Set the reading order
 
 Write the hierarchy in one line, usually event identity → date/time and place → reason to attend → action/organizer. Adapt to the brief: an unfamiliar venue or urgent deadline may deserve greater weight. Sponsors and decoration must not overpower the event.
@@ -46,6 +54,16 @@ Reduce copy before reducing type size. Group related facts, remove redundant lab
 Choose one main visual idea: distinctive type, authentic photography, purposeful illustration, or coherent collage. Explain its connection to the event in one sentence; keep supporting elements quieter.
 
 ## 4. Render 2–3 distinct thumbnail concepts
+
+### Choose the strongest visual mode
+
+Let photography, typography, illustration, collage, and integrated approaches compete on concept and execution. Do not automatically privilege photography, and do not treat illustration as merely a fallback for missing photos.
+
+Assess photographs for expressive value and relevance as well as technical quality. Authentic but unremarkable imagery need not dominate. Rough or historical photography can lead when its content and treatment are compelling.
+
+Across the initial concepts, test genuinely different visual approaches where the brief permits. Do not force variety when a direction has already been accepted.
+
+Match the energy to the subject. Clean, official, playful, raw, punk, and graphic approaches are options—not permanent house styles. Preserve accepted layout and imagery where they work, while correcting brand drift and craft defects.
 
 Use real copy and representative assets to create small visual compositions, not just written descriptions. Vary structure, not just accent colors. Possible directions:
 - Photo-led: strong crop and a clear type field.
@@ -73,6 +91,18 @@ Place essential type over a genuinely quiet image area or a controlled contrast 
 Use approved logos without redrawing, distorting, arbitrary recoloring or cropping, except for treatments explicitly permitted by the identity guidelines, such as an approved underline edge-bleed. Select the correct light/dark variant, preserve clear space, and inspect small lettering and background contrast. Size logos according to their role.
 
 Festive illustration can be excellent when intentional and stylistically coherent. A stock hat, snowfall, glow or gradient added after the hierarchy is settled must earn its place. If removal strengthens the message, remove it. Repeated decoration-resizing requests may indicate a weak concept: reconsider its role rather than continuing a decoration loop.
+
+### Expressive does not mean sloppy
+
+Build energy through specific decisions: aggressive scale, asymmetry, controlled overlap, hard crops, overprinting, halftone, or deliberate material texture. Choose a coherent treatment rather than accumulating effects.
+
+Intentional roughness has consistent visual logic. Inspect geometry, object construction, line quality, edges, and type before adding texture. Distress must not conceal malformed drawing or muddy generation artifacts.
+
+Do not automatically reach for cards, rounded containers, fake buttons, or boxed information stacks because they appear on the brand website. These devices are allowed when they genuinely help; none substitutes for composition.
+
+Keep essential information readable and identity assets accurate. Expressive styling never relaxes the separate-typesetting, verified-copy, or approved-logo requirements. Only use cropped or edge-bleeding logo treatments explicitly approved for that asset.
+
+Retain the existing absolute prohibition on decorative emphasis-ray clusters and inspect generated artwork for them. Never use the three-dash/three-tick “shine” marks, or near-identical substitutes with a different number of strokes.
 
 ## 6. Build an editable master and format adaptations
 
@@ -106,4 +136,4 @@ Summarize the design decision and key changes briefly. Offer specific iteration 
 
 Transfer brief-specific direction, intentional type, real assets, compact tokens, a memorable gesture, restraint, truthful copy, and visual inspection.
 
-Do not import navigation, fake buttons, equal feature-card grids, hover states, scroll reveals, mandatory animation, section-per-screen layouts, photo quotas, shaders or random palette selection. Do not make universal bans on fonts, colors, capitals, captions or festive illustration. Never apply website-demo rules that omit address numbers, fabricate contacts, or permit plausible invented prices to a real event flyer.
+Do not automatically import navigation, fake buttons, equal feature-card grids, hover states, scroll reveals, mandatory animation, section-per-screen layouts, photo quotas, shaders or random palette selection. Do not make universal bans on fonts, colors, capitals, captions or festive illustration. Never apply website-demo rules that omit address numbers, fabricate contacts, or permit plausible invented prices to a real event flyer.
