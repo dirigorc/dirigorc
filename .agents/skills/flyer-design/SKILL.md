@@ -37,6 +37,16 @@ Study a small set of relevant flyers. Record concrete observations: type scale, 
 
 Brand fidelity does not mean copying website navigation or cards. A brand font is not disqualified because a generic design prompt dislikes it.
 
+### Preserve the appeal before correcting defects
+
+Identify and preserve what gives a reference its appeal before correcting its defects. State the compositional relationship that makes it work—such as illustration and lettering acting as one composition, an oversized title interacting with a central object, or scenery framing practical information. Distinguish those strengths from off-brand styling, drawing defects, and prohibited decoration.
+
+Translate that appeal into the brand's visual language; do not replace it with a safer layout. Typography and illustration can be designed together through scale, silhouette, placement, overlap, and negative space rather than assembled as a title above a separate picture. Plan that relationship in the editable master while keeping final copy separately typeset and approved marks intact.
+
+For example, a holiday-run reference may owe its appeal to oversized lettering, a running shoe wearing a Santa hat, and trees framing the information. Explore a better-drawn version of that integrated composition using the applicable brand typography and palette—for Dirigo, Mandrel Ext black italic and Dirigo Blue. Correct generic red/green vintage styling, malformed drawing, and unwanted ticks without automatically substituting a rectangular group photo. The shoe, hat, and trees are example-specific strengths, not required motifs for other flyers.
+
+Never allow decorative shine marks or emphasis-ray clusters, including near-identical substitutes. Remove them from references being revised and inspect generated artwork and final exports for them; they are defects, never part of the appeal to preserve.
+
 ### Brand rules versus layout examples
 
 Separate binding identity requirements from suggested executions. Approved marks, prescribed typography, color rules, voice, and explicit prohibitions take precedence over this skill's general stylistic permissions. Layout recipes and website components are examples unless explicitly mandatory.
@@ -51,7 +61,7 @@ Write the hierarchy in one line, usually event identity → date/time and place 
 
 Reduce copy before reducing type size. Group related facts, remove redundant labels, and retain practical attendance information. Move secondary information to a caption or registration page only if the flyer still works when shared alone.
 
-Choose one main visual idea: distinctive type, authentic photography, purposeful illustration, or coherent collage. Explain its connection to the event in one sentence; keep supporting elements quieter.
+Choose one main visual idea: distinctive type, authentic photography, purposeful illustration, coherent collage, or an integrated relationship between lettering and imagery. Explain its connection to the event in one sentence; keep supporting elements quieter.
 
 ## 4. Render 2–3 distinct thumbnail concepts
 
@@ -124,7 +134,7 @@ Use contrast measurements as diagnostics: aim for 4.5:1 for small essential text
 
 Read every visible fact against the fact sheet and ensure each format retains essentials. Test links and QR codes without submitting forms. Report checks you could not perform. Never claim visual verification without opening the renders.
 
-Do a focused critique: what competes with the title, what is too small, what is redundant, and what can be removed? Refine, re-export, and re-inspect. Prefer one or two purposeful refinement rounds to endless additions; honor further feedback and keep checkpoints. Persistent structural problems require a composition change, not another sticker.
+Do a focused critique: what gives this composition its appeal and must survive revision, what competes with the title, what is too small, what is redundant, and what can be removed? Refine, re-export, and re-inspect. Prefer one or two purposeful refinement rounds to endless additions; honor further feedback and keep checkpoints. Persistent structural problems require a composition change, not another sticker.
 
 ### Revision is not automatically simplification
 
