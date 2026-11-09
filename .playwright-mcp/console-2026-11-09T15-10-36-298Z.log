@@ -1,0 +1,140 @@
+[-78216914ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'join-ad-interest-group'. @ :0
+[-78216914ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'run-ad-auction'. @ :0
+[-78216914ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'browsing-topics'. @ :0
+[-78216169ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/generate_204?Ermp2A:0
+[-78215255ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.youtube.com/sharing/rest/community/self?f=json:0
+[-78215144ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.youtube.com/sharing/rest/portals/self?f=json:0
+[-78213831ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-78155829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77930822ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77929832ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77928829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77927829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77926829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77925785ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77924829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-78216166ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'private-aggregation'. @ :0
+[-78216166ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'join-ad-interest-group'. @ :0
+[-78216166ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'run-ad-auction'. @ :0
+[-78216166ms] [WARNING] Error with Permissions-Policy header: Unrecognized feature: 'browsing-topics'. @ :0
+[-77923828ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77922832ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77921831ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77920829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77918829ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77917833ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77916825ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-77909825ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-56589698ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/generate_204?Hm_DMg:0
+[-78215212ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://accounts.google.com/sharing/rest/community/self?f=json:0
+[-78215078ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://accounts.google.com/sharing/rest/portals/self?f=json:0
+[-56577549ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-56409924ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-56349552ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-34929570ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/generate_204?FbFjmQ:0
+[-34917582ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-34749958ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-13269883ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/generate_204?fsR8zA:0
+[-13257616ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-13090391ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-2953511ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://www.youtube.com/generate_204:0
+[-1669481ms] [ERROR] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED @ https://www.youtube.com/generate_204:0
+[-1625859ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1624870ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1574375ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1549149ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1547499ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1544684ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1540951ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1539030ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1538750ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1537409ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1535617ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1533010ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1532356ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1530835ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1529784ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1528657ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1527602ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1526747ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1478739ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1462867ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1461871ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1460864ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1459863ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1458866ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1457865ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1456867ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[-1400696ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[      25ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.google.com/gen_204?oq=*****************************************&gs_lp=Egxnd3Mtd2l6LXNlcnAiKSoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqMgoQABhHGNYEGLADMgoQABhHGNYEGLADMgoQABhHGNYEGLADMgoQABhHGNYEGLADMgoQABhHGNYEGLADMgoQABhHGNYEGLADMgoQABhHGNYEGLADMgoQABhHGNYEGLADMg4QABjkAhjWBBiwA9gBATIOEAAY5AIY1gQYsAPYAQEyDhAAGOQCGNYEGLAD2AEBMhcQLhjcBhi4BhjaBhjYAhjIAxiwA9gBATIXEC4Y3AYYuAYY2gYY2AIYyAMYsAPYAQEyFxAuGNwGGLgGGNoGGNgCGMgDGLAD2AEBMhcQLhjcBhi4BhjaBhjYAhjIAxiwA9gBAUiH2b8hUABYAHABeAGQAQCYAQCgAQCqAQC4ARbIAQCYAgGgAgWYAwDiAwUSATEgQIgGAZAGD7oGBggBEAEYCZIHATGgBwCyBwC4BwDCBwMyLTHIBwSACAE&sclient=gws-wiz-serp&ei=4bDwaqGGObTi5NoPoP-08QY&opi=89978449:0
+[      33ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT @ https://www.youtube.com/youtubei/v1/log_event?alt=json:0
+[     118ms] [LOG] [CS] initialized @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[     118ms] [LOG] [CS] start ping from provider tab @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[     118ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 0 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[     118ms] [LOG] [CS] wait for start messaging @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[     172ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[     770ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[     823ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[     831ms] [LOG] [CardPointers Bank] bank=null cardDiscovery {"reason":"normalizedCards","cards":[]} @ chrome-extension://hlambnnbnnjkabpgemeompijpdliimkm/content/content.js:16
+[    1103ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[    1110ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[    3120ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 1 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[    3123ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[    6122ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 2 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[    6127ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   14955ms] [LOG] [CS] initialized @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   14955ms] [LOG] [CS] start ping from provider tab @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   14955ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 0 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   14955ms] [LOG] [CS] wait for start messaging @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   15070ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   15369ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   15373ms] [LOG] [CardPointers Bank] bank=null cardDiscovery {"reason":"normalizedCards","cards":[]} @ chrome-extension://hlambnnbnnjkabpgemeompijpdliimkm/content/content.js:16
+[   15388ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   15666ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   15680ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   16046ms] [LOG] [CS] initialized @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   16047ms] [LOG] [CS] start ping from provider tab @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   16047ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 0 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   16047ms] [LOG] [CS] wait for start messaging @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   16072ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   16408ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   16410ms] [LOG] [CardPointers Bank] bank=null cardDiscovery {"reason":"normalizedCards","cards":[]} @ chrome-extension://hlambnnbnnjkabpgemeompijpdliimkm/content/content.js:16
+[   16432ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   16703ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   16716ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   19049ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 1 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   19054ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   22052ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 2 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   22064ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   91592ms] [LOG] [CS] initialized @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   91593ms] [LOG] [CS] start ping from provider tab @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   91593ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 0 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   91593ms] [LOG] [CS] wait for start messaging @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   92167ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   92197ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   92275ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   92283ms] [LOG] [CardPointers Bank] bank=null cardDiscovery {"reason":"normalizedCards","cards":[]} @ chrome-extension://hlambnnbnnjkabpgemeompijpdliimkm/content/content.js:16
+[   92552ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   92568ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   93888ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[   93896ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[   94593ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 1 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   94594ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   98151ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 2 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[   98156ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  156605ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[  156620ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[  156724ms] [LOG] [CS] initialized @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  156725ms] [LOG] [CS] start ping from provider tab @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  156725ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 0 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  156725ms] [LOG] [CS] wait for start messaging @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  157203ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  157205ms] [LOG] [CardPointers Bank] bank=null cardDiscovery {"reason":"normalizedCards","cards":[]} @ chrome-extension://hlambnnbnnjkabpgemeompijpdliimkm/content/content.js:16
+[  157546ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[  157646ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0
+[  159726ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 1 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  159731ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  162728ms] [LOG] [CS] send ping, send to: elbkchakmaiinadjpnmdgpflpjogpgmb, errorCount: 2 @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  162729ms] [LOG] [CS] response false @ chrome-extension://elbkchakmaiinadjpnmdgpflpjogpgmb/content_script.js:0
+[  190097ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/community/self?f=json:0
+[  190101ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8766/sharing/rest/portals/self?f=json:0

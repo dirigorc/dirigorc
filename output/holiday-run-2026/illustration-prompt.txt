@@ -1,0 +1,10 @@
+Built-in image_gen tool; transparent background requested.
+
+Use case: ads-marketing
+Asset type: transparent illustration asset to composite into a running club's social event poster; no poster text.
+Primary request: One beautifully drawn modern blue running shoe wearing a red Santa hat, a playful holiday running motif, designed as a bold editorial screenprint illustration.
+Subject: Single right-facing running shoe viewed in crisp lateral three-quarter side profile, heel at left and toe at right, anatomically convincing shoe construction, coherent laces and panels, substantial white running midsole with blue outsole tread, cobalt blue upper. A soft red Santa hat is sitting naturally over the ankle opening toward the left heel, broad white folded brim, elegant floppy red cone with a white pompom. Hat and shoe create one integrated silhouette. No legs, no human.
+Style/medium: sophisticated contemporary sports editorial illustration, bold flat cobalt and dark-blue shapes, limited subtle stipple for material texture, thick clean expressive contours, beautifully controlled curves, precise well-crafted sneaker construction. No glossy 3D, no photo, no vintage beige.
+Composition/framing: wide horizontal isolated single object, entire shoe and hat visible, centered with compact margin. Shoe is angled gently toe-up with a dynamic silhouette but does not need motion marks.
+Color palette: primary cobalt #0057b8, deep blue #002f6c, white #ffffff, ink #05070a, a restrained Santa-red hat as the single festive accent.
+Constraints: Actual transparent background. NO lettering, NO logos, NO brand marks, NO typography, NO scenery, NO labels. No decorations surrounding the object. No snowflakes. Absolutely NO shine marks, decorative ray clusters, emphasis lines, three-dash ticks, stars, sparkles or motion streaks. No second shoe. No detached floating objects.

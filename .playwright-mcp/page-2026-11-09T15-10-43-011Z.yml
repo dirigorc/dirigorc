@@ -1,0 +1,19 @@
+- main "Merry Miles holiday run" [ref=f4e2]:
+  - generic [ref=f4e3]:
+    - img "Dirigo" [ref=f4e4]
+    - generic [ref=f4e5]: RUN CLUB · HOLIDAY RUN
+  - img "Illustration of a blue running shoe wearing a Santa hat" [ref=f4e6]
+  - heading "MERRY MILES" [level=1] [ref=f4e7]: MERRYMILES
+  - generic [ref=f4e8]: A HOLIDAY RUN WITHCOASTAL RUN MAINE
+  - generic [ref=f4e9]:
+    - paragraph [ref=f4e10]: SAT, DEC 12, 2026 · 8 AM
+    - paragraph [ref=f4e11]: Meet at Coastal Run Maine
+    - paragraph [ref=f4e12]: 6 Westwood Ave, Suite 1 · Scarborough, ME
+    - paragraph [ref=f4e13]: Run along the Eastern Trail.
+    - paragraph [ref=f4e14]: Bring Christmas sweaters & Santa hats.
+    - paragraph [ref=f4e15]: "After the run: raffle, eggnog & coffee."
+  - generic [ref=f4e16]:
+    - paragraph [ref=f4e17]:
+      - text: Hosted by our sponsor
+      - generic [ref=f4e18]: Coastal Run Maine
+    - img "Coastal Run Maine logo" [ref=f4e19]
