@@ -114,6 +114,31 @@ export function calendarEmojiName(configured: string | undefined): string {
 	return name || "📅";
 }
 
+// Discord's picker offers three calendar glyphs. Any of them starts an update.
+const CALENDAR_GLYPHS = ["📅", "📆", "🗓️"];
+
+export function normalizeEmojiName(name: string): string {
+	return name.replace(/\uFE0F/g, "").trim().toLowerCase();
+}
+
+export function calendarEmojiNames(configured: string | undefined): string[] {
+	const names = [...CALENDAR_GLYPHS];
+	const extra = configured?.trim();
+	if (extra && !names.some((item) => normalizeEmojiName(item) === normalizeEmojiName(extra))) names.unshift(extra);
+	return names;
+}
+
+export function calendarTriggerNames(configured: string | undefined, recapConfigured?: string): string[] {
+	const recap = normalizeEmojiName(recapEmojiName(recapConfigured));
+	return calendarEmojiNames(configured).filter((name) => normalizeEmojiName(name) !== recap);
+}
+
+export function calendarEmojiMatches(name: string, configured: string | undefined, recapConfigured?: string): boolean {
+	const folded = normalizeEmojiName(name);
+	if (!folded) return false;
+	return calendarTriggerNames(configured, recapConfigured).some((item) => normalizeEmojiName(item) === folded);
+}
+
 export function emojiMatches(name: string, configured: string | undefined): boolean {
 	const expected = recapEmojiName(configured);
 	return name === expected || name.toLowerCase() === expected.toLowerCase();

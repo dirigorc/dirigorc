@@ -3,10 +3,12 @@ import { DurableObject } from "cloudflare:workers";
 import {
 	acknowledgeCalendar,
 	acknowledgeRecap,
-	calendarAckEmoji,
 	handleCalendarReaction,
 	handleRecapReaction,
 	pendingReactionValue,
+	CALENDAR_REACTION_SLOT,
+	calendarReactionKeys,
+	planCalendarReactionScan,
 	planReactionScan,
 	reactionClaimable,
 	reactionStorageKey,
@@ -15,7 +17,7 @@ import {
 	type ReactionScanMessage,
 } from "./discord-reaction";
 import type { WorkerEnv } from "./dispatch";
-import { calendarEmojiName, emojiMatches, recapEmojiName, reporterFromUser } from "./self-report";
+import { calendarEmojiMatches, emojiMatches, reporterFromUser } from "./self-report";
 
 const GUILD_INTENT = 1 << 0;
 const REACTION_INTENT = 1 << 10;
@@ -269,7 +271,10 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		const messageId = typeof payload.message_id === "string" ? payload.message_id : "";
 		const guildId = typeof payload.guild_id === "string" ? payload.guild_id : "";
 		if (!userId || userId === this.botUserId || !channelId || !messageId) return;
-		const key = reactionStorageKey(channelId, messageId, emojiName);
+		const key = role === "calendar"
+			? reactionStorageKey(channelId, messageId, CALENDAR_REACTION_SLOT)
+			: reactionStorageKey(channelId, messageId, emojiName);
+		if (role === "calendar" && await this.calendarAlreadyRecorded(channelId, messageId)) return;
 		if (!(await this.claimReaction(key))) return;
 		const member = record(payload.member);
 		const user = member ? record(member.user) : null;
@@ -305,12 +310,16 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		const channelId = typeof payload.channel_id === "string" ? payload.channel_id : "";
 		const messageId = typeof payload.message_id === "string" ? payload.message_id : "";
 		if (!channelId || !messageId) return;
-		await this.ctx.storage.delete(reactionStorageKey(channelId, messageId, emojiName));
 		switch (role) {
 			case "recap":
+				await this.ctx.storage.delete(reactionStorageKey(channelId, messageId, emojiName));
 				await releaseRecapAck(this.env, channelId, messageId);
 				break;
 			case "calendar":
+				if (await this.calendarEmojiRemains(channelId, messageId)) break;
+				for (const key of calendarReactionKeys(channelId, messageId, this.env.DISCORD_CALENDAR_EMOJI, this.env.DISCORD_RECAP_EMOJI)) {
+					await this.ctx.storage.delete(key);
+				}
 				await releaseCalendarAck(this.env, channelId, messageId);
 				break;
 			default: {
@@ -432,10 +441,7 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 			if (typeof value === "string") states.set(key, value);
 		}
 		const recapPlan = planReactionScan(messages, states, this.env.DISCORD_RECAP_EMOJI, now);
-		const calendar = calendarEmojiName(this.env.DISCORD_CALENDAR_EMOJI);
-		const calendarPlan = calendar.toLowerCase() === recapEmojiName(this.env.DISCORD_RECAP_EMOJI).toLowerCase()
-			? { start: [], clear: [], acknowledge: [], release: [] }
-			: planReactionScan(messages, states, calendar, now, calendarAckEmoji(this.env.DISCORD_CALENDAR_EMOJI));
+		const calendarPlan = planCalendarReactionScan(messages, states, this.env.DISCORD_CALENDAR_EMOJI, now, this.env.DISCORD_RECAP_EMOJI);
 		const started = await this.applyReactionPlan(recapPlan, "recap");
 		const calendarStarted = await this.applyReactionPlan(calendarPlan, "calendar");
 		console.log(JSON.stringify({
@@ -539,6 +545,24 @@ export class DiscordGateway extends DurableObject<WorkerEnv> {
 		}
 	}
 
+	private async calendarAlreadyRecorded(channelId: string, messageId: string): Promise<boolean> {
+		const now = Date.now();
+		for (const key of calendarReactionKeys(channelId, messageId, this.env.DISCORD_CALENDAR_EMOJI, this.env.DISCORD_RECAP_EMOJI)) {
+			const value = await this.ctx.storage.get<string>(key);
+			if (typeof value === "string" && !reactionClaimable(value, now)) return true;
+		}
+		return false;
+	}
+
+	private async calendarEmojiRemains(channelId: string, messageId: string): Promise<boolean> {
+		const message = await this.discordGet<{ reactions?: { emoji?: { name?: string | null } }[] }>(
+			`/channels/${channelId}/messages/${messageId}`,
+		);
+		// Keep the pin when the message cannot be read, so a failed lookup does not draft the event again.
+		if (!message) return true;
+		return (message.reactions || []).some((item) => calendarEmojiMatches(item.emoji?.name || "", this.env.DISCORD_CALENDAR_EMOJI, this.env.DISCORD_RECAP_EMOJI));
+	}
+
 	private async discordGet<T>(path: string): Promise<T | null> {
 		const token = this.env.DISCORD_BOT_TOKEN;
 		if (!token) return null;
@@ -584,9 +608,7 @@ function gatewayErrorDetail(event: Event): string {
 
 function reactionRole(emojiName: string, env: WorkerEnv): "recap" | "calendar" | null {
 	if (emojiMatches(emojiName, env.DISCORD_RECAP_EMOJI)) return "recap";
-	const calendar = calendarEmojiName(env.DISCORD_CALENDAR_EMOJI);
-	if (calendar.toLowerCase() === recapEmojiName(env.DISCORD_RECAP_EMOJI).toLowerCase()) return null;
-	if (emojiName === calendar || emojiName.toLowerCase() === calendar.toLowerCase()) return "calendar";
+	if (calendarEmojiMatches(emojiName, env.DISCORD_CALENDAR_EMOJI, env.DISCORD_RECAP_EMOJI)) return "calendar";
 	return null;
 }
 
