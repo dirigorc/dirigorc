@@ -25,5 +25,5 @@
 {%- unless canonical_first == "/" -%}
 {%- assign canonical_input = "/" | append: canonical_input -%}
 {%- endunless -%}
-{%- assign canonical_url = canonical_host | append: canonical_input -%}
+{%- assign canonical_url = canonical_host | append: canonical_input | uri_escape -%}
 {%- endunless -%}
