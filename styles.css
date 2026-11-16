@@ -1985,14 +1985,24 @@ body.has-lightbox {
 .steps article {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
-  gap: 16px;
+  gap: 4px 16px;
   align-items: start;
   padding: 24px 0;
   background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.28);
 }
 
+.steps article > :not(span) {
+  grid-column: 2;
+}
+
+.steps article p {
+  margin: 0;
+  max-width: 65ch;
+}
+
 .steps span {
+  grid-row: 1 / span 2;
   display: grid;
   width: 32px;
   height: 32px;
