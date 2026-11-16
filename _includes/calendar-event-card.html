@@ -2,16 +2,47 @@
 {% assign occurrence_date = include.occurrence_date %}
 {% assign occurrence_anchor_date = occurrence_date | date: "%Y-%m-%d" %}
 {% capture event_anchor %}{{ occurrence_anchor_date }}-{{ event.title | slugify }}{% endcapture %}
+{% assign event_href = "" %}
+{% if event.event_url %}
+{% assign event_href = event.event_url %}
+{% elsif event.registration_url %}
+{% assign event_href = event.registration_url %}
+{% elsif event.related_update %}
+{% assign event_href = event.related_update | relative_url %}
+{% elsif event.results_url %}
+{% assign event_href = event.results_url %}
+{% elsif event.links.first.url %}
+{% assign event_href = event.links.first.url %}
+{% endif %}
+{% assign event_href_external = false %}
+{% if event_href contains "://" %}
+{% assign event_href_external = true %}
+{% endif %}
 <article class="calendar-event" id="{{ event_anchor }}">
+  {% if event_href != "" %}
+  <a class="calendar-date-link" href="{{ event_href }}" {% if event_href_external %}target="_blank" rel="noopener noreferrer"{% endif %} aria-label="{{ event.title }} on {{ occurrence_date | date: '%B %-d, %Y' }}">
+    <time class="calendar-date" datetime="{{ occurrence_anchor_date }}">
+      <span>{{ occurrence_date | date: "%b" }}</span>
+      <strong>{{ occurrence_date | date: "%-d" }}</strong>
+    </time>
+  </a>
+  {% else %}
   <time class="calendar-date" datetime="{{ occurrence_anchor_date }}">
     <span>{{ occurrence_date | date: "%b" }}</span>
     <strong>{{ occurrence_date | date: "%-d" }}</strong>
   </time>
+  {% endif %}
   <div>
     <div class="calendar-event-meta">
       <span>{{ event.type }}</span>
     </div>
-    <h3><a class="update-title-link" href="{{ '/calendar/' | relative_url }}#{{ event_anchor }}">{{ event.title }}</a></h3>
+    <h3>
+      {% if event_href != "" %}
+      <a class="update-title-link" href="{{ event_href }}" {% if event_href_external %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ event.title }}</a>
+      {% else %}
+      {{ event.title }}
+      {% endif %}
+    </h3>
     <p>{{ event.summary }}</p>
     {% if event.image %}
     <figure class="calendar-media">
