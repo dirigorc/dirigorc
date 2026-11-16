@@ -9,8 +9,9 @@ permalink: /feed.xml
   xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
     <title>{{ site.title | xml_escape }} Updates</title>
-    <atom:link href="{{ '/feed.xml' | absolute_url }}" rel="self" type="application/rss+xml" />
-    <link>{{ '/updates/' | absolute_url }}</link>
+    {%- include canonical-host.html -%}
+    <atom:link href="{{ canonical_host }}/feed.xml" rel="self" type="application/rss+xml" />
+    <link>{{ canonical_host }}/updates/</link>
     <description>{{ site.description | xml_escape }} Race results, calendar notes, and club updates.</description>
     <language>en-us</language>
     <lastBuildDate>{{ site.time | date_to_rfc822 }}</lastBuildDate>
@@ -25,15 +26,21 @@ permalink: /feed.xml
     {% assign feed_image_src = post.images.first.src %}
     {% assign feed_image_alt = post.images.first.alt | default: post.title %}
     {% endif %}
-    {% capture feed_content %}{% if feed_image_src %}<p><img src="{{ feed_image_src | absolute_url }}" alt="{{ feed_image_alt | escape }}"></p>{% endif %}{{ post.content | markdownify }}{% endcapture %}
+    {% include canonical-url.html path=post.url %}
+    {% assign feed_post_url = canonical_url %}
+    {% if feed_image_src != blank %}
+    {% include canonical-url.html path=feed_image_src %}
+    {% assign feed_image_url = canonical_url %}
+    {% endif %}
+    {% capture feed_content %}{% if feed_image_src != blank %}<p><img src="{{ feed_image_url }}" alt="{{ feed_image_alt | escape }}"></p>{% endif %}{{ post.content | markdownify }}{% endcapture %}
     <item>
       <title>{{ post.title | xml_escape }}</title>
-      <link>{{ post.url | absolute_url }}</link>
-      <guid isPermaLink="true">{{ post.url | absolute_url }}</guid>
+      <link>{{ feed_post_url }}</link>
+      <guid isPermaLink="true">{{ feed_post_url }}</guid>
       <pubDate>{{ post.date | date_to_rfc822 }}</pubDate>
-      {% if feed_image_src %}
-      <media:content url="{{ feed_image_src | absolute_url }}" medium="image" />
-      <media:thumbnail url="{{ feed_image_src | absolute_url }}" />
+      {% if feed_image_src != blank %}
+      <media:content url="{{ feed_image_url }}" medium="image" />
+      <media:thumbnail url="{{ feed_image_url }}" />
       {% endif %}
       {% if post.category %}
       <category>{{ post.category | xml_escape }}</category>

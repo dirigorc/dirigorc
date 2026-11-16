@@ -1,0 +1,29 @@
+{%- include canonical-host.html -%}
+{%- assign canonical_input = include.path | default: "/" | strip -%}
+{%- assign canonical_url = canonical_input -%}
+{%- assign canonical_is_external = false -%}
+{%- if canonical_input contains "://" -%}
+{%- assign canonical_body = canonical_input | split: "://" | last -%}
+{%- assign canonical_url_host = canonical_body | split: "/" | first -%}
+{%- if canonical_url_host contains "github.io" or canonical_url_host contains "dirigorc.com" -%}
+{%- assign canonical_parts = canonical_body | split: "/" -%}
+{%- assign canonical_input = "" -%}
+{%- for canonical_part in canonical_parts offset: 1 -%}
+{%- assign canonical_input = canonical_input | append: "/" | append: canonical_part -%}
+{%- endfor -%}
+{%- if canonical_input == "" or canonical_input == "/dirigorc" or canonical_input == "/dirigorc/" -%}
+{%- assign canonical_input = "/" -%}
+{%- else -%}
+{%- assign canonical_input = canonical_input | replace_first: "/dirigorc/", "/" -%}
+{%- endif -%}
+{%- else -%}
+{%- assign canonical_is_external = true -%}
+{%- endif -%}
+{%- endif -%}
+{%- unless canonical_is_external -%}
+{%- assign canonical_first = canonical_input | slice: 0 -%}
+{%- unless canonical_first == "/" -%}
+{%- assign canonical_input = "/" | append: canonical_input -%}
+{%- endunless -%}
+{%- assign canonical_url = canonical_host | append: canonical_input -%}
+{%- endunless -%}

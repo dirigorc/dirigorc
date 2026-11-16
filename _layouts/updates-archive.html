@@ -79,6 +79,17 @@ og_image_height=4000
           {% endif %}
         </nav>
         {% endif %}
+        {% if paginator.page == 1 %}
+        <div class="results-index" id="all-results">
+          <div class="section-header">
+            <div>
+              <h2>Every result.</h2>
+              <p>Race results and club notes from this season back through the archives.</p>
+            </div>
+          </div>
+          {% include updates-by-year.html %}
+        </div>
+        {% endif %}
       </div>
 
       <div id="search-results" class="activity-list search-results" hidden></div>

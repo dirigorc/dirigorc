@@ -1,0 +1,7 @@
+{%- assign canonical_host = site.canonical_host | default: site.url | default: "https://dirigorc.com" -%}
+{%- assign canonical_host = canonical_host | strip -%}
+{%- assign canonical_host_length = canonical_host | size | minus: 1 -%}
+{%- assign canonical_host_last = canonical_host | slice: canonical_host_length -%}
+{%- if canonical_host_last == "/" -%}
+{%- assign canonical_host = canonical_host | slice: 0, canonical_host_length -%}
+{%- endif -%}
