@@ -28,17 +28,17 @@ permalink: /feed.xml
     {% endif %}
     {% include canonical-url.html path=post.url %}
     {% assign feed_post_url = canonical_url %}
-    {% if feed_image_src != blank %}
+    {% if feed_image_src != "" %}
     {% include canonical-url.html path=feed_image_src %}
     {% assign feed_image_url = canonical_url %}
     {% endif %}
-    {% capture feed_content %}{% if feed_image_src != blank %}<p><img src="{{ feed_image_url }}" alt="{{ feed_image_alt | escape }}"></p>{% endif %}{{ post.content | markdownify }}{% endcapture %}
+    {% capture feed_content %}{% if feed_image_src != "" %}<p><img src="{{ feed_image_url }}" alt="{{ feed_image_alt | escape }}"></p>{% endif %}{{ post.content | markdownify }}{% endcapture %}
     <item>
       <title>{{ post.title | xml_escape }}</title>
       <link>{{ feed_post_url }}</link>
       <guid isPermaLink="true">{{ feed_post_url }}</guid>
       <pubDate>{{ post.date | date_to_rfc822 }}</pubDate>
-      {% if feed_image_src != blank %}
+      {% if feed_image_src != "" %}
       <media:content url="{{ feed_image_url }}" medium="image" />
       <media:thumbnail url="{{ feed_image_url }}" />
       {% endif %}
