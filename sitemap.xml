@@ -4,33 +4,40 @@ permalink: /sitemap.xml
 ---
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  {%- include canonical-host.html -%}
   {%- assign newest_post = site.posts | sort: 'date' | reverse | first -%}
   {%- assign content_lastmod = newest_post.date | date_to_xmlschema -%}
   {%- assign history_page = site.pages | where: "path", "history.html" | first -%}
   <url>
-    <loc>{{ '/' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/</loc>
     <lastmod>{{ content_lastmod }}</lastmod>
   </url>
   <url>
-    <loc>{{ '/join.html' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/join.html</loc>
   </url>
   <url>
-    <loc>{{ '/history.html' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/history.html</loc>
     {%- if history_page.last_modified_at %}
     <lastmod>{{ history_page.last_modified_at | date_to_xmlschema }}</lastmod>
     {%- endif %}
   </url>
   <url>
-    <loc>{{ '/updates/' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/updates/</loc>
     <lastmod>{{ content_lastmod }}</lastmod>
   </url>
   <url>
-    <loc>{{ '/updates/all/' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/updates/all/</loc>
     <lastmod>{{ content_lastmod }}</lastmod>
   </url>
   <url>
-    <loc>{{ '/calendar/' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/calendar/</loc>
     <lastmod>{{ content_lastmod }}</lastmod>
+  </url>
+  <url>
+    <loc>{{ canonical_host }}/privacy.html</loc>
+  </url>
+  <url>
+    <loc>{{ canonical_host }}/terms.html</loc>
   </url>
   {%- assign per_page = site.paginate | default: 6 -%}
   {%- assign post_count = site.posts | size -%}
@@ -40,20 +47,18 @@ permalink: /sitemap.xml
   {%- assign page_count = page_count | plus: 1 -%}
   {%- endif -%}
   {%- if page_count > 1 -%}
-  {%- for page_number in (2..30) -%}
-  {%- if page_number <= page_count %}
+  {%- for page_number in (2..page_count) -%}
   <url>
-    <loc>{{ '/updates/page/' | append: page_number | append: '/' | absolute_url }}</loc>
+    <loc>{{ canonical_host }}/updates/page/{{ page_number }}/</loc>
     <lastmod>{{ content_lastmod }}</lastmod>
   </url>
-  {%- endif -%}
   {%- endfor -%}
   {%- endif -%}
   {%- assign posts = site.posts | sort: 'date' | reverse -%}
   {%- for post in posts -%}
   {%- assign post_lastmod = post.last_modified_at | default: post.date %}
   <url>
-    <loc>{{ post.url | absolute_url }}</loc>
+    <loc>{{ canonical_host }}{{ post.url }}</loc>
     <lastmod>{{ post_lastmod | date_to_xmlschema }}</lastmod>
   </url>
   {%- endfor %}

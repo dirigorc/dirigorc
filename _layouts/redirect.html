@@ -2,7 +2,8 @@
 <html lang="en">
 
 <head>
-    {% assign redirect_url = page.redirect_to | absolute_url %}
+    {% include canonical-url.html path=page.redirect_to %}
+    {% assign redirect_url = canonical_url %}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Redirecting to Dirigo</title>

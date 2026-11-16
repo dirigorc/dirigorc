@@ -1,6 +1,9 @@
 title: Dirigo RC
 description: Maine running club founded in 2002.
 url: "https://dirigorc.com"
+# Sitemap, canonical, and feed URLs use this origin. A Pages build can override
+# `url` with a github.io host; this value stays on the public domain.
+canonical_host: "https://dirigorc.com"
 exclude:
   - .bundle/
   - .jekyll-cache/

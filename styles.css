@@ -1447,6 +1447,10 @@ body.has-lightbox {
   text-decoration: none;
 }
 
+.updates-default-view .results-index {
+  margin-top: 2.75rem;
+}
+
 .year-index {
   display: grid;
   gap: 2.25rem;

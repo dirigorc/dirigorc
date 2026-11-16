@@ -51,6 +51,19 @@ preload_image_sizes="100vw"
 
     {% include home-updates.html %}
 
+    <section class="section section-light pattern-news updates-archive results-index" id="all-results">
+      <div class="section-header">
+        <div>
+          <h2>Every result.</h2>
+          <p>Race results and club notes from this season back through the archives.</p>
+        </div>
+        <div class="section-header-links">
+          <a class="text-link" href="{{ '/updates/' | relative_url }}">Recent updates</a>
+        </div>
+      </div>
+      {% include updates-by-year.html %}
+    </section>
+
     {% include home-calendar.html %}
 
     <section class="section section-light pattern-intro">
