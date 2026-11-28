@@ -3,11 +3,14 @@ import {
 	createExecutionContext,
 	waitOnExecutionContext,
 	SELF,
+	runInDurableObject,
 } from "cloudflare:test";
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { CALENDAR_REACTION_SLOT, handleCalendarReaction, handleRecapReaction, planCalendarReactionScan, planReactionScan, reactionStorageKey } from "../src/discord-reaction";
 import worker, { discordAttachments, routeDiscordInteraction, runDiscordBackgroundTask } from "../src/index";
 import { incompleteMemberNameReason } from "../src/self-report";
+import { applyReviewTransition, DiscordReview } from "../src/review";
+import type { WorkerEnv } from "../src/dispatch";
 
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
@@ -932,7 +935,7 @@ describe("Dirigo email ingest worker", () => {
 		const update = reviewUpdate(calls);
 		expect(update.content).toContain("Published **Beach to Beacon**");
 		expect(update.components).toEqual([]);
-		expect(update.embeds).toEqual([{ title: "Beach to Beacon" }]);
+		expect(update).not.toHaveProperty("embeds");
 	});
 
 	it("merges a calendar draft and still allows Seth when the approver var is unset", async () => {
@@ -942,8 +945,7 @@ describe("Dirigo email ingest worker", () => {
 		}));
 		const ctx = createExecutionContext();
 		await routeDiscordInteraction(reviewClick("pr_publish:41", "1227055686295359519"), {
-			GITHUB_TOKEN: "github-token",
-			GITHUB_REPO: "dirigorc/dirigorc",
+			...reviewEnv({ DISCORD_PR_APPROVER_IDS: undefined }),
 		}, ctx);
 		await waitOnExecutionContext(ctx);
 
@@ -977,19 +979,213 @@ describe("Dirigo email ingest worker", () => {
 			body: "Held in Discord by Seth Crockett (1227055686295359519).",
 		});
 		expect(reviewUpdate(calls).content).toContain("Held. The draft stays open.");
+		expect(reviewUpdate(calls).components).toEqual([{
+			type: 1,
+			components: [{ type: 2, style: 2, label: "Unhold", custom_id: "pr_unhold:41" }],
+		}]);
+	});
+
+	it.each(["hold", "unhold"])("keeps both reviewers cross-linked after %s", async (action) => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick(`pr_${action}:41:777:888`, "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+
+		const prefixes = action === "hold" ? ["unhold"] : ["publish", "hold", "revise"];
+		const buttons = (suffix: string) => [{
+			type: 1,
+			components: prefixes.map((prefix) => expect.objectContaining({ custom_id: `pr_${prefix}:41:${suffix}` })),
+		}];
+		expect(reviewUpdate(calls).components).toEqual(buttons("777:888"));
+		expect(reviewUpdate(calls)).not.toHaveProperty("embeds");
+		const sibling = calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"));
+		expect(JSON.parse(sibling?.body || "{}").components).toEqual(buttons("111:222"));
+		expect(JSON.parse(sibling?.body || "{}")).not.toHaveProperty("embeds");
+		expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+		const comment = calls.find((call) => call.url.endsWith("/issues/41/comments"));
+		expect(JSON.parse(comment?.body || "{}").body).toBe(
+			`${action === "hold" ? "Held" : "Unheld"} in Discord by Seth Crockett (1227055686295359519).`,
+		);
+	});
+
+	it("restores a shared calendar review without publishing when Crow unholds", async () => {
+		const calls = mockReviewFetch(reviewPull({
+			head: { ref: "automation/calendar-event-5", sha: "def456" },
+			labels: [{ name: "automated calendar" }],
+		}));
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_unhold:41", "459385898992140288"), {
+			...reviewEnv({ DISCORD_PR_APPROVER_IDS: undefined }),
+		}, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(reviewUpdate(calls).content).toContain("Unheld. Review restored");
+		expect(reviewUpdate(calls).components).toEqual([{
+			type: 1,
+			components: ["publish", "hold", "revise"].map((action) =>
+				expect.objectContaining({ custom_id: `pr_${action}:41` }),
+			),
+		}]);
+		expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+	});
+
+	it("refuses an unhold click from a non-reviewer", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(reviewClick("pr_unhold:41", "1"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+		expect(await response.json()).toMatchObject({ type: 4, data: { content: "You can't review this draft." } });
+		expect(calls).toEqual([]);
+	});
+
+	it.each([
+		{ merged: true },
+		{ state: "closed" },
+		{ head: { ref: "not-an-automation" } },
+	])("does not restore review for an ineligible draft: %j", async (overrides) => {
+		const calls = mockReviewFetch(reviewPull(overrides));
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_unhold:41", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
 		expect(reviewUpdate(calls).components).toEqual([]);
+		expect(calls.some((call) => call.method !== "GET" && call.url.includes("api.github.com"))).toBe(false);
+	});
+
+	it.each(["hold", "unhold"])("preserves both reviewers' buttons when GitHub rejects %s", async (action) => {
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", 403);
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick(`pr_${action}:41:777:888`, "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(reviewUpdate(calls).content).toContain(`I could not ${action} the draft`);
+		expect(reviewUpdate(calls)).not.toHaveProperty("components");
+		expect(calls.some((call) => call.method === "PATCH" && call.url.includes("/channels/"))).toBe(false);
 	});
 
 	it("lets Crow publish when the approver var is unset", async () => {
 		const calls = mockReviewFetch(reviewPull());
 		const ctx = createExecutionContext();
 		await routeDiscordInteraction(reviewClick("pr_publish:41", "459385898992140288"), {
-			GITHUB_TOKEN: "github-token",
-			GITHUB_REPO: "dirigorc/dirigorc",
+			...reviewEnv({ DISCORD_PR_APPROVER_IDS: undefined }),
 		}, ctx);
 		await waitOnExecutionContext(ctx);
 
 		expect(calls.some((call) => call.method === "PUT" && call.url.endsWith("/pulls/41/merge"))).toBe(true);
+	});
+
+	it.each(["publish", "hold"])("finishes both Unhold updates before a queued %s", async (action) => {
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		let firstSibling = true;
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", 201, async () => {
+			if (!firstSibling) return;
+			firstSibling = false;
+			started.resolve();
+			await release.promise;
+		});
+		const stub = env.DISCORD_REVIEW.getByName(`queued-${action}`);
+		await runInDurableObject(stub, async (_instance, state) => {
+			const coordinator = new DiscordReview(state, reviewEnv());
+			const unhold = coordinator.apply(reviewClick("pr_unhold:41:777:888", "1227055686295359519"));
+			await started.promise;
+			const newer = coordinator.apply(reviewClick(`pr_${action}:41:777:888`, "1227055686295359519"));
+			try {
+				await Promise.resolve();
+				expect(calls.filter((call) => call.url.endsWith("/pulls/41"))).toHaveLength(1);
+				expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+			} finally {
+				release.resolve();
+			}
+			await Promise.all([unhold, newer]);
+		});
+		const updates = calls.filter((call) => call.method === "PATCH");
+		expect(updates).toHaveLength(4);
+		expect(JSON.parse(updates[1].body || "{}").content).toContain("unheld this");
+		const expected = action === "publish" ? [] : [{
+			type: 1, components: [expect.objectContaining({ label: "Unhold" })],
+		}];
+		for (const update of updates.slice(-2)) {
+			expect(JSON.parse(update.body || "{}").components).toEqual(expected);
+		}
+	});
+
+	it("lets a queued review proceed after a failed sibling update", async () => {
+		let fail = true;
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", 201, async () => {
+			if (fail) {
+				fail = false;
+				throw new Error("Sibling update unavailable.");
+			}
+		});
+		await runInDurableObject(env.DISCORD_REVIEW.getByName("failed-review"), async (_instance, state) => {
+			const coordinator = new DiscordReview(state, reviewEnv());
+			const first = coordinator.apply(reviewClick("pr_unhold:41:777:888", "1227055686295359519"));
+			const next = coordinator.apply(reviewClick("pr_hold:41:777:888", "1227055686295359519"));
+			await expect(first).rejects.toThrow("Sibling update unavailable.");
+			await next;
+		});
+		const final = calls.filter((call) => call.method === "PATCH").at(-1);
+		expect(JSON.parse(final?.body || "{}").content).toContain("held this");
+	});
+
+	it("preserves restored buttons when a second queued Unhold fails", async () => {
+		let comments = 0;
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", () => ++comments === 1 ? 201 : 403);
+		const staleClick = {
+			...reviewClick("pr_unhold:41:777:888", "1227055686295359519"),
+			message: {
+				id: "222",
+				components: [{
+					type: 1,
+					components: [{ type: 2, style: 2, label: "Unhold", custom_id: "pr_unhold:41:777:888" }],
+				}],
+			},
+		};
+		await runInDurableObject(env.DISCORD_REVIEW.getByName("failed-second-unhold"), async (_instance, state) => {
+			const coordinator = new DiscordReview(state, reviewEnv());
+			await Promise.all([coordinator.apply(staleClick), coordinator.apply(staleClick)]);
+		});
+		const updates = calls.filter((call) => call.method === "PATCH");
+		expect(updates).toHaveLength(3);
+		for (const update of updates.slice(0, 2)) {
+			expect(JSON.parse(update.body || "{}").components[0].components.map(
+				(button: { label: string }) => button.label,
+			)).toEqual(["Publish", "Hold", "Revise"]);
+		}
+		const failed = JSON.parse(updates[2].body || "{}");
+		expect(failed.content).toContain("I could not unhold the draft");
+		expect(failed).not.toHaveProperty("components");
+	});
+
+	it("preserves previews without reading sibling messages", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick("pr_unhold:41:777:888", "1227055686295359519"), reviewEnv(), ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(calls.some((call) => call.method === "GET" && call.url.includes("discord.com"))).toBe(false);
+		for (const call of calls.filter((call) => call.method === "PATCH")) {
+			expect(JSON.parse(call.body || "{}")).not.toHaveProperty("embeds");
+		}
+	});
+
+	it("leaves the draft alone when its review coordinator is missing", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(
+			reviewClick("pr_unhold:41", "1227055686295359519"), { ...reviewEnv(), DISCORD_REVIEW: undefined }, ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(await response.json()).toMatchObject({ type: 4, data: { content: expect.stringContaining("missing its review coordinator") } });
+		expect(calls).toEqual([]);
 	});
 
 	it("tells the other reviewer when Seth publishes", async () => {
@@ -1031,7 +1227,7 @@ describe("Dirigo email ingest worker", () => {
 
 		const update = reviewUpdate(calls);
 		expect(update.content).toContain("At least 1 approving review is required.");
-		expect(update.components).toEqual([{ type: 1 }]);
+		expect(update).not.toHaveProperty("components");
 	});
 
 	it("does not turn an unknown slash command into a recap", async () => {
@@ -1888,11 +2084,19 @@ function contentsPath(url: string): string {
 	return decodeURIComponent(pathname.slice(pathname.indexOf(marker) + marker.length));
 }
 
-function reviewEnv() {
-	return {
+function reviewEnv(overrides: WorkerEnv = {}): WorkerEnv {
+	const config: WorkerEnv = {
 		GITHUB_TOKEN: "github-token",
 		GITHUB_REPO: "dirigorc/dirigorc",
 		DISCORD_PR_APPROVER_IDS: "1227055686295359519",
+		DISCORD_BOT_TOKEN: "bot-token",
+		...overrides,
+	};
+	return {
+		...config,
+		DISCORD_REVIEW: {
+			getByName: () => ({ apply: (interaction) => applyReviewTransition(interaction, config) }),
+		},
 	};
 }
 
@@ -2007,13 +2211,17 @@ function reviewClick(customId: string, userId: string) {
 		type: 3,
 		application_id: "discord-app",
 		token: "review-token",
+		channel_id: "111",
 		data: { custom_id: customId },
 		user: { id: userId, username: "seth", global_name: "Seth Crockett" },
-		message: { embeds: [{ title: "Beach to Beacon" }], components: [{ type: 1 }] },
+		message: { id: "222", embeds: [{ title: "Beach to Beacon" }], components: [{ type: 1 }] },
 	};
 }
 
-function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged") {
+function mockReviewFetch(
+	pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged", commentStatus: number | (() => number) = 201,
+	siblingPatch?: () => Promise<void>,
+) {
 	const calls: FetchCall[] = [];
 	vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = requestUrl(input);
@@ -2023,7 +2231,12 @@ function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, merge
 		if (url.includes("/pulls/41/merge")) {
 			return Response.json({ message: mergeMessage, merged: mergeStatus < 300 }, { status: mergeStatus });
 		}
-		if (url.includes("/issues/41/comments")) return Response.json({ id: 1 }, { status: 201 });
+		if (url.includes("/issues/41/comments")) {
+			return Response.json({ id: 1, message: "Comment rejected." }, {
+				status: typeof commentStatus === "function" ? commentStatus() : commentStatus,
+			});
+		}
+		if (url.endsWith("/channels/777/messages/888") && method === "PATCH") await siblingPatch?.();
 		if (url.includes("discord.com")) return new Response(null, { status: 200 });
 		if (url.endsWith("/pulls/41")) return Response.json(pull, { status: 200 });
 		return new Response("missing", { status: 404 });
