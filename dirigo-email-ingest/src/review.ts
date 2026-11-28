@@ -83,12 +83,12 @@ type TargetQuery =
 	| { kind: "described"; text: string };
 
 type ReviewControl =
-	| { kind: "decision"; action: "publish" | "hold"; pullNumber: number; sibling?: ReviewMessageRef }
+	| { kind: "decision"; action: PrReviewAction; pullNumber: number; sibling?: ReviewMessageRef }
 	| { kind: "revise"; pullNumber: number; messages: readonly ReviewMessageRef[] };
 
-type PrReviewAction = "publish" | "hold";
+type PrReviewAction = "publish" | "hold" | "unhold";
 
-type PrReviewKind = "published" | "held" | "already" | "closed" | "ignored";
+type PrReviewKind = "published" | "held" | "unheld" | "already" | "closed" | "ignored";
 
 interface PrReviewActionRequest {
 	action: PrReviewAction;
@@ -153,6 +153,9 @@ function reviewButton(
 	const reviewer = requireReviewer(interaction, env);
 	if (reviewer instanceof Response) return reviewer;
 	if (control.kind === "decision") {
+		if (control.action !== "publish" && control.sibling && !clickedMessage(interaction)) {
+			return discordAck("This review message is missing an id.");
+		}
 		return startPrReview(interaction, env, ctx, reviewer, {
 			action: control.action,
 			pullNumber: control.pullNumber,
@@ -311,7 +314,7 @@ function parseReviewControl(customId: string, contract: DiscordContract): Review
 		if (!isSnowflake(parts[1]) || !isSnowflake(parts[2])) return null;
 		sibling = { channelId: parts[1], messageId: parts[2] };
 	}
-	if (action.action === "publish" || action.action === "hold") {
+	if (action.action === "publish" || action.action === "hold" || action.action === "unhold") {
 		return sibling
 			? { kind: "decision", action: action.action, pullNumber, sibling }
 			: { kind: "decision", action: action.action, pullNumber };
@@ -925,7 +928,9 @@ function siblingNotice(actor: string, outcome: PrReviewOutcome): string | null {
 		case "published":
 			return clipDiscordContent(`${actor} published this. It will show up on the site after the next deploy.${suffix}`);
 		case "held":
-			return clipDiscordContent(`${actor} held this. The draft stays open.${suffix}`);
+			return clipDiscordContent(`${actor} held this. The draft stays open. Press Unhold to resume review.${suffix}`);
+		case "unheld":
+			return clipDiscordContent(`${actor} unheld this. Review restored; press Publish when ready.${suffix}`);
 		case "already":
 			return clipDiscordContent(`This is already on the site.${suffix}`);
 		case "closed":
@@ -1035,18 +1040,20 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 		return { content: clipDiscordContent(`This draft is already closed.${suffix}`), clearButtons: true, kind: "closed" };
 	}
 
-	if (action === "hold") {
+	if (action === "hold" || action === "unhold") {
 		const comment = await githubFetch(env, `/issues/${pullNumber}/comments`, {
 			method: "POST",
-			body: JSON.stringify({ body: `Held in Discord by ${actor}.` }),
+			body: JSON.stringify({ body: `${action === "hold" ? "Held" : "Unheld"} in Discord by ${actor}.` }),
 		});
 		if (comment.status < 200 || comment.status >= 300) {
 			return {
-				content: `I could not hold the draft: ${githubErrorMessage(comment.text, comment.status)}`,
+				content: `I could not ${action} the draft: ${githubErrorMessage(comment.text, comment.status)}`,
 				clearButtons: false,
 			};
 		}
-		return { content: clipDiscordContent(`Held. The draft stays open.${suffix}`), clearButtons: true, kind: "held" };
+		return action === "hold"
+			? { content: clipDiscordContent(`Held. The draft stays open. Press Unhold to resume review.${suffix}`), clearButtons: true, kind: "held" }
+			: { content: clipDiscordContent(`Unheld. Review restored; press Publish when ready.${suffix}`), clearButtons: true, kind: "unheld" };
 	}
 
 	const mergeBody: Record<string, string> = { merge_method: "merge" };
@@ -1068,14 +1075,31 @@ async function reviewPullRequest(env: WorkerEnv, action: PrReviewAction, pullNum
 	return { content: clipDiscordContent(`${published}${suffix}`), clearButtons: true, kind: "published" };
 }
 
-async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrReviewOutcome): Promise<void> {
+function reviewComponents(outcome: PrReviewOutcome, pullNumber: number, sibling?: ReviewMessageRef): unknown[] {
+	if (outcome.kind !== "held" && outcome.kind !== "unheld") return [];
+	const suffix = sibling ? `:${sibling.channelId}:${sibling.messageId}` : "";
+	const actions = loadDiscordContract().reviewActions.filter((action) =>
+		outcome.kind === "held" ? action.action === "unhold" : action.action !== "unhold",
+	);
+	return [{
+		type: 1,
+		components: actions.map((action) => {
+			const customId = `${action.customIdPrefix}:${pullNumber}${suffix}`;
+			if (customId.length > CUSTOM_ID_MAX) throw new Error("Review button exceeds the Discord id limit.");
+			return { type: 2, style: action.style, label: action.label, custom_id: customId };
+		}),
+	}];
+}
+
+async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrReviewOutcome, components: unknown[]): Promise<void> {
 	const applicationId = interaction.application_id;
 	const token = interaction.token;
 	if (!applicationId || !token) return;
 	const payload: Record<string, unknown> = {
 		content: outcome.content,
 		embeds: interaction.message?.embeds || [],
-		components: outcome.clearButtons ? [] : interaction.message?.components || [],
+		components: outcome.clearButtons ? components : interaction.message?.components || [],
+		allowed_mentions: { parse: [] },
 	};
 	const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`, {
 		method: "PATCH",
@@ -1087,7 +1111,7 @@ async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrR
 	}
 }
 
-async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messageId: string, content: string): Promise<void> {
+async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messageId: string, content: string, components: unknown[]): Promise<void> {
 	if (!env.DISCORD_BOT_TOKEN) {
 		console.error(JSON.stringify({
 			message: "Discord sibling review update skipped",
@@ -1113,7 +1137,7 @@ async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messa
 	const response = await fetch(messageUrl, {
 		method: "PATCH",
 		headers,
-		body: JSON.stringify({ content, components: [], embeds }),
+		body: JSON.stringify({ content, components, embeds, allowed_mentions: { parse: [] } }),
 	});
 	if (!response.ok) {
 		throw new Error(`Discord sibling review update failed: ${response.status} ${await response.text()}`);
@@ -1132,11 +1156,18 @@ function startPrReview(
 	ctx.waitUntil((async () => {
 		try {
 			const outcome = await reviewPullRequest(env, review.action, review.pullNumber, actor);
-			await editPrReviewMessage(interaction, outcome);
+			const sibling = review.siblingChannelId && review.siblingMessageId
+				&& isSnowflake(review.siblingChannelId) && isSnowflake(review.siblingMessageId)
+				? { channelId: review.siblingChannelId, messageId: review.siblingMessageId }
+				: undefined;
+			await editPrReviewMessage(interaction, outcome, reviewComponents(outcome, review.pullNumber, sibling));
 			const notice = siblingNotice(actorName, outcome);
 			if (notice && review.siblingChannelId && review.siblingMessageId) {
 				try {
-					await editSiblingReviewMessage(env, review.siblingChannelId, review.siblingMessageId, notice);
+					await editSiblingReviewMessage(
+						env, review.siblingChannelId, review.siblingMessageId, notice,
+						reviewComponents(outcome, review.pullNumber, clickedMessage(interaction) || undefined),
+					);
 				} catch (error) {
 					console.error(JSON.stringify({
 						message: "Discord sibling review update failed",

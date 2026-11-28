@@ -65,7 +65,7 @@ function parseDiscordContract(value: unknown): DiscordContract {
 		}
 	}
 
-	for (const actionName of ["publish", "hold"]) {
+	for (const actionName of ["publish", "hold", "unhold"]) {
 		const action = reviewActions.find((item) => item.action === actionName);
 		if (!action) throw new Error(`Discord contract is missing the ${actionName} review action.`);
 		if (action.modalPrefix) throw new Error(`Discord contract ${actionName} must not open a modal.`);

@@ -152,7 +152,7 @@ def review_components(pr_number: str, sibling: tuple[str, str] | None = None) ->
     actions = contract["reviewActions"]
     if not isinstance(actions, list):
         raise RuntimeError("Discord contract review actions are missing.")
-    return [button_row(actions, pr_number, sibling)]
+    return [button_row([action for action in actions if action["action"] != "unhold"], pr_number, sibling)]
 
 
 def parse_snowflakes(value: str, label: str) -> list[str]:

@@ -180,6 +180,7 @@
   "reviewActions": [
     { "action": "publish", "label": "Publish", "style": 3, "customIdPrefix": "pr_publish" },
     { "action": "hold", "label": "Hold", "style": 2, "customIdPrefix": "pr_hold" },
+    { "action": "unhold", "label": "Unhold", "style": 2, "customIdPrefix": "pr_unhold" },
     { "action": "revise", "label": "Revise", "style": 1, "customIdPrefix": "pr_revise", "modalPrefix": "rv" }
   ]
 }

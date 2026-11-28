@@ -977,7 +977,95 @@ describe("Dirigo email ingest worker", () => {
 			body: "Held in Discord by Seth Crockett (1227055686295359519).",
 		});
 		expect(reviewUpdate(calls).content).toContain("Held. The draft stays open.");
+		expect(reviewUpdate(calls).components).toEqual([{
+			type: 1,
+			components: [{ type: 2, style: 2, label: "Unhold", custom_id: "pr_unhold:41" }],
+		}]);
+	});
+
+	it.each(["hold", "unhold"])("keeps both reviewers cross-linked after %s", async (action) => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick(`pr_${action}:41:777:888`, "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+
+		const prefixes = action === "hold" ? ["unhold"] : ["publish", "hold", "revise"];
+		const buttons = (suffix: string) => [{
+			type: 1,
+			components: prefixes.map((prefix) => expect.objectContaining({ custom_id: `pr_${prefix}:41:${suffix}` })),
+		}];
+		expect(reviewUpdate(calls).components).toEqual(buttons("777:888"));
+		expect(reviewUpdate(calls).embeds).toEqual([{ title: "Beach to Beacon" }]);
+		const sibling = calls.find((call) => call.method === "PATCH" && call.url.endsWith("/channels/777/messages/888"));
+		expect(JSON.parse(sibling?.body || "{}").components).toEqual(buttons("111:222"));
+		expect(JSON.parse(sibling?.body || "{}").embeds).toEqual([{ title: "Beach to Beacon" }]);
+		expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+		const comment = calls.find((call) => call.url.endsWith("/issues/41/comments"));
+		expect(JSON.parse(comment?.body || "{}").body).toBe(
+			`${action === "hold" ? "Held" : "Unheld"} in Discord by Seth Crockett (1227055686295359519).`,
+		);
+	});
+
+	it("restores a shared calendar review without publishing when Crow unholds", async () => {
+		const calls = mockReviewFetch(reviewPull({
+			head: { ref: "automation/calendar-event-5", sha: "def456" },
+			labels: [{ name: "automated calendar" }],
+		}));
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_unhold:41", "459385898992140288"), {
+			GITHUB_TOKEN: "github-token",
+			GITHUB_REPO: "dirigorc/dirigorc",
+		}, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(reviewUpdate(calls).content).toContain("Unheld. Review restored");
+		expect(reviewUpdate(calls).components).toEqual([{
+			type: 1,
+			components: ["publish", "hold", "revise"].map((action) =>
+				expect.objectContaining({ custom_id: `pr_${action}:41` }),
+			),
+		}]);
+		expect(calls.some((call) => call.url.endsWith("/merge"))).toBe(false);
+	});
+
+	it("refuses an unhold click from a non-reviewer", async () => {
+		const calls = mockReviewFetch(reviewPull());
+		const ctx = createExecutionContext();
+		const response = await routeDiscordInteraction(reviewClick("pr_unhold:41", "1"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
+		expect(await response.json()).toMatchObject({ type: 4, data: { content: "You can't review this draft." } });
+		expect(calls).toEqual([]);
+	});
+
+	it.each([
+		{ merged: true },
+		{ state: "closed" },
+		{ head: { ref: "not-an-automation" } },
+	])("does not restore review for an ineligible draft: %j", async (overrides) => {
+		const calls = mockReviewFetch(reviewPull(overrides));
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(reviewClick("pr_unhold:41", "1227055686295359519"), reviewEnv(), ctx);
+		await waitOnExecutionContext(ctx);
 		expect(reviewUpdate(calls).components).toEqual([]);
+		expect(calls.some((call) => call.method !== "GET" && call.url.includes("api.github.com"))).toBe(false);
+	});
+
+	it.each(["hold", "unhold"])("preserves both reviewers' buttons when GitHub rejects %s", async (action) => {
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", 403);
+		const ctx = createExecutionContext();
+		await routeDiscordInteraction(
+			reviewClick(`pr_${action}:41:777:888`, "1227055686295359519"),
+			{ ...reviewEnv(), DISCORD_BOT_TOKEN: "bot-token" },
+			ctx,
+		);
+		await waitOnExecutionContext(ctx);
+		expect(reviewUpdate(calls).content).toContain(`I could not ${action} the draft`);
+		expect(reviewUpdate(calls).components).toEqual([{ type: 1 }]);
+		expect(calls.some((call) => call.method === "PATCH" && call.url.includes("/channels/"))).toBe(false);
 	});
 
 	it("lets Crow publish when the approver var is unset", async () => {
@@ -2007,13 +2095,14 @@ function reviewClick(customId: string, userId: string) {
 		type: 3,
 		application_id: "discord-app",
 		token: "review-token",
+		channel_id: "111",
 		data: { custom_id: customId },
 		user: { id: userId, username: "seth", global_name: "Seth Crockett" },
-		message: { embeds: [{ title: "Beach to Beacon" }], components: [{ type: 1 }] },
+		message: { id: "222", embeds: [{ title: "Beach to Beacon" }], components: [{ type: 1 }] },
 	};
 }
 
-function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged") {
+function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged", commentStatus = 201) {
 	const calls: FetchCall[] = [];
 	vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = requestUrl(input);
@@ -2023,7 +2112,10 @@ function mockReviewFetch(pull: Record<string, unknown>, mergeStatus = 200, merge
 		if (url.includes("/pulls/41/merge")) {
 			return Response.json({ message: mergeMessage, merged: mergeStatus < 300 }, { status: mergeStatus });
 		}
-		if (url.includes("/issues/41/comments")) return Response.json({ id: 1 }, { status: 201 });
+		if (url.includes("/issues/41/comments")) return Response.json({ id: 1, message: "Comment rejected." }, { status: commentStatus });
+		if (url.endsWith("/channels/777/messages/888") && method === "GET") {
+			return Response.json({ embeds: [{ title: "Beach to Beacon" }] });
+		}
 		if (url.includes("discord.com")) return new Response(null, { status: 200 });
 		if (url.endsWith("/pulls/41")) return Response.json(pull, { status: 200 });
 		return new Response("missing", { status: 404 });
