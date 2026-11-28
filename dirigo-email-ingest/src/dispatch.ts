@@ -1,5 +1,7 @@
 import { loadDiscordContract } from "./discord-contract";
 import type { ReportInference } from "./self-report";
+import type { DiscordReview } from "./review";
+import type { DiscordGateway } from "./discord-gateway";
 
 export interface EmailAttachment {
 	filename: string;
@@ -19,7 +21,8 @@ export interface WorkerEnv {
 	DISCORD_GUILD_ID?: string;
 	DISCORD_RECAP_EMOJI?: string;
 	DISCORD_CALENDAR_EMOJI?: string;
-	DISCORD_GATEWAY?: DurableObjectNamespace;
+	DISCORD_GATEWAY?: DurableObjectNamespace<DiscordGateway>;
+	DISCORD_REVIEW?: { getByName(name: string): Pick<DiscordReview, "apply"> };
 }
 
 export interface EmailPayload {

@@ -15,8 +15,8 @@
  * Optional vars:
  * - ALLOWED_FROM: Comma-separated sender allowlist for Email Routing.
  * - DISCORD_PUBLIC_KEY: Required only for the Discord interaction endpoint.
- * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish, hold, or revise a draft. Defaults to Seth Crockett and Crow Norlander.
- * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish or Hold, and to read a reacted message.
+ * - DISCORD_PR_APPROVER_IDS: Discord user IDs allowed to publish, hold, unhold, or revise a draft. Defaults to Seth Crockett and Crow Norlander.
+ * - DISCORD_BOT_TOKEN: Bot token used to update the other reviewer's message after Publish, Hold, or Unhold, and to read a reacted message.
  * - DISCORD_RECAP_EMOJI: Emoji that starts a recap from a message. Defaults to the checkered flag.
  * - DISCORD_CALENDAR_EMOJI: Extra emoji that starts a calendar event. 📅, 📆, and 🗓️ always count.
  * - DISCORD_GUILD_ID: Optional guild id. When set, reactions in other servers are ignored.
@@ -85,6 +85,7 @@ const DISCORD_LONG_RECAP_MESSAGE = "Run /recap with an empty body and continue i
 const DISCORD_FALLBACK_MESSAGE = "If Discord drops your submission while uploading images, submit the recap text first, attach a .txt/.md file with recap_file, or use the HTTP test endpoint in the README.";
 
 export { DiscordGateway };
+export { DiscordReview } from "./review";
 
 interface DiscordTextAttachmentSummary {
 	text: string;

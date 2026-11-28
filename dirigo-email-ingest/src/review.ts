@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { DurableObject } from "cloudflare:workers";
 import {
 	type DiscordAttachmentSummary,
 	attachmentAcceptanceNote,
@@ -90,13 +91,6 @@ type PrReviewAction = "publish" | "hold" | "unhold";
 
 type PrReviewKind = "published" | "held" | "unheld" | "already" | "closed" | "ignored";
 
-interface PrReviewActionRequest {
-	action: PrReviewAction;
-	pullNumber: number;
-	siblingChannelId?: string;
-	siblingMessageId?: string;
-}
-
 interface PrReviewOutcome {
 	content: string;
 	clearButtons: boolean;
@@ -156,12 +150,7 @@ function reviewButton(
 		if (control.action !== "publish" && control.sibling && !clickedMessage(interaction)) {
 			return discordAck("This review message is missing an id.");
 		}
-		return startPrReview(interaction, env, ctx, reviewer, {
-			action: control.action,
-			pullNumber: control.pullNumber,
-			siblingChannelId: control.sibling?.channelId,
-			siblingMessageId: control.sibling?.messageId,
-		});
+		return startPrReview(interaction, env, ctx, control.pullNumber);
 	}
 	const current = clickedMessage(interaction);
 	if (!current) return discordAck("This review message is missing an id.");
@@ -1097,7 +1086,6 @@ async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrR
 	if (!applicationId || !token) return;
 	const payload: Record<string, unknown> = {
 		content: outcome.content,
-		embeds: interaction.message?.embeds || [],
 		components: outcome.clearButtons ? components : interaction.message?.components || [],
 		allowed_mentions: { parse: [] },
 	};
@@ -1113,31 +1101,17 @@ async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrR
 
 async function editSiblingReviewMessage(env: WorkerEnv, channelId: string, messageId: string, content: string, components: unknown[]): Promise<void> {
 	if (!env.DISCORD_BOT_TOKEN) {
-		console.error(JSON.stringify({
-			message: "Discord sibling review update skipped",
-			reason: "DISCORD_BOT_TOKEN is not configured.",
-		}));
-		return;
+		throw new Error("DISCORD_BOT_TOKEN is not configured.");
 	}
 	const messageUrl = `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
 	const headers = {
 		Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
 		"Content-Type": "application/json",
 	};
-	let embeds: unknown[] = [];
-	const existing = await fetch(messageUrl, { headers });
-	if (existing.ok) {
-		try {
-			const body: unknown = await existing.json();
-			if (isRecord(body) && Array.isArray(body.embeds)) embeds = body.embeds;
-		} catch {
-			embeds = [];
-		}
-	}
 	const response = await fetch(messageUrl, {
 		method: "PATCH",
 		headers,
-		body: JSON.stringify({ content, components, embeds, allowed_mentions: { parse: [] } }),
+		body: JSON.stringify({ content, components, allowed_mentions: { parse: [] } }),
 	});
 	if (!response.ok) {
 		throw new Error(`Discord sibling review update failed: ${response.status} ${await response.text()}`);
@@ -1148,45 +1122,67 @@ function startPrReview(
 	interaction: DiscordInteraction,
 	env: WorkerEnv,
 	ctx: ExecutionContext,
-	reviewer: Reviewer,
-	review: PrReviewActionRequest,
+	pullNumber: number,
 ): Response {
-	const actor = reviewer.submittedBy;
-	const actorName = reviewer.displayName;
+	const coordinator = env.DISCORD_REVIEW;
+	if (!coordinator) return discordAck("The site bot is missing its review coordinator, so I left the draft open.");
 	ctx.waitUntil((async () => {
 		try {
-			const outcome = await reviewPullRequest(env, review.action, review.pullNumber, actor);
-			const sibling = review.siblingChannelId && review.siblingMessageId
-				&& isSnowflake(review.siblingChannelId) && isSnowflake(review.siblingMessageId)
-				? { channelId: review.siblingChannelId, messageId: review.siblingMessageId }
-				: undefined;
-			await editPrReviewMessage(interaction, outcome, reviewComponents(outcome, review.pullNumber, sibling));
-			const notice = siblingNotice(actorName, outcome);
-			if (notice && review.siblingChannelId && review.siblingMessageId) {
-				try {
-					await editSiblingReviewMessage(
-						env, review.siblingChannelId, review.siblingMessageId, notice,
-						reviewComponents(outcome, review.pullNumber, clickedMessage(interaction) || undefined),
-					);
-				} catch (error) {
-					console.error(JSON.stringify({
-						message: "Discord sibling review update failed",
-						pullNumber: review.pullNumber,
-						error: errorMessage(error),
-					}));
-				}
-			}
+			const name = `${env.GITHUB_REPO || "dirigorc/dirigorc"}:${pullNumber}`;
+			await coordinator.getByName(name).apply(interaction);
 		} catch (error) {
 			console.error(JSON.stringify({
 				message: "Discord pull request review failed",
-				pullNumber: review.pullNumber,
+				pullNumber,
 				error: errorMessage(error),
 			}));
+			try {
+				await discordFollowup(interaction, "I could not finish that review action. Please try again.");
+			} catch (followupError) {
+				console.error(JSON.stringify({ message: "Discord review follow-up failed", error: errorMessage(followupError) }));
+			}
 		}
 	})());
 	return new Response(JSON.stringify({ type: DISCORD_RESPONSE_DEFERRED_UPDATE_MESSAGE }), {
 		headers: { "content-type": "application/json" },
 	});
+}
+
+export class DiscordReview extends DurableObject<WorkerEnv> {
+	private pending: Promise<void> = Promise.resolve();
+
+	async apply(interaction: DiscordInteraction): Promise<void> {
+		const transition = this.pending.then(() => applyReviewTransition(interaction, this.env));
+		// Release the queue on failure; the caller still receives the rejected transition.
+		this.pending = transition.then(() => undefined, () => undefined);
+		await transition;
+	}
+}
+
+export async function applyReviewTransition(interaction: DiscordInteraction, env: WorkerEnv): Promise<void> {
+	const control = parseReviewControl(interaction.data?.custom_id || "", loadDiscordContract());
+	const reviewer = requireReviewer(interaction, env);
+	if (!control || control.kind !== "decision" || reviewer instanceof Response) {
+		throw new Error("Invalid or unauthorized review transition.");
+	}
+	const outcome = await reviewPullRequest(env, control.action, control.pullNumber, reviewer.submittedBy);
+	await editPrReviewMessage(interaction, outcome, reviewComponents(outcome, control.pullNumber, control.sibling));
+	const notice = siblingNotice(reviewer.displayName, outcome);
+	if (notice && control.sibling) {
+		try {
+			await editSiblingReviewMessage(
+				env, control.sibling.channelId, control.sibling.messageId, notice,
+				reviewComponents(outcome, control.pullNumber, clickedMessage(interaction) || undefined),
+			);
+		} catch (error) {
+			console.error(JSON.stringify({
+				message: "Discord sibling review update failed",
+				pullNumber: control.pullNumber,
+				error: errorMessage(error),
+			}));
+			throw error;
+		}
+	}
 }
 
 function errorMessage(error: unknown): string {

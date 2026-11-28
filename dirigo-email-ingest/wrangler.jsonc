@@ -45,6 +45,10 @@
 			{
 				"name": "DISCORD_GATEWAY",
 				"class_name": "DiscordGateway"
+			},
+			{
+				"name": "DISCORD_REVIEW",
+				"class_name": "DiscordReview"
 			}
 		]
 	},
@@ -52,6 +56,10 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": ["DiscordGateway"]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": ["DiscordReview"]
 		}
 	]
 	/**
