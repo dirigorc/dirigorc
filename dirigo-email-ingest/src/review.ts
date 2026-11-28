@@ -1086,9 +1086,9 @@ async function editPrReviewMessage(interaction: DiscordInteraction, outcome: PrR
 	if (!applicationId || !token) return;
 	const payload: Record<string, unknown> = {
 		content: outcome.content,
-		components: outcome.clearButtons ? components : interaction.message?.components || [],
 		allowed_mentions: { parse: [] },
 	};
+	if (outcome.clearButtons) payload.components = components;
 	const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`, {
 		method: "PATCH",
 		headers: { "Content-Type": "application/json" },

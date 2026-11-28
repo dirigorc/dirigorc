@@ -1065,7 +1065,7 @@ describe("Dirigo email ingest worker", () => {
 		);
 		await waitOnExecutionContext(ctx);
 		expect(reviewUpdate(calls).content).toContain(`I could not ${action} the draft`);
-		expect(reviewUpdate(calls).components).toEqual([{ type: 1 }]);
+		expect(reviewUpdate(calls)).not.toHaveProperty("components");
 		expect(calls.some((call) => call.method === "PATCH" && call.url.includes("/channels/"))).toBe(false);
 	});
 
@@ -1135,6 +1135,35 @@ describe("Dirigo email ingest worker", () => {
 		expect(JSON.parse(final?.body || "{}").content).toContain("held this");
 	});
 
+	it("preserves restored buttons when a second queued Unhold fails", async () => {
+		let comments = 0;
+		const calls = mockReviewFetch(reviewPull(), 200, "merged", () => ++comments === 1 ? 201 : 403);
+		const staleClick = {
+			...reviewClick("pr_unhold:41:777:888", "1227055686295359519"),
+			message: {
+				id: "222",
+				components: [{
+					type: 1,
+					components: [{ type: 2, style: 2, label: "Unhold", custom_id: "pr_unhold:41:777:888" }],
+				}],
+			},
+		};
+		await runInDurableObject(env.DISCORD_REVIEW.getByName("failed-second-unhold"), async (_instance, state) => {
+			const coordinator = new DiscordReview(state, reviewEnv());
+			await Promise.all([coordinator.apply(staleClick), coordinator.apply(staleClick)]);
+		});
+		const updates = calls.filter((call) => call.method === "PATCH");
+		expect(updates).toHaveLength(3);
+		for (const update of updates.slice(0, 2)) {
+			expect(JSON.parse(update.body || "{}").components[0].components.map(
+				(button: { label: string }) => button.label,
+			)).toEqual(["Publish", "Hold", "Revise"]);
+		}
+		const failed = JSON.parse(updates[2].body || "{}");
+		expect(failed.content).toContain("I could not unhold the draft");
+		expect(failed).not.toHaveProperty("components");
+	});
+
 	it("preserves previews without reading sibling messages", async () => {
 		const calls = mockReviewFetch(reviewPull());
 		const ctx = createExecutionContext();
@@ -1198,7 +1227,7 @@ describe("Dirigo email ingest worker", () => {
 
 		const update = reviewUpdate(calls);
 		expect(update.content).toContain("At least 1 approving review is required.");
-		expect(update.components).toEqual([{ type: 1 }]);
+		expect(update).not.toHaveProperty("components");
 	});
 
 	it("does not turn an unknown slash command into a recap", async () => {
@@ -2190,7 +2219,7 @@ function reviewClick(customId: string, userId: string) {
 }
 
 function mockReviewFetch(
-	pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged", commentStatus = 201,
+	pull: Record<string, unknown>, mergeStatus = 200, mergeMessage = "merged", commentStatus: number | (() => number) = 201,
 	siblingPatch?: () => Promise<void>,
 ) {
 	const calls: FetchCall[] = [];
@@ -2202,7 +2231,11 @@ function mockReviewFetch(
 		if (url.includes("/pulls/41/merge")) {
 			return Response.json({ message: mergeMessage, merged: mergeStatus < 300 }, { status: mergeStatus });
 		}
-		if (url.includes("/issues/41/comments")) return Response.json({ id: 1, message: "Comment rejected." }, { status: commentStatus });
+		if (url.includes("/issues/41/comments")) {
+			return Response.json({ id: 1, message: "Comment rejected." }, {
+				status: typeof commentStatus === "function" ? commentStatus() : commentStatus,
+			});
+		}
 		if (url.endsWith("/channels/777/messages/888") && method === "PATCH") await siblingPatch?.();
 		if (url.includes("discord.com")) return new Response(null, { status: 200 });
 		if (url.endsWith("/pulls/41")) return Response.json(pull, { status: 200 });
